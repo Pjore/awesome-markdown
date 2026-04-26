@@ -1,10 +1,8 @@
 ---
 description: "Strategic planning agent that generates structured implementation plans optimized for LLM-based coding agents."
 name: "Planner"
-version: "1.0.0"
-category: planning
 tools: ["read", "browser", "edit/createFile", "edit/editFiles", "search", "web", "execute", "todo", "vscode", "agent"]
-model: Claude Opus 4.6
+model: Claude Opus 4.7 (copilot)
 ---
 
 ## Purpose

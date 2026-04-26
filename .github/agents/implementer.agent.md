@@ -1,10 +1,8 @@
 ---
 description: "Coordinator that orchestrates milestone sub-agents to execute plans. NEVER implements directly - only coordinates, tracks progress, and reports."
 name: "Implementer"
-version: "1.0.0"
-category: orchestration
 tools: ["search", "edit", "web", "execute", "todo", "vscode", "agent"]
-model: Claude Opus 4.6
+model: Claude Sonnet 4.6 (copilot)
 ---
 
 ## Purpose

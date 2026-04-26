@@ -1,10 +1,8 @@
 ---
 description: "Milestone implementer that executes detailed step-by-step implementation plans for specific project milestones."
 name: "Implementer.Milestone"
-version: "1.0.0"
-category: orchestration
 tools: ["search", "edit", "web", "execute", "todo", "vscode"]
-model: Claude Sonnet 4.5
+model: Claude Sonnet 4.6 (copilot)
 ---
 
 ## Purpose

@@ -1,10 +1,8 @@
 ---
 description: "Milestone planner that generates detailed, step-by-step implementation plans for specific project milestones."
 name: "Planner.Milestone"
-version: "1.0.0"
-category: planning
 tools: ["read", "browser", "edit/createFile", "edit/editFiles", "search", "web", "execute", "todo", "vscode"]
-model: Claude Sonnet 4.5
+model: Claude Opus 4.7 (copilot)
 ---
 
 ## Purpose
