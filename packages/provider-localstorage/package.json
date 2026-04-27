@@ -1,0 +1,30 @@
+{
+  "name": "@awesome-markdown/provider-localstorage",
+  "version": "0.1.0",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    }
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": ["dist"],
+  "scripts": {
+    "build": "tsc --build",
+    "typecheck": "tsc --build",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@awesome-markdown/contracts": "workspace:*",
+    "zod": "^4.0.0"
+  },
+  "devDependencies": {
+    "@vitest/coverage-v8": "^3.0.0",
+    "jsdom": "^26.0.0",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.0"
+  }
+}
