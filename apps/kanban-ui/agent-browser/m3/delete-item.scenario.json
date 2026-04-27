@@ -1,0 +1,49 @@
+{
+  "id": "delete-item",
+  "version": "1",
+  "description": "Open an item, press Delete, assert the card is gone and total item count decreased by 1.",
+  "services": ["kanban-ui:dev"],
+  "seed": "m3",
+  "url": "http://localhost:5173/?seed=m3",
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/?seed=m3" },
+    { "type": "wait", "selector": "[data-testid='board']" },
+    {
+      "type": "count",
+      "selector": "[data-testid^='item-card-']",
+      "store": "initialCount"
+    },
+    {
+      "type": "get-attribute",
+      "selector": "[data-testid^='item-card-']",
+      "attribute": "data-item-id",
+      "nth": 0,
+      "store": "targetItemId"
+    },
+    {
+      "type": "click",
+      "selector": "[data-testid^='edit-item-']",
+      "nth": 0,
+      "hover-parent": "[data-testid^='item-card-']"
+    },
+    { "type": "wait", "selector": "[data-testid='item-editor-modal']" },
+    { "type": "click", "selector": "[data-testid='editor-delete']" },
+    { "type": "wait-for-gone", "selector": "[data-testid='item-editor-modal']" }
+  ],
+  "assertions": [
+    {
+      "id": "card-removed",
+      "description": "The deleted item card is no longer in the DOM",
+      "selector-template": "[data-item-id='${targetItemId}']",
+      "check": "not-exists"
+    },
+    {
+      "id": "item-count-decreased",
+      "description": "Total item count decreased by 1",
+      "selector": "[data-testid^='item-card-']",
+      "check": "count-lte-stored-minus",
+      "stored": "initialCount",
+      "delta": 1
+    }
+  ]
+}

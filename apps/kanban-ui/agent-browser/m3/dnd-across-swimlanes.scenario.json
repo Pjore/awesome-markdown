@@ -1,0 +1,60 @@
+{
+  "id": "dnd-across-swimlanes",
+  "version": "1",
+  "description": "Drag an item from swimlane 'Frontend' to swimlane 'Backend' (same column). Assert the card now lives in the target swimlane's cell.",
+  "services": ["kanban-ui:dev"],
+  "seed": "m3",
+  "url": "http://localhost:5173/?seed=m3",
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/?seed=m3" },
+    { "type": "wait", "selector": "[data-testid='board']" },
+    {
+      "type": "get-attribute",
+      "selector": "[data-testid^='swimlane-row-']",
+      "attribute": "data-swimlane-id",
+      "nth": 0,
+      "store": "sourceSwimlaneId"
+    },
+    {
+      "type": "get-attribute",
+      "selector": "[data-testid^='swimlane-row-']",
+      "attribute": "data-swimlane-id",
+      "nth": 1,
+      "store": "targetSwimlaneId"
+    },
+    {
+      "type": "get-attribute",
+      "selector": "[data-testid^='column-header-']",
+      "attribute": "data-column-id",
+      "nth": 0,
+      "store": "columnId"
+    },
+    {
+      "type": "get-attribute",
+      "selector-template": "[data-testid='cell-${columnId}-${sourceSwimlaneId}'] [data-testid^='item-card-']",
+      "attribute": "data-item-id",
+      "nth": 0,
+      "store": "draggedItemId"
+    },
+    {
+      "type": "drag-to",
+      "source-selector-template": "[data-item-id='${draggedItemId}']",
+      "target-selector-template": "[data-testid='cell-${columnId}-${targetSwimlaneId}']"
+    },
+    { "type": "wait", "ms": 500 }
+  ],
+  "assertions": [
+    {
+      "id": "item-in-target-swimlane-cell",
+      "description": "The dragged item now appears in the target swimlane's cell",
+      "selector-template": "[data-testid='cell-${columnId}-${targetSwimlaneId}'] [data-item-id='${draggedItemId}']",
+      "check": "exists"
+    },
+    {
+      "id": "item-not-in-source-swimlane-cell",
+      "description": "The dragged item is no longer in the source swimlane's cell",
+      "selector-template": "[data-testid='cell-${columnId}-${sourceSwimlaneId}'] [data-item-id='${draggedItemId}']",
+      "check": "not-exists"
+    }
+  ]
+}

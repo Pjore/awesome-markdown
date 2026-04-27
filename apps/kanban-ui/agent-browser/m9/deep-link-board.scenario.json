@@ -1,0 +1,50 @@
+{
+  "id": "deep-link-board",
+  "version": "1",
+  "description": "Navigating directly to /boards/beta-project loads the Beta Project board without going via the list page.",
+  "services": ["kanban-ui:dev"],
+  "seed": "m9",
+  "url": "http://localhost:5173/?seed=m9",
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/?seed=m9" },
+    { "type": "wait", "selector": "[data-testid='board-list']" },
+    { "type": "navigate", "url": "http://localhost:5173/boards/beta-project" },
+    { "type": "wait", "selector": "[data-testid='board']" }
+  ],
+  "assertions": [
+    {
+      "id": "board-page-present",
+      "description": "Board page container is rendered via deep-link",
+      "selector": "[data-testid='board-page']",
+      "check": "exists"
+    },
+    {
+      "id": "correct-board-title",
+      "description": "Board title shows Beta Project (not Alpha)",
+      "selector": "[data-testid='board-title']",
+      "check": "text-contains",
+      "value": "Beta Project"
+    },
+    {
+      "id": "board-data-attribute",
+      "description": "Board element carries the board-id data attribute",
+      "selector": "[data-testid='board']",
+      "check": "has-attr",
+      "attr": "data-board-id"
+    },
+    {
+      "id": "has-beta-columns",
+      "description": "At least one column header is visible on Beta board",
+      "selector": "[data-testid^='column-header-']",
+      "check": "count-gte",
+      "value": 1
+    },
+    {
+      "id": "beta-backlog-column",
+      "description": "Beta board 'Backlog' column header is present",
+      "selector": "[data-testid^='column-header-']",
+      "check": "any-text-contains",
+      "value": "Backlog"
+    }
+  ]
+}

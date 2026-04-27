@@ -1,0 +1,55 @@
+{
+  "id": "navigate-into-board",
+  "version": "1",
+  "description": "Clicking a board link on the list page navigates to /boards/:slug and loads board content.",
+  "services": ["kanban-ui:dev"],
+  "seed": "m9",
+  "url": "http://localhost:5173/?seed=m9",
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/?seed=m9" },
+    { "type": "wait", "selector": "[data-testid='board-list']" },
+    { "type": "click", "selector": "[data-testid='board-link-alpha-project']" },
+    { "type": "wait", "selector": "[data-testid='board']" }
+  ],
+  "assertions": [
+    {
+      "id": "board-page-renders",
+      "description": "Board page wrapper is present after navigation",
+      "selector": "[data-testid='board-page']",
+      "check": "exists"
+    },
+    {
+      "id": "board-title-renders",
+      "description": "Board title element shows Alpha Project",
+      "selector": "[data-testid='board-title']",
+      "check": "text-contains",
+      "value": "Alpha Project"
+    },
+    {
+      "id": "board-grid-renders",
+      "description": "The board kanban grid is visible",
+      "selector": "[data-testid='board']",
+      "check": "exists"
+    },
+    {
+      "id": "breadcrumb-present",
+      "description": "Back-to-list breadcrumb link is present",
+      "selector": "[data-testid='breadcrumb-boards']",
+      "check": "exists"
+    },
+    {
+      "id": "has-columns",
+      "description": "At least 1 column header is visible",
+      "selector": "[data-testid^='column-header-']",
+      "check": "count-gte",
+      "value": 1
+    },
+    {
+      "id": "has-items",
+      "description": "At least 1 item card is visible (Alpha board has 4 items)",
+      "selector": "[data-testid^='item-card-']",
+      "check": "count-gte",
+      "value": 1
+    }
+  ]
+}

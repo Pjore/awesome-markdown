@@ -1,0 +1,46 @@
+{
+  "id": "sse-online-indicator",
+  "version": "1",
+  "description": "Assert connection indicator transitions to 'online' within 5 seconds after switching to HTTP provider.",
+  "services": ["kanban-ui:dev", "provider-fs:sidecar"],
+  "seed": "none",
+  "url": "http://localhost:5173/",
+  "prerequisites": {
+    "sidecar": "http://localhost:3001",
+    "notes": "Start provider-fs sidecar on port 3001 before running this scenario."
+  },
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/" },
+    { "type": "wait", "selector": "[data-testid='app-header']" },
+    { "type": "click", "selector": "[data-testid='settings-btn']" },
+    { "type": "wait", "selector": "[data-testid='settings-panel']" },
+    { "type": "click", "selector": "[data-testid='provider-radio-http']" },
+    { "type": "fill", "selector": "[data-testid='sidecar-url-input']", "value": "http://localhost:3001" },
+    { "type": "click", "selector": "[data-testid='settings-save']" },
+    { "type": "wait-for-gone", "selector": "[data-testid='settings-panel']" },
+    {
+      "type": "wait-for-attribute",
+      "selector": "[data-testid='connection-indicator']",
+      "attribute": "data-connection-state",
+      "value": "online",
+      "timeout": 5000
+    }
+  ],
+  "assertions": [
+    {
+      "id": "indicator-online",
+      "description": "Connection indicator shows 'online' state after SSE connects",
+      "selector": "[data-testid='connection-indicator']",
+      "check": "attribute-equals",
+      "attribute": "data-connection-state",
+      "value": "online"
+    },
+    {
+      "id": "indicator-aria-label",
+      "description": "Connection indicator has accessible aria-label",
+      "selector": "[data-testid='connection-indicator']",
+      "check": "has-attribute",
+      "attribute": "aria-label"
+    }
+  ]
+}

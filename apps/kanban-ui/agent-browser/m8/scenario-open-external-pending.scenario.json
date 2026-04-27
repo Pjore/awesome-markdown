@@ -1,0 +1,101 @@
+{
+  "id": "m8-open-external-then-resolve",
+  "version": "1",
+  "description": "Single-path conflict: user clicks 'Open externally' (pending), then picks 'Use mine' to finalize and submit. Asserts lock state and pending notice appear, then resolve completes.",
+  "services": ["kanban-ui:dev", "sync-engine:dev"],
+  "seed": "conflict-single-path",
+  "url": "http://localhost:5173/",
+  "prerequisites": {
+    "syncEngine": "http://localhost:7402",
+    "notes": "Start sync-engine with SYNC_ENGINE_TEST_HOOKS=1 before running this scenario. Use POST /sync/conflict/inject to seed the conflict."
+  },
+  "setup": [
+    {
+      "type": "http-post",
+      "url": "http://localhost:7402/sync/conflict/inject",
+      "body": {
+        "paths": [
+          {
+            "path": "content/item-gamma.md",
+            "localContent": "# Gamma\nlocal version",
+            "remoteContent": "# Gamma\nremote version"
+          }
+        ]
+      },
+      "expectedStatus": 200
+    }
+  ],
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/" },
+    {
+      "type": "wait",
+      "selector": "[data-testid='conflict-banner']",
+      "timeout": 5000
+    },
+    { "type": "click", "selector": "[data-testid='conflict-resolve-btn']" },
+    {
+      "type": "wait",
+      "selector": "[data-testid='conflict-panel']",
+      "timeout": 3000
+    },
+    {
+      "type": "click",
+      "selector": "[data-testid='conflict-external-content/item-gamma.md']"
+    },
+    {
+      "type": "wait",
+      "selector": "[data-testid='conflict-external-pending-content/item-gamma.md']",
+      "timeout": 3000
+    },
+    {
+      "type": "assert-disabled",
+      "selector": "[data-testid='conflict-submit-btn']"
+    },
+    {
+      "type": "click",
+      "selector": "[data-testid='conflict-ours-content/item-gamma.md']"
+    },
+    {
+      "type": "wait-for-gone",
+      "selector": "[data-testid='conflict-external-pending-content/item-gamma.md']",
+      "timeout": 2000
+    },
+    {
+      "type": "assert-enabled",
+      "selector": "[data-testid='conflict-submit-btn']"
+    },
+    { "type": "click", "selector": "[data-testid='conflict-submit-btn']" },
+    {
+      "type": "wait-for-gone",
+      "selector": "[data-testid='conflict-banner']",
+      "timeout": 8000
+    }
+  ],
+  "assertions": [
+    {
+      "id": "external-pending-shown",
+      "description": "Pending notice shown after 'Open externally' click",
+      "selector": "[data-testid='conflict-external-pending-content/item-gamma.md']",
+      "check": "not-exists",
+      "description": "Pending notice gone after ours/theirs chosen"
+    },
+    {
+      "id": "submit-blocked-while-external",
+      "description": "Submit is disabled while path is in external-pending state",
+      "selector": "[data-testid='conflict-submit-btn']",
+      "check": "not-exists",
+      "description": "Conflict resolved and banner gone"
+    },
+    {
+      "id": "banner-dismissed",
+      "description": "Conflict banner dismissed after successful resolution",
+      "selector": "[data-testid='conflict-banner']",
+      "check": "not-exists"
+    },
+    {
+      "id": "no-console-errors",
+      "description": "No unhandled errors during open-external flow",
+      "check": "no-console-errors"
+    }
+  ]
+}

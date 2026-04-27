@@ -1,0 +1,53 @@
+{
+  "id": "board-list-renders",
+  "version": "1",
+  "description": "Board list page renders at least 2 board entries after seeding with M9 state.",
+  "services": ["kanban-ui:dev"],
+  "seed": "m9",
+  "url": "http://localhost:5173/?seed=m9",
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/?seed=m9" },
+    { "type": "wait", "selector": "[data-testid='board-list']" }
+  ],
+  "assertions": [
+    {
+      "id": "board-list-present",
+      "description": "Board list container is in the DOM",
+      "selector": "[data-testid='board-list']",
+      "check": "exists"
+    },
+    {
+      "id": "board-list-has-min-2-items",
+      "description": "At least 2 board link entries are visible",
+      "selector": "[data-testid^='board-link-']",
+      "check": "count-gte",
+      "value": 2
+    },
+    {
+      "id": "board-list-contains-alpha",
+      "description": "Alpha Project board is listed",
+      "selector": "[data-testid='board-link-alpha-project']",
+      "check": "exists"
+    },
+    {
+      "id": "board-list-contains-beta",
+      "description": "Beta Project board is listed",
+      "selector": "[data-testid='board-link-beta-project']",
+      "check": "exists"
+    },
+    {
+      "id": "board-list-title-alpha",
+      "description": "Alpha Project title text is visible",
+      "selector": "[data-testid='board-title-alpha-project']",
+      "check": "text-contains",
+      "value": "Alpha Project"
+    },
+    {
+      "id": "board-list-title-beta",
+      "description": "Beta Project title text is visible",
+      "selector": "[data-testid='board-title-beta-project']",
+      "check": "text-contains",
+      "value": "Beta Project"
+    }
+  ]
+}

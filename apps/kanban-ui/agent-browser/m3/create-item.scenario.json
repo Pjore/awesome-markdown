@@ -1,0 +1,52 @@
+{
+  "id": "create-item",
+  "version": "1",
+  "description": "Click 'Add item' in a cell, fill title/body, save. Assert the new card appears and item count increases.",
+  "services": ["kanban-ui:dev"],
+  "seed": "m3",
+  "url": "http://localhost:5173/?seed=m3",
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/?seed=m3" },
+    { "type": "wait", "selector": "[data-testid='board']" },
+    {
+      "type": "count",
+      "selector": "[data-testid^='item-card-']",
+      "store": "initialCount"
+    },
+    {
+      "type": "click",
+      "selector": "[data-testid^='add-item-']",
+      "nth": 0
+    },
+    { "type": "wait", "selector": "[data-testid='item-editor-modal']" },
+    {
+      "type": "fill",
+      "selector": "[data-testid='editor-title']",
+      "value": "New test item from scenario"
+    },
+    {
+      "type": "fill",
+      "selector": "[data-testid='editor-body']",
+      "value": "Body text for the new test item"
+    },
+    { "type": "click", "selector": "[data-testid='editor-save']" },
+    { "type": "wait-for-gone", "selector": "[data-testid='item-editor-modal']" }
+  ],
+  "assertions": [
+    {
+      "id": "new-card-visible",
+      "description": "Card with the new title is now visible on the board",
+      "selector": "[data-testid^='item-card-']",
+      "check": "any-text-contains",
+      "value": "New test item from scenario"
+    },
+    {
+      "id": "item-count-increased",
+      "description": "Total item count increased by 1",
+      "selector": "[data-testid^='item-card-']",
+      "check": "count-gte-stored-plus",
+      "stored": "initialCount",
+      "delta": 1
+    }
+  ]
+}

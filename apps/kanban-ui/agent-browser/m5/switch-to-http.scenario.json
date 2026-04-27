@@ -1,0 +1,44 @@
+{
+  "id": "switch-to-http",
+  "version": "1",
+  "description": "Open settings, select HTTP provider, enter sidecar URL, save. Assert board reloads from sidecar state.",
+  "services": ["kanban-ui:dev", "provider-fs:sidecar"],
+  "seed": "m3",
+  "url": "http://localhost:5173/?seed=m3",
+  "prerequisites": {
+    "sidecar": "http://localhost:3001",
+    "notes": "Start provider-fs sidecar on port 3001 before running this scenario."
+  },
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/?seed=m3" },
+    { "type": "wait", "selector": "[data-testid='board']" },
+    { "type": "click", "selector": "[data-testid='settings-btn']" },
+    { "type": "wait", "selector": "[data-testid='settings-panel']" },
+    { "type": "click", "selector": "[data-testid='provider-radio-http']" },
+    { "type": "fill", "selector": "[data-testid='sidecar-url-input']", "value": "http://localhost:3001" },
+    { "type": "click", "selector": "[data-testid='settings-save']" },
+    { "type": "wait-for-gone", "selector": "[data-testid='settings-panel']" },
+    { "type": "wait-for-gone", "selector": "[data-testid='switching-provider']", "timeout": 5000 },
+    { "type": "wait", "selector": "[data-testid='board'], [data-testid='empty-state']" }
+  ],
+  "assertions": [
+    {
+      "id": "settings-panel-closed",
+      "description": "Settings panel is no longer visible after save",
+      "selector": "[data-testid='settings-panel']",
+      "check": "not-exists"
+    },
+    {
+      "id": "connection-indicator-present",
+      "description": "Connection indicator is visible in app header",
+      "selector": "[data-testid='connection-indicator']",
+      "check": "exists"
+    },
+    {
+      "id": "app-header-present",
+      "description": "App chrome header is present",
+      "selector": "[data-testid='app-header']",
+      "check": "exists"
+    }
+  ]
+}

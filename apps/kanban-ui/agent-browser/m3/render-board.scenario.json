@@ -1,0 +1,55 @@
+{
+  "id": "render-board",
+  "version": "1",
+  "description": "Verify the board grid renders with seeded columns, swimlanes, and items.",
+  "services": ["kanban-ui:dev"],
+  "seed": "m3",
+  "url": "http://localhost:5173/?seed=m3",
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/?seed=m3" },
+    { "type": "wait", "selector": "[data-testid='board']" }
+  ],
+  "assertions": [
+    {
+      "id": "board-renders",
+      "description": "Board element is present in the DOM",
+      "selector": "[data-testid='board']",
+      "check": "exists"
+    },
+    {
+      "id": "has-min-2-column-headers",
+      "description": "At least 2 column header elements are visible",
+      "selector": "[data-testid^='column-header-']",
+      "check": "count-gte",
+      "value": 2
+    },
+    {
+      "id": "has-min-2-swimlane-rows",
+      "description": "At least 2 swimlane row elements are visible",
+      "selector": "[data-testid^='swimlane-row-']",
+      "check": "count-gte",
+      "value": 2
+    },
+    {
+      "id": "has-min-4-item-cards",
+      "description": "At least 4 item cards are visible",
+      "selector": "[data-testid^='item-card-']",
+      "check": "count-gte",
+      "value": 4
+    },
+    {
+      "id": "column-header-to-do",
+      "description": "Column header 'To Do' is visible",
+      "selector": "[data-testid^='column-header-']",
+      "check": "any-text-contains",
+      "value": "To Do"
+    },
+    {
+      "id": "swimlane-frontend",
+      "description": "Swimlane label 'Frontend' is visible",
+      "selector": "[data-testid^='swimlane-label-']",
+      "check": "any-text-contains",
+      "value": "Frontend"
+    }
+  ]
+}

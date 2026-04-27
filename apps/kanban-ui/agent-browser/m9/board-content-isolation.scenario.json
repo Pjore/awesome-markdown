@@ -1,0 +1,51 @@
+{
+  "id": "board-content-isolation",
+  "version": "1",
+  "description": "Items from Board A (Alpha-prefixed) are not visible when viewing Board B (Beta Project), and vice versa.",
+  "services": ["kanban-ui:dev"],
+  "seed": "m9",
+  "url": "http://localhost:5173/?seed=m9",
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/?seed=m9" },
+    { "type": "wait", "selector": "[data-testid='board-list']" },
+    { "type": "navigate", "url": "http://localhost:5173/boards/beta-project" },
+    { "type": "wait", "selector": "[data-testid='board']" }
+  ],
+  "assertions": [
+    {
+      "id": "beta-board-active",
+      "description": "Currently viewing Beta Project board",
+      "selector": "[data-testid='board-title']",
+      "check": "text-contains",
+      "value": "Beta Project"
+    },
+    {
+      "id": "beta-items-present",
+      "description": "Beta board has at least 1 item card",
+      "selector": "[data-testid^='item-card-']",
+      "check": "count-gte",
+      "value": 1
+    },
+    {
+      "id": "alpha-items-absent",
+      "description": "Alpha-prefixed items are NOT visible on Beta board — content is isolated",
+      "selector": "[data-testid^='item-card-']",
+      "check": "none-text-contains",
+      "value": "Alpha-"
+    },
+    {
+      "id": "beta-swimlanes-present",
+      "description": "Beta-specific swimlanes (Mobile, Infra) are visible",
+      "selector": "[data-testid^='swimlane-label-']",
+      "check": "any-text-contains",
+      "value": "Mobile"
+    },
+    {
+      "id": "alpha-swimlanes-absent",
+      "description": "Alpha-specific swimlanes (UX, Backend) are NOT visible on Beta board",
+      "selector": "[data-testid^='swimlane-label-']",
+      "check": "none-text-contains",
+      "value": "UX"
+    }
+  ]
+}

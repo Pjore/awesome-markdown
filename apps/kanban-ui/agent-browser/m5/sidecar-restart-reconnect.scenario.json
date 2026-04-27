@@ -1,0 +1,68 @@
+{
+  "id": "sidecar-restart-reconnect",
+  "version": "1",
+  "description": "Trigger a sidecar restart; assert indicator goes 'reconnecting' then returns to 'online' without manual refresh.",
+  "services": ["kanban-ui:dev", "provider-fs:sidecar"],
+  "seed": "none",
+  "url": "http://localhost:5173/",
+  "prerequisites": {
+    "sidecar": "http://localhost:3001",
+    "restart_command": "kill <sidecar-pid> && provider-fs start &",
+    "notes": [
+      "Start provider-fs sidecar on port 3001.",
+      "The harness restarts the sidecar between the 'switch-to-http' action and the reconnect assertions.",
+      "Sidecar restart must complete within 10 seconds for the reconnect to succeed."
+    ]
+  },
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/" },
+    { "type": "wait", "selector": "[data-testid='app-header']" },
+    { "type": "click", "selector": "[data-testid='settings-btn']" },
+    { "type": "wait", "selector": "[data-testid='settings-panel']" },
+    { "type": "click", "selector": "[data-testid='provider-radio-http']" },
+    { "type": "fill", "selector": "[data-testid='sidecar-url-input']", "value": "http://localhost:3001" },
+    { "type": "click", "selector": "[data-testid='settings-save']" },
+    { "type": "wait-for-gone", "selector": "[data-testid='settings-panel']" },
+    {
+      "type": "wait-for-attribute",
+      "selector": "[data-testid='connection-indicator']",
+      "attribute": "data-connection-state",
+      "value": "online",
+      "timeout": 5000
+    },
+    {
+      "type": "exec",
+      "description": "Harness restarts the sidecar out-of-band",
+      "command": "restart-sidecar"
+    },
+    {
+      "type": "wait-for-attribute",
+      "selector": "[data-testid='connection-indicator']",
+      "attribute": "data-connection-state",
+      "value": "reconnecting",
+      "timeout": 5000
+    },
+    {
+      "type": "wait-for-attribute",
+      "selector": "[data-testid='connection-indicator']",
+      "attribute": "data-connection-state",
+      "value": "online",
+      "timeout": 60000
+    }
+  ],
+  "assertions": [
+    {
+      "id": "indicator-back-online",
+      "description": "Indicator returns to 'online' after sidecar restarts — no manual refresh",
+      "selector": "[data-testid='connection-indicator']",
+      "check": "attribute-equals",
+      "attribute": "data-connection-state",
+      "value": "online"
+    },
+    {
+      "id": "no-console-errors",
+      "description": "No uncaught console errors during the reconnect cycle",
+      "check": "no-console-errors"
+    }
+  ]
+}

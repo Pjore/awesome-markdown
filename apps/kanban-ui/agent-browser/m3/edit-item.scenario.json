@@ -1,0 +1,47 @@
+{
+  "id": "edit-item",
+  "version": "1",
+  "description": "Open an existing item, change title and body, save, reload page. Assert updated title and body remain after reload.",
+  "services": ["kanban-ui:dev"],
+  "seed": "m3",
+  "url": "http://localhost:5173/?seed=m3",
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/?seed=m3" },
+    { "type": "wait", "selector": "[data-testid='board']" },
+    {
+      "type": "click",
+      "selector": "[data-testid^='edit-item-']",
+      "nth": 0,
+      "hover-parent": "[data-testid^='item-card-']"
+    },
+    { "type": "wait", "selector": "[data-testid='item-editor-modal']" },
+    {
+      "type": "clear-and-fill",
+      "selector": "[data-testid='editor-title']",
+      "value": "Updated title after edit"
+    },
+    {
+      "type": "clear-and-fill",
+      "selector": "[data-testid='editor-body']",
+      "value": "Updated body content"
+    },
+    { "type": "click", "selector": "[data-testid='editor-save']" },
+    { "type": "wait-for-gone", "selector": "[data-testid='item-editor-modal']" },
+    {
+      "type": "assert-visible",
+      "selector": "[data-testid^='item-title-']",
+      "text-contains": "Updated title after edit"
+    },
+    { "type": "reload" },
+    { "type": "wait", "selector": "[data-testid='board']" }
+  ],
+  "assertions": [
+    {
+      "id": "title-persisted",
+      "description": "Updated title is still visible after page reload (persisted in localStorage)",
+      "selector": "[data-testid^='item-title-']",
+      "check": "any-text-contains",
+      "value": "Updated title after edit"
+    }
+  ]
+}

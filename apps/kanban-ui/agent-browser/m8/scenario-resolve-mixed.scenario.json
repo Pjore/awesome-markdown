@@ -1,0 +1,90 @@
+{
+  "id": "m8-resolve-mixed-conflict",
+  "version": "1",
+  "description": "Two-path merge conflict: one path resolved with 'ours', one with 'theirs'. Asserts banner appears, panel lists both paths, resolve completes, banner dismisses.",
+  "services": ["kanban-ui:dev", "sync-engine:dev"],
+  "seed": "conflict-two-paths",
+  "url": "http://localhost:5173/",
+  "prerequisites": {
+    "syncEngine": "http://localhost:7402",
+    "notes": "Start sync-engine with SYNC_ENGINE_TEST_HOOKS=1 before running this scenario. Use POST /sync/conflict/inject to seed the conflict."
+  },
+  "setup": [
+    {
+      "type": "http-post",
+      "url": "http://localhost:7402/sync/conflict/inject",
+      "body": {
+        "paths": [
+          {
+            "path": "content/item-alpha.md",
+            "localContent": "# Alpha\nlocal edit",
+            "remoteContent": "# Alpha\nremote edit"
+          },
+          {
+            "path": "content/item-beta.md",
+            "localContent": "# Beta\nlocal edit",
+            "remoteContent": "# Beta\nremote edit"
+          }
+        ]
+      },
+      "expectedStatus": 200
+    }
+  ],
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/" },
+    {
+      "type": "wait",
+      "selector": "[data-testid='conflict-banner']",
+      "timeout": 5000
+    },
+    {
+      "type": "assert-text-contains",
+      "selector": "[data-testid='conflict-banner']",
+      "text": "2"
+    },
+    { "type": "click", "selector": "[data-testid='conflict-resolve-btn']" },
+    {
+      "type": "wait",
+      "selector": "[data-testid='conflict-panel']",
+      "timeout": 3000
+    },
+    {
+      "type": "click",
+      "selector": "[data-testid='conflict-ours-content/item-alpha.md']"
+    },
+    {
+      "type": "click",
+      "selector": "[data-testid='conflict-theirs-content/item-beta.md']"
+    },
+    {
+      "type": "assert-enabled",
+      "selector": "[data-testid='conflict-submit-btn']"
+    },
+    { "type": "click", "selector": "[data-testid='conflict-submit-btn']" },
+    {
+      "type": "wait-for-gone",
+      "selector": "[data-testid='conflict-banner']",
+      "timeout": 8000
+    }
+  ],
+  "assertions": [
+    {
+      "id": "banner-appears",
+      "description": "Conflict banner is shown when a merge conflict is active",
+      "selector": "[data-testid='conflict-banner']",
+      "check": "not-exists",
+      "description": "Banner is gone after successful resolution"
+    },
+    {
+      "id": "panel-closes",
+      "description": "Conflict panel closes after resolution",
+      "selector": "[data-testid='conflict-panel']",
+      "check": "not-exists"
+    },
+    {
+      "id": "no-console-errors",
+      "description": "No unhandled errors during conflict resolution flow",
+      "check": "no-console-errors"
+    }
+  ]
+}

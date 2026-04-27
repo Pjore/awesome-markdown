@@ -1,0 +1,61 @@
+{
+  "id": "reorder-within-column",
+  "version": "1",
+  "description": "Add a second item to a cell, drag the first item below the second, reload, assert order is preserved.",
+  "services": ["kanban-ui:dev"],
+  "seed": "m3",
+  "url": "http://localhost:5173/?seed=m3",
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/?seed=m3" },
+    { "type": "wait", "selector": "[data-testid='board']" },
+    {
+      "type": "get-attribute",
+      "selector": "[data-testid^='column-header-']",
+      "attribute": "data-column-id",
+      "nth": 0,
+      "store": "columnId"
+    },
+    {
+      "type": "get-attribute",
+      "selector": "[data-testid^='swimlane-row-']",
+      "attribute": "data-swimlane-id",
+      "nth": 0,
+      "store": "swimlaneId"
+    },
+    {
+      "type": "get-attribute",
+      "selector-template": "[data-testid='cell-${columnId}-${swimlaneId}'] [data-testid^='item-card-']",
+      "attribute": "data-item-id",
+      "nth": 0,
+      "store": "firstItemId"
+    },
+    {
+      "type": "get-attribute",
+      "selector-template": "[data-testid='cell-${columnId}-${swimlaneId}'] [data-testid^='item-card-']",
+      "attribute": "data-item-id",
+      "nth": 1,
+      "store": "secondItemId",
+      "fallback": null
+    },
+    {
+      "type": "drag-to",
+      "source-selector-template": "[data-item-id='${firstItemId}']",
+      "target-selector-template": "[data-item-id='${secondItemId}']",
+      "condition": "secondItemId-not-null"
+    },
+    { "type": "wait", "ms": 500 },
+    { "type": "reload" },
+    { "type": "wait", "selector": "[data-testid='board']" }
+  ],
+  "assertions": [
+    {
+      "id": "first-item-after-second",
+      "description": "After reload, the originally-first item now appears after the originally-second item in the DOM order within the cell",
+      "type": "dom-order",
+      "cell-selector-template": "[data-testid='cell-${columnId}-${swimlaneId}']",
+      "first-item-selector-template": "[data-item-id='${secondItemId}']",
+      "second-item-selector-template": "[data-item-id='${firstItemId}']",
+      "check": "first-before-second"
+    }
+  ]
+}
