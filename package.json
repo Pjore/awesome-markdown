@@ -1,0 +1,18 @@
+{
+  "name": "awesome-markdown",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "typecheck": "tsc --build && pnpm --filter kanban-ui typecheck",
+    "lint": "oxlint .",
+    "format": "prettier --write .",
+    "test": "pnpm -r --if-present run test",
+    "test:sync-engine": "pnpm --filter sync-engine test",
+    "verify:ui": "pnpm --filter kanban-ui verify:m3 && pnpm --filter kanban-ui verify:m5 && pnpm --filter kanban-ui verify:m8 && pnpm --filter kanban-ui verify:m9"
+  },
+  "devDependencies": {
+    "oxlint": "^0.15.0",
+    "prettier": "^3.4.2",
+    "typescript": "^5.7.3"
+  }
+}

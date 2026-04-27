@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "files": [],
+  "references": [
+    { "path": "./packages/contracts" },
+    { "path": "./packages/provider-localstorage" },
+    { "path": "./packages/provider-http" },
+    { "path": "./apps/provider-fs" },
+    { "path": "./apps/sync-engine" }
+  ]
+}
+
