@@ -56,16 +56,42 @@ pnpm install
 # Quality gates (run before every commit)
 pnpm typecheck && pnpm lint
 
-# Start each service
+# Start each service (reads .env automatically via --env-file-if-present)
 pnpm --filter kanban-ui dev
 pnpm --filter provider-fs dev
-SYNC_ENGINE_REPO_ROOT=$(pwd) pnpm --filter sync-engine dev
+pnpm --filter sync-engine dev   # reads SYNC_ENGINE_REPO_ROOT etc. from .env
 
 # Tests
 pnpm test                          # all Vitest suites
 pnpm verify:ui                     # aggregate agent-browser UI smoke suite
 pnpm --filter kanban-ui verify:m3  # per-milestone agent-browser
 ```
+
+## Environment / .env Files
+
+Each app ships a `.env.example` — copy to `.env` and fill in values.
+`.env` is gitignored; `.env.example` is committed.
+
+| App | Env file | Key variables |
+|-----|----------|---------------|
+| `apps/provider-fs` | `apps/provider-fs/.env` | `PROVIDER_FS_PORT`, `PROVIDER_FS_HOST`, `PROVIDER_FS_CONTENT_ROOT` |
+| `apps/sync-engine` | `apps/sync-engine/.env` | `SYNC_ENGINE_REPO_ROOT` (required), `SYNC_ENGINE_TARGET_BRANCH`, `GITHUB_TOKEN` |
+| `apps/kanban-ui` | `apps/kanban-ui/.env` | `VITE_PROVIDER_FS_URL` (pre-fills Settings panel URL) |
+
+`provider-fs` and `sync-engine` use Node 22 `--env-file-if-present` — the `.env`
+file is loaded by the `dev` script automatically. Vite loads `.env` natively.
+
+## Sync-engine: Feature Branch Workflow
+
+The sync-engine syncs against the **current local branch** by default
+(`git branch --show-current`). When working on a feature branch, ensure:
+
+1. `apps/sync-engine/.env` contains `SYNC_ENGINE_TARGET_BRANCH=<your-branch>`, **or**
+2. The env var matches whatever branch is checked out (`git branch --show-current`).
+
+If `SYNC_ENGINE_TARGET_BRANCH` is unset, the engine reads the current branch
+at startup — so checking out the feature branch before starting the engine is
+sufficient for most workflows.
 
 ## File Constraints
 

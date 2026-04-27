@@ -22,7 +22,9 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
 
   const [kind, setKind] = useState<ProviderSettings['kind']>(activeSettings.kind);
   const [baseUrl, setBaseUrl] = useState(
-    activeSettings.kind === 'http' ? activeSettings.baseUrl : 'http://localhost:3001',
+    activeSettings.kind === 'http'
+      ? activeSettings.baseUrl
+      : (import.meta.env['VITE_PROVIDER_FS_URL'] ?? 'http://localhost:7701'),
   );
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'ok' | 'fail'>('idle');
   const [saving, setSaving] = useState(false);
@@ -121,7 +123,7 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
                 setBaseUrl(e.target.value);
                 setTestStatus('idle');
               }}
-              placeholder="http://localhost:3001"
+              placeholder={import.meta.env['VITE_PROVIDER_FS_URL'] ?? 'http://localhost:7701'}
               className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-describedby={urlError !== null ? 'url-error' : undefined}
               data-testid="sidecar-url-input"

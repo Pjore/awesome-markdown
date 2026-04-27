@@ -34,6 +34,7 @@ function collectEnvVars(): Record<string, unknown> {
     DEBOUNCE_MS: 'debounceMs',
     PORT: 'port',
     HOST: 'host',
+    TARGET_BRANCH: 'targetBranch',
   };
   for (const [envSuffix, configKey] of Object.entries(envMap)) {
     const envKey = `${ENV_PREFIX}${envSuffix}`;

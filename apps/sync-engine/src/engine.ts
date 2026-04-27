@@ -252,6 +252,7 @@ export class Engine {
       this.remoteConfig = await createRemoteConfig(
         this.config.repoRoot,
         this.config.githubToken ?? null,
+        this.config.targetBranch,
       );
     } catch {
       // If remote config fails (e.g. SSH remote), disable remote sync silently
