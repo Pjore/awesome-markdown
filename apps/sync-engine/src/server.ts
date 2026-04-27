@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
 import type { EngineConfig } from './types.js';
 import { Engine } from './engine.js';
 import { SseHub } from './sse-hub.js';
@@ -14,6 +15,7 @@ export async function createServer(config: EngineConfig) {
   const engine = new Engine(config, hub);
 
   const fastify = Fastify({ logger: false });
+  await fastify.register(cors, { origin: true });
 
   // -------------------------------------------------------------------------
   // Routes
