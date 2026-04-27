@@ -222,16 +222,39 @@ For UI phases or change affecting UI, include a screenshot:
    e.g. `docs/prs/42-scout-logo-header/`. This directory is **git-tracked** so screenshots
    persist in the repo alongside the PR history.
 
-3. Commit and push the screenshot, OR upload via the GitHub Contents API:
+3. Upload the screenshot, OR commit via git. **Preferred: release asset upload** (avoids binary blobs in git):
 
-   **Option A — git commit (preferred when working locally):**
+   **Option A — GitHub Release assets (preferred):**
+
+   Screenshots are uploaded to a permanent `pr-screenshots` release tag. This avoids committing binary files to git and provides stable URLs.
+
+   One-time setup (skip if tag already exists):
+   ```bash
+   gh release create pr-screenshots \
+     --title "PR Screenshots" \
+     --notes "Persistent storage for PR screenshot assets. Do not delete." \
+     --latest=false
+   ```
+
+   Upload a screenshot:
+   ```bash
+   BASENAME=$(basename "$FILE")
+   gh release upload pr-screenshots "$FILE#$BASENAME" --clobber
+   ```
+
+   Asset URL pattern (permanent, works in GitHub markdown):
+   ```
+   https://github.com/<OWNER>/<REPO>/releases/download/pr-screenshots/<filename>
+   ```
+
+   **Option B — git commit:**
    ```bash
    git add "$PR_DIR"
    git commit -m "docs: add screenshot for <phase description>"
    git push
    ```
 
-   **Option B — Contents API (no local commit needed):**
+   **Option C — Contents API (no local commit needed):**
    ```bash
    IMAGE_B64=$(base64 -w 0 "$PR_DIR/<image>.png") && \
    gh api -X PUT "/repos/<OWNER>/<REPO>/contents/$PR_DIR/<image>.png" \
@@ -240,17 +263,16 @@ For UI phases or change affecting UI, include a screenshot:
      -f branch="<current-branch>"
    ```
 
-4. Embed the screenshot in the PR comment using GitHub's blob URL with `?raw=true`.
-   For **private repos**, `raw.githubusercontent.com` URLs do not render inline because
-   they require authentication. Use the blob URL format instead — GitHub's markdown
-   renderer authenticates the viewer automatically:
+4. Embed the screenshot in the PR comment.
+
+   For **release asset URLs** (Option A):
    ```bash
    gh pr comment <PR-number-or-URL> --body "$(cat <<'EOF'
 ## ✅ Phase N complete: <phase title>
 
 <description of what changed visually>
 
-![Screenshot description](https://github.com/<OWNER>/<REPO>/blob/<branch>/docs/prs/<PR_NUMBER>-<short-name>/<image>.png?raw=true)
+![Screenshot description](https://github.com/<OWNER>/<REPO>/releases/download/pr-screenshots/<image>.png)
 
 **Commits in this phase:**
 - `abc1234` feat(ui): description
@@ -258,13 +280,24 @@ EOF
    )"
    ```
 
-Screenshot naming convention: `<feature-or-context>-<page>-<variant>.png`
-PR screenshot directory convention: `docs/prs/<PR_NUMBER>-<short-branch-name>/`
+   For **git blob URLs** (Option B/C): use `?raw=true` on the blob URL — GitHub's markdown renderer authenticates the viewer automatically for private repos. `raw.githubusercontent.com` requires a token and will not render inline.
+   ```
+   https://github.com/<OWNER>/<REPO>/blob/<branch>/docs/prs/<PR_NUMBER>-<short-name>/<image>.png?raw=true
+   ```
 
-> **Why not other approaches?**
+Screenshot naming convention: `<feature-or-context>-<page>-<variant>.png`
+PR screenshot directory convention: `docs/prs/<PR_NUMBER>-<short-branch-name>/` (only needed for Option B/C)
+
+> **Why release assets are preferred over git commits:**
+> - No binary blobs in git history
+> - URLs survive branch deletion after merge
+> - Works on private repos without extra auth (same-domain session)
+> - `gh release upload` is a single command; no base64 encoding needed
+>
+> **Why not other approaches:**
 > - `gh pr comment` has no `--attach` or image upload flag
 > - Base64 inline images (`data:image/png;base64,...`) are stripped by GitHub's sanitizer
-> - The `uploads.github.com` endpoint used by the web UI drag-and-drop requires browser session cookies, not API tokens
+> - The `uploads.github.com` endpoint used by web UI drag-and-drop requires browser session cookies, not API tokens
 
 ---
 
