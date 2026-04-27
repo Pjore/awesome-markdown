@@ -33,7 +33,12 @@ export async function createServer(config: Config) {
   fastify.setSerializerCompiler(serializerCompiler);
 
   // Enable CORS for browser clients on different ports (e.g. kanban-ui dev server)
-  await fastify.register(cors, { origin: true });
+  // methods must be explicit — @fastify/cors defaults to GET,HEAD,POST only,
+  // which blocks PUT/DELETE preflight requests from the browser.
+  await fastify.register(cors, {
+    origin: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
 
   // Install error handler on the root instance so it applies to all scopes
   installErrorHandler(fastify);
