@@ -280,6 +280,7 @@ Priority (lowest to highest): `~/.agent-browser/config.json` < `./agent-browser.
 | [references/profiling.md](references/profiling.md) | Chrome DevTools profiling for performance analysis |
 | [references/proxy-support.md](references/proxy-support.md) | Proxy configuration, geo-testing, rotating proxies |
 | [references/arm64-setup.md](references/arm64-setup.md) | ARM64 setup using Playwright Chromium (e.g. Coder workspaces) |
+| [references/awesome-markdown-notes.md](references/awesome-markdown-notes.md) | **awesome-markdown project specifics** — seeding flow, testids, DnD tips, sidecar noise filtering |
 
 ## Ready-to-Use Templates
 

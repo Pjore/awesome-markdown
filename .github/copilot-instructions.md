@@ -86,3 +86,24 @@ pnpm --filter kanban-ui verify:m3  # per-milestone agent-browser
 - **Branch + PR** — never commit to `main` directly
 - Load `branch-and-pr` skill before starting any feature work
 - Load `commit-work` skill before making commits
+
+## Browser Tooling — Prefer `agent-browser`
+
+For any frontend work against `kanban-ui`, **default to `agent-browser`**
+over the built-in browser tool (`open_browser_page`, `read_page`,
+`screenshot_page`, `click_element`). Load the `agent-browser` skill;
+project-specific notes (seeding, testids, DnD, noise filtering) live in
+`.github/skills/agent-browser/references/awesome-markdown-notes.md`.
+
+`agent-browser` is required for: annotated screenshots, DnD/animation
+debugging, full console logs, HAR network capture, request mocking,
+arbitrary JS scraping via `eval`, video recording, and visual/structural
+regression diffs. The repo's `pnpm verify:ui` suite uses it.
+
+The built-in browser tool is acceptable for: quick "does the URL load?"
+sanity checks during chat, inline JPEG screenshots when the user wants to
+see a result without a `view_image` follow-up, and trivial text scrapes.
+Its default viewport is narrow (~700 px) and truncates the kanban board —
+do not use it for layout debugging.
+
+Full comparison: [docs/agent-browser-vs-browser-tool.md](../docs/agent-browser-vs-browser-tool.md).
