@@ -127,6 +127,9 @@ importers:
       '@awesome-markdown/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@fastify/cors':
+        specifier: ^11.2.0
+        version: 11.2.0
       chokidar:
         specifier: ^3.6.0
         version: 3.6.0
