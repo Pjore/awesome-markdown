@@ -39,6 +39,14 @@ Monorepo with pnpm workspaces:
 - **Git auth**: `GITHUB_TOKEN` fine-grained PAT with `Contents: read/write`
 - **No `any`** in `packages/contracts`; all cross-package calls typed via exports
 
+## Ports (defaults)
+
+| Service | Port |
+|---------|------|
+| kanban-ui dev server | 5173 |
+| provider-fs sidecar | 7701 |
+| sync-engine | 7402 |
+
 ## Dev Commands
 
 ```bash
@@ -47,6 +55,16 @@ pnpm install
 
 # Quality gates (run before every commit)
 pnpm typecheck && pnpm lint
+
+# Start each service
+pnpm --filter kanban-ui dev
+pnpm --filter provider-fs dev
+SYNC_ENGINE_REPO_ROOT=$(pwd) pnpm --filter sync-engine dev
+
+# Tests
+pnpm test                          # all Vitest suites
+pnpm verify:ui                     # aggregate agent-browser UI smoke suite
+pnpm --filter kanban-ui verify:m3  # per-milestone agent-browser
 ```
 
 ## File Constraints
