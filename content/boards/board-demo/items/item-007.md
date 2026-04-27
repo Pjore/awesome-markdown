@@ -1,7 +1,7 @@
 ---
 id: item-007
 boardId: board-demo
-columnId: col-done
+columnId: col-inprogress
 swimlaneId: lane-bugfix
 title: CORS headers missing on SSE endpoint
 status: done
@@ -10,9 +10,10 @@ tags:
   - sse
   - cors
 createdAt: '2026-04-24T12:00:00.000Z'
-updatedAt: '2026-04-27T08:00:00.000Z'
+updatedAt: '2026-04-27T16:58:17.985Z'
 customFields:
   fixedIn: fix/sse-cors-xdg-crash
+  _order: 0
 ---
 ## Description
 

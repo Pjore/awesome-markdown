@@ -11,9 +11,10 @@ tags:
   - ux
 assignee: carol
 createdAt: '2026-04-23T08:45:00.000Z'
-updatedAt: '2026-04-26T10:30:00.000Z'
+updatedAt: '2026-04-27T16:58:18.172Z'
 customFields:
   sprint: 3
+  _order: 1000
 ---
 ## Description
 
