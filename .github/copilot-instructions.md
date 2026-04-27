@@ -56,7 +56,7 @@ pnpm install
 # Quality gates (run before every commit)
 pnpm typecheck && pnpm lint
 
-# Start each service (reads .env automatically via --env-file-if-present)
+# Start each service (reads .env automatically via tsx --env-file)
 pnpm --filter kanban-ui dev
 pnpm --filter provider-fs dev
 pnpm --filter sync-engine dev   # reads SYNC_ENGINE_REPO_ROOT etc. from .env
@@ -78,7 +78,7 @@ Each app ships a `.env.example` — copy to `.env` and fill in values.
 | `apps/sync-engine` | `apps/sync-engine/.env` | `SYNC_ENGINE_REPO_ROOT` (required), `SYNC_ENGINE_TARGET_BRANCH`, `GITHUB_TOKEN` |
 | `apps/kanban-ui` | `apps/kanban-ui/.env` | `VITE_PROVIDER_FS_URL` (pre-fills Settings panel URL) |
 
-`provider-fs` and `sync-engine` use Node 22 `--env-file-if-present` — the `.env`
+`provider-fs` and `sync-engine` use `tsx --env-file .env` — the `.env`
 file is loaded by the `dev` script automatically. Vite loads `.env` natively.
 
 ## Sync-engine: Feature Branch Workflow
