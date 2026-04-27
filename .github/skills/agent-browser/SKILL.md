@@ -28,6 +28,10 @@ Verify installation:
 agent-browser --version
 ```
 
+### ARM64 Environments (e.g. Coder workspaces)
+
+`agent-browser install --with-deps` has no ARM64 builds. See [references/arm64-setup.md](references/arm64-setup.md) for the Playwright Chromium workaround.
+
 ## Core Workflow
 
 Every browser automation follows this pattern:
@@ -275,6 +279,7 @@ Priority (lowest to highest): `~/.agent-browser/config.json` < `./agent-browser.
 | [references/video-recording.md](references/video-recording.md) | Recording workflows for debugging and documentation |
 | [references/profiling.md](references/profiling.md) | Chrome DevTools profiling for performance analysis |
 | [references/proxy-support.md](references/proxy-support.md) | Proxy configuration, geo-testing, rotating proxies |
+| [references/arm64-setup.md](references/arm64-setup.md) | ARM64 setup using Playwright Chromium (e.g. Coder workspaces) |
 
 ## Ready-to-Use Templates
 
