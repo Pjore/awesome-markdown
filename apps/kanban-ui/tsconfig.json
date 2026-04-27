@@ -1,0 +1,20 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "jsx": "react-jsx",
+    "noEmit": true,
+    "composite": false,
+    "declaration": false,
+    "declarationMap": false,
+    "baseUrl": ".",
+    "paths": {}
+  },
+  "include": ["src", "vite.config.ts"],
+  "references": [
+    { "path": "../../packages/contracts" },
+    { "path": "../../packages/provider-localstorage" },
+    { "path": "../../packages/provider-http" }
+  ]
+}
