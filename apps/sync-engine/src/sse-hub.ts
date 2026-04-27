@@ -21,11 +21,14 @@ export class SseHub {
     reply.hijack();
 
     const raw = reply.raw;
+    const origin = (req.raw.headers as Record<string, string | undefined>)['origin'] ?? '*';
     raw.writeHead(200, {
       'Content-Type': 'text/event-stream; charset=utf-8',
       'Cache-Control': 'no-cache, no-transform',
       Connection: 'keep-alive',
       'X-Accel-Buffering': 'no',
+      'Access-Control-Allow-Origin': origin,
+      'Access-Control-Allow-Credentials': 'true',
     });
     raw.write(`retry: ${SSE_RETRY_MS}\n\n`);
     raw.write(': connected\n\n');
