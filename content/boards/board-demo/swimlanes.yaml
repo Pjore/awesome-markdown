@@ -1,0 +1,10 @@
+- id: lane-feature
+  boardId: board-demo
+  title: Feature
+  order: 0
+  color: '#6366f1'
+- id: lane-bugfix
+  boardId: board-demo
+  title: Bug Fix
+  order: 1
+  color: '#ef4444'
