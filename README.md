@@ -46,25 +46,33 @@ apps/
 
 ```bash
 pnpm install
+
+# Copy env templates and fill in your local values
+cp apps/provider-fs/.env.example apps/provider-fs/.env
+cp apps/sync-engine/.env.example apps/sync-engine/.env
+cp apps/kanban-ui/.env.example   apps/kanban-ui/.env
+
 pnpm typecheck && pnpm lint   # quality gates — must pass before committing
 ```
 
 ## Running the Stack
 
-Each component starts independently:
+Each component starts independently. The `dev` scripts load `.env` automatically:
 
 ```bash
 # UI dev server  →  http://localhost:5173
 pnpm --filter kanban-ui dev
 
-# Local-fs sidecar  →  http://localhost:7701
+# Local-fs sidecar  →  http://localhost:7701  (configure in apps/provider-fs/.env)
 pnpm --filter provider-fs dev
 
-# Sync-engine  →  http://localhost:7402
-SYNC_ENGINE_REPO_ROOT=$(pwd) pnpm --filter sync-engine dev
+# Sync-engine  →  http://localhost:7402  (configure in apps/sync-engine/.env)
+pnpm --filter sync-engine dev
 ```
 
-For remote git sync, also set `GITHUB_TOKEN` and `SYNC_ENGINE_REMOTE_ENABLED=true`.
+For remote git sync, set `GITHUB_TOKEN` and `SYNC_ENGINE_REMOTE_ENABLED=true` in
+`apps/sync-engine/.env`. When working on a feature branch, also set
+`SYNC_ENGINE_TARGET_BRANCH=<branch>` so the engine syncs the right branch.
 
 ## Testing
 

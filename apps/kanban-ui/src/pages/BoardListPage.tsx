@@ -34,9 +34,14 @@ export function BoardListPage(): React.ReactElement {
       void load();
     });
 
+    // Also reload when the sync-engine reports a remote pull change
+    const handleRemoteChange = (): void => { void load(); };
+    window.addEventListener('sync-engine:change', handleRemoteChange);
+
     return () => {
       cancelled = true;
       unsubscribe();
+      window.removeEventListener('sync-engine:change', handleRemoteChange);
     };
   }, [provider]);
 

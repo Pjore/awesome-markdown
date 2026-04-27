@@ -192,12 +192,9 @@ For UI phases or change affecting UI, include a screenshot:
 1. Ensure the dev server is running (port 5173)
 2. Take a screenshot with agent-browser (two-step: `open` then `screenshot`):
    ```bash
-   PR_DIR="docs/prs/<PR_NUMBER>-<short-branch-name>"
-   mkdir -p "$PR_DIR"
    agent-browser open "http://localhost:5173/<route>"
    agent-browser wait --load networkidle
-   agent-browser screenshot /tmp/screenshot.png
-   cp /tmp/screenshot.png "$PR_DIR/<feature>-<page>-<variant>.png"
+   agent-browser screenshot /tmp/<image>.png
    ```
    > **Important:** `agent-browser screenshot <url>` does NOT work — it tries
    > to parse the URL as a CSS selector. Always use separate `open` and `screenshot` commands.
@@ -218,53 +215,60 @@ For UI phases or change affecting UI, include a screenshot:
    > **Prefer global `agent-browser`** over `npx agent-browser` when installed
    > globally — it's noticeably faster since it skips Node.js routing.
 
-   The `PR_DIR` path follows the pattern `docs/prs/<PR_NUMBER>-<short-branch-name>/`,
-   e.g. `docs/prs/42-scout-logo-header/`. This directory is **git-tracked** so screenshots
-   persist in the repo alongside the PR history.
+3. Upload the screenshot
 
-3. Commit and push the screenshot, OR upload via the GitHub Contents API:
+   Screenshots are uploaded to a permanent `pr-screenshots` release tag. This avoids committing binary files to git and provides stable URLs.
 
-   **Option A — git commit (preferred when working locally):**
+   One-time setup (skip if tag already exists):
    ```bash
-   git add "$PR_DIR"
-   git commit -m "docs: add screenshot for <phase description>"
-   git push
+   gh release create pr-screenshots \
+     --title "PR Screenshots" \
+     --notes "Persistent storage for PR screenshot assets. Do not delete." \
+     --latest=false
    ```
 
-   **Option B — Contents API (no local commit needed):**
+   Upload a screenshot (use the **exact filename** you will reference in the comment URL):
    ```bash
-   IMAGE_B64=$(base64 -w 0 "$PR_DIR/<image>.png") && \
-   gh api -X PUT "/repos/<OWNER>/<REPO>/contents/$PR_DIR/<image>.png" \
-     -f message="docs: add screenshot for <phase description>" \
-     -f content="$IMAGE_B64" \
-     -f branch="<current-branch>"
+   gh release upload pr-screenshots /tmp/<image>.png --clobber
    ```
 
-4. Embed the screenshot in the PR comment using GitHub's blob URL with `?raw=true`.
-   For **private repos**, `raw.githubusercontent.com` URLs do not render inline because
-   they require authentication. Use the blob URL format instead — GitHub's markdown
-   renderer authenticates the viewer automatically:
-   ```bash
-   gh pr comment <PR-number-or-URL> --body "$(cat <<'EOF'
-## ✅ Phase N complete: <phase title>
-
-<description of what changed visually>
-
-![Screenshot description](https://github.com/<OWNER>/<REPO>/blob/<branch>/docs/prs/<PR_NUMBER>-<short-name>/<image>.png?raw=true)
-
-**Commits in this phase:**
-- `abc1234` feat(ui): description
-EOF
-   )"
+   Asset URL pattern:
    ```
+   https://github.com/<OWNER>/<REPO>/releases/download/pr-screenshots/<image>.png
+   ```
+
+   > **Critical:** The download URL uses the **local filename** passed to `gh release upload`.
+   > Do NOT use the `file#label` syntax — labels do not affect the URL but create confusion.
+   > Always verify: `gh release view pr-screenshots --json assets --jq '[.assets[] | .name]'`
+
+4. Embed the screenshot in the PR comment:
+
+   ```bash
+   gh pr comment <PR-number-or-URL> --body-file /tmp/comment.md
+   ```
+
+   Template for `/tmp/comment.md`:
+   ```markdown
+   ## ✅ Phase N complete: <phase title>
+
+   <description of what changed visually>
+
+   ![Screenshot description](https://github.com/<OWNER>/<REPO>/releases/download/pr-screenshots/<image>.png)
+
+   **Commits in this phase:**
+   - `abc1234` feat(ui): description
+   ```
+
+   > **Use `--body-file`** instead of `--body "$(cat ...)"` — shell quoting issues
+   > in `--body` corrupt markdown with special characters (`[`, `!`, `$`).
 
 Screenshot naming convention: `<feature-or-context>-<page>-<variant>.png`
-PR screenshot directory convention: `docs/prs/<PR_NUMBER>-<short-branch-name>/`
 
-> **Why not other approaches?**
-> - `gh pr comment` has no `--attach` or image upload flag
-> - Base64 inline images (`data:image/png;base64,...`) are stripped by GitHub's sanitizer
-> - The `uploads.github.com` endpoint used by the web UI drag-and-drop requires browser session cookies, not API tokens
+> **Why release assets:**
+> - No binary blobs in git history
+> - URLs survive branch deletion after merge
+> - Works in GitHub markdown (same-domain session for private repos)
+> - `gh release upload` is a single command; no base64 encoding needed
 
 ---
 
@@ -280,10 +284,14 @@ gh pr ready <PR-number-or-URL>
 
 ### 2. Update the PR description
 
-Rewrite the PR body to be accurate and complete. Replace the draft planning notes with a final summary. For UI changes, embed screenshots using the blob URL pattern (uploaded via Contents API in Phase 5):
+Rewrite the PR body to be accurate and complete. Replace the draft planning notes with a final summary. For UI changes, embed screenshots using release asset URLs (same as Phase 5):
 
 ```bash
-gh pr edit <PR-number-or-URL> --body "$(cat <<'EOF'
+gh pr edit <PR-number-or-URL> --body-file /tmp/pr-description.md
+```
+
+Template for `/tmp/pr-description.md`:
+```markdown
 ## Summary
 
 <!-- Accurate 1-3 bullet summary of what this PR does -->
@@ -294,14 +302,12 @@ gh pr edit <PR-number-or-URL> --body "$(cat <<'EOF'
 
 ## Screenshots
 
-<!-- For UI changes: embed screenshots using blob URLs -->
-![Description](https://github.com/<OWNER>/<REPO>/blob/<branch>/docs/prs/<PR_NUMBER>-<short-name>/<image>.png?raw=true)
+<!-- For UI changes: release asset URLs from pr-screenshots tag -->
+![Description](https://github.com/<OWNER>/<REPO>/releases/download/pr-screenshots/<image>.png)
 
 ## Testing
 
-<!-- How was this tested? e.g., "Unit tests added for all new components. Manual verification via browser." -->
-EOF
-)"
+<!-- How was this tested? -->
 ```
 
 ### 3. Final checks before requesting review

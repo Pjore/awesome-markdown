@@ -101,6 +101,11 @@ export type EngineConfig = {
    */
   remote?: RemoteEngineConfig;
   /**
+   * Git branch to sync against. Auto-detected from `git branch --show-current`
+   * when not explicitly set via SYNC_ENGINE_TARGET_BRANCH.
+   */
+  targetBranch?: string;
+  /**
    * GitHub Fine-Grained PAT. Sourced exclusively from process.env.GITHUB_TOKEN.
    * Never serialised to disk or emitted over SSE.
    */

@@ -62,5 +62,7 @@ export function openExternalFile(repoRoot: string, filePath: string): void {
       shell: useShell,
     },
   );
+  // Suppress unhandled-error crash when the opener binary is not installed
+  child.on('error', () => { /* best-effort: no-op if xdg-open/open not found */ });
   child.unref();
 }

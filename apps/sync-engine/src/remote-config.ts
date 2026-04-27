@@ -76,17 +76,22 @@ function parseGitHubOwnerRepo(url: string): { owner: string; repo: string } | nu
 /**
  * Build a RemoteConfig for the given repository.
  *
- * @param repoRoot Absolute path to the git repository root.
- * @param token    GitHub Fine-Grained PAT (or null when unavailable).
+ * @param repoRoot     Absolute path to the git repository root.
+ * @param token        GitHub Fine-Grained PAT (or null when unavailable).
+ * @param targetBranch Explicit branch to sync against. When omitted, the
+ *                     current local branch is detected via `git branch --show-current`.
+ *                     Set this when working on a feature branch so the sync-engine
+ *                     pushes/pulls that branch rather than the remote default.
  */
 export async function createRemoteConfig(
   repoRoot: string,
   token: string | null,
+  targetBranch?: string,
 ): Promise<RemoteConfig> {
   const git = simpleGit({ baseDir: repoRoot });
 
   let originUrl = '';
-  let branch = 'main';
+  let branch = targetBranch ?? 'main';
 
   async function loadFromGit(): Promise<void> {
     // Resolve origin URL
@@ -105,14 +110,12 @@ export async function createRemoteConfig(
       );
     }
 
-    // Resolve default branch: try symbolic-ref, fall back to current branch
-    try {
-      const symRef = (
-        await git.raw(['symbolic-ref', '--short', 'refs/remotes/origin/HEAD'])
-      ).trim();
-      // e.g. "origin/main" → "main"
-      branch = symRef.replace(/^origin\//, '') || 'main';
-    } catch {
+    // Resolve target branch:
+    // 1. Use explicit targetBranch override if provided (e.g. from SYNC_ENGINE_TARGET_BRANCH).
+    // 2. Otherwise, use the current local branch — this is the correct default for feature
+    //    branch workflows where you want to sync your working branch, not origin/HEAD.
+    // 3. Final fallback: 'main'.
+    if (!targetBranch) {
       try {
         branch = (await git.raw(['branch', '--show-current'])).trim() || 'main';
       } catch {

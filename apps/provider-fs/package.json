@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "tsx src/index.ts",
+    "dev": "tsx --env-file .env src/index.ts",
     "build": "tsc --build",
     "start": "node dist/index.js",
     "test": "vitest run",
@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@awesome-markdown/contracts": "workspace:*",
+    "@fastify/cors": "^11.2.0",
     "@fastify/sensible": "^6.0.4",
     "fastify": "^5.0.0",
     "fastify-type-provider-zod": "^6.0.0",

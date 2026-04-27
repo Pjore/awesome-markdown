@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import cors from '@fastify/cors';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { mkdir } from 'node:fs/promises';
 import type { Config } from './config.js';
@@ -30,6 +31,14 @@ export async function createServer(config: Config) {
   // Wire up Zod type provider
   fastify.setValidatorCompiler(validatorCompiler);
   fastify.setSerializerCompiler(serializerCompiler);
+
+  // Enable CORS for browser clients on different ports (e.g. kanban-ui dev server)
+  // methods must be explicit — @fastify/cors defaults to GET,HEAD,POST only,
+  // which blocks PUT/DELETE preflight requests from the browser.
+  await fastify.register(cors, {
+    origin: true,
+    methods: ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+  });
 
   // Install error handler on the root instance so it applies to all scopes
   installErrorHandler(fastify);
