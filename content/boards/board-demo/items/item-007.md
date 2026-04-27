@@ -1,7 +1,7 @@
 ---
 id: item-007
 boardId: board-demo
-columnId: col-inprogress
+columnId: col-todo
 swimlaneId: lane-bugfix
 title: CORS headers missing on SSE endpoint
 status: done
