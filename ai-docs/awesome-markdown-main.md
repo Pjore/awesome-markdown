@@ -29,6 +29,12 @@ notifications.
 - End-to-end TypeScript type safety: schemas defined once in `packages/contracts`,
   consumed by every component without duplication.
 - `pnpm typecheck && pnpm lint` pass at the workspace root.
+- Every milestone that produces **UI-observable behavior** is verified working
+  via `agent-browser`: an automated browser-driving agent loads `kanban-ui`,
+  exercises the milestone's use cases end-to-end, and confirms observable
+  outcomes (DOM state, user-visible feedback) match the acceptance criteria.
+  Non-UI milestones (provider sidecar API, sync-engine internals) are
+  verified by their own unit/integration tests, **not** by `agent-browser`.
 
 ## 2. Non-Goals
 
@@ -54,6 +60,8 @@ notifications.
 | Markdown frontmatter | gray-matter |
 | Live channel | Native SSE (no WebSocket) |
 | Lint / format | oxc flat config, Prettier |
+| UI E2E verification | `agent-browser` (LLM-driven browser automation, UI only) |
+| Non-UI tests | Vitest (unit + integration) for sidecar and sync-engine |
 
 **Zod v4:** Use `zod@^4.0.0` throughout. Import from `"zod"` (no sub-path imports
 needed in v4). Prefer `z.object`, `z.string`, `z.union`, etc. — API is unchanged
@@ -117,6 +125,9 @@ Milestones with `file` get a dedicated `awesome-markdown-m{N}.md` from
 **M9 — Multi-board / board switcher**
 - Extend UI route table: `/` lists boards, `/boards/:slug` opens a board.
 - Use existing provider methods; no contract change.
+- **UI verification (agent-browser):** scenario lists ≥2 boards, navigates
+  into one via click, deep-links `/boards/:slug` directly, asserts board
+  content isolation between boards.
 
 **M10 — Documentation & conventions**
 - Author root `README.md`, `docs/ARCHITECTURE.md` (component diagram, data flow,
@@ -180,6 +191,59 @@ Milestones with `file` get a dedicated `awesome-markdown-m{N}.md` from
   contract exports.
 - AC-8: Each TS source file ≤ 400 lines; each `SKILL.md` / instruction file ≤
   600 words.
+- AC-9: `agent-browser` UI verification runs exist and pass for every
+  milestone with UI-observable behavior (M3, M5, M8, M9). Each run is
+  reproducible from a documented command and a saved scenario script.
+- AC-10: A combined `agent-browser` UI smoke suite covers the user-visible
+  paths of UC-1, UC-3, UC-4, UC-5, UC-6 against a fully wired stack
+  (ui + fs sidecar + sync-engine) and is invocable via a single root script
+  (e.g. `pnpm verify:ui`).
+- AC-11: Sidecar (M4) and sync-engine (M6, M7) ship Vitest suites covering
+  their HTTP/SSE endpoints, watcher behavior, and git operations against a
+  temp repo. These run in CI without a browser.
+
+## 6a. Verification via agent-browser (UI only)
+
+`agent-browser` is the canonical **UI** verifier. It drives the running
+`kanban-ui` in a real browser and asserts user-visible outcomes. It is
+**only** used for UI verification. Non-UI components (fs sidecar, sync-engine)
+are verified by Vitest suites that run without a browser.
+
+**Per-milestone obligations (UI milestones only):**
+
+- Each UI milestone owns a scenario directory:
+  `apps/kanban-ui/agent-browser/m{N}/`, one scenario per use case.
+- Each scenario specifies: required services to start, UI preconditions
+  (seed state via provider), the user actions to drive, and the DOM-level
+  assertions to verify.
+- Milestone-level command: `pnpm --filter kanban-ui verify:m{N}`.
+
+**Coverage matrix (UI only):**
+
+| Milestone | UI behavior verified | Use cases (UI surface) |
+|-----------|----------------------|------------------------|
+| M3  | board renders; DnD across columns and swimlanes; CRUD via UI | UC-5 |
+| M5  | runtime provider switch via settings; SSE indicator updates | UC-6 |
+| M8  | conflict banner appears on conflict event; resolution UI flow (ours/theirs/open) returns board to clean state | UC-4 (UI surface) |
+| M9  | board list page; navigation; deep-link `/boards/:slug` | (board switcher) |
+
+**Non-UI verification (no agent-browser):**
+
+| Milestone | Verifier | Scope |
+|-----------|----------|-------|
+| M4 (fs sidecar)        | Vitest + fastify inject | HTTP/SSE provider contract against a temp `content/` dir |
+| M6 (watcher + commit)  | Vitest + temp git repo  | chokidar events → simple-git commits → SSE emission |
+| M7 (remote pull/push)  | Vitest + local bare repo as remote | fetch/pull/push, offline retry, fast-forward |
+
+**Aggregate UI suite:** `pnpm verify:ui` at the repo root starts the full
+stack (ui + fs sidecar + sync-engine pointed at a local bare git remote) and
+runs the M3/M5/M8/M9 scenarios as a smoke pass. UC-1, UC-3 UI surfaces are
+exercised inside M8 setup (edits propagate to UI). UC-2 has no UI-only
+assertion beyond M3 (offline behavior is covered by sync-engine tests).
+
+**Definition of "verified working":** for UI milestones, a green
+`agent-browser` run on a clean checkout. For non-UI milestones, a green
+Vitest run on a clean checkout. No manual steps.
 
 ## 7. Rollout / Backward-Compat Strategy
 
@@ -201,6 +265,7 @@ Milestones with `file` get a dedicated `awesome-markdown-m{N}.md` from
 | New `awesome-markdown/apps/sync-engine/README.md` | Watcher, git auth, SSE channel, conflict events | M6 |
 | New `awesome-markdown/packages/contracts/README.md` | Schema and contract reference | M1 |
 | New `awesome-markdown/.github/copilot-instructions.md` | Repo conventions, ports, commands | M10 |
+| New `awesome-markdown/docs/VERIFICATION.md` | `agent-browser` UI scenarios, Vitest non-UI suites, how to run per-milestone and aggregate `pnpm verify:ui` | M10 |
 
 ## 9. Resolved Decisions
 
