@@ -10,14 +10,16 @@ tags:
   - accessibility
   - ux
 createdAt: '2026-04-21T09:30:00.000Z'
-updatedAt: '2026-04-21T09:30:00.000Z'
-customFields: {}
+updatedAt: '2026-04-27T09:21:05.939Z'
+customFields:
+  _order: 1000
 ---
 ## Description
 
-Allow users to press `n` (or `c`) on a focused column to open the new-card dialog without reaching for the mouse.
+Press `Ctrl+N` (or `⌘+N` on Mac) anywhere on the board to open the New Item dialog pre-filled with the current column context.
 
-## Notes
+## Acceptance Criteria
 
-- Scope shortcut to the board view only (not inside input fields)
-- Follow existing shortcut pattern used by `@dnd-kit` event listeners
+- [ ] Shortcut works regardless of focus position
+- [ ] Pre-fills column based on the last active cell
+- [ ] Dismissible with Escape key

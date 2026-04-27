@@ -10,15 +10,15 @@ tags:
   - ui
   - settings
 createdAt: '2026-04-20T10:00:00.000Z'
-updatedAt: '2026-04-20T10:00:00.000Z'
+updatedAt: '2026-04-27T09:25:14.148Z'
 customFields: {}
 ---
 ## Description
 
-Add a dark/light mode toggle to the settings panel.
+Add a dark mode toggle to the settings panel that respects the user's system preference and persists the choice.
 
 ## Acceptance Criteria
 
-- Toggle persists preference to localStorage
-- All Tailwind colour tokens switch correctly
-- No flash of unstyled content on reload
+- [ ] Toggle in settings switches between light and dark theme
+- [ ] Default respects `prefers-color-scheme` media query
+- [ ] Choice persisted in localStorage
