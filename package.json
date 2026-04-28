@@ -8,10 +8,15 @@
     "format": "prettier --write .",
     "test": "pnpm -r --if-present run test",
     "test:sync-engine": "pnpm --filter sync-engine test",
-    "verify:ui": "pnpm --filter kanban-ui verify:m3 && pnpm --filter kanban-ui verify:m5 && pnpm --filter kanban-ui verify:m8 && pnpm --filter kanban-ui verify:m9"
+    "verify:ui": "pnpm --filter kanban-ui verify:m3 && pnpm --filter kanban-ui verify:m5 && pnpm --filter kanban-ui verify:m8 && pnpm --filter kanban-ui verify:m9",
+    "services:start": "./scripts/services start",
+    "services:stop": "./scripts/services stop",
+    "services:status": "./scripts/services status",
+    "services:logs": "./scripts/services logs"
   },
   "devDependencies": {
     "oxlint": "^0.15.0",
+    "pm2": "^5.4.3",
     "prettier": "^3.4.2",
     "typescript": "^5.7.3"
   }

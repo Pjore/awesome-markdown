@@ -56,10 +56,19 @@ pnpm install
 # Quality gates (run before every commit)
 pnpm typecheck && pnpm lint
 
-# Start each service
-pnpm --filter kanban-ui dev
-pnpm --filter provider-fs dev
-SYNC_ENGINE_REPO_ROOT=$(pwd) pnpm --filter sync-engine dev
+# Start all services (canonical — uses PM2, survives terminal close)
+./scripts/services start
+
+# Service management
+./scripts/services status          # show name/PID/uptime/restarts/port/owner
+./scripts/services logs <name>     # stream logs (ui | fs | sync)
+./scripts/services stop            # stop and delete all services
+./scripts/services switch <path>   # move services to another worktree
+
+# Underlying per-service commands (used by the wrapper internally)
+# pnpm --filter kanban-ui dev
+# pnpm --filter provider-fs dev
+# SYNC_ENGINE_REPO_ROOT=$(pwd) pnpm --filter sync-engine dev
 
 # Tests
 pnpm test                          # all Vitest suites
