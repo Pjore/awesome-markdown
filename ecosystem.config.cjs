@@ -1,7 +1,5 @@
 'use strict';
 
-const path = require('path');
-
 // Allow a SERVICES_CWD env var so `services switch` can redirect to another worktree.
 // Default: the directory that contains this config file (repo root).
 const ROOT = process.env.SERVICES_CWD || __dirname;
