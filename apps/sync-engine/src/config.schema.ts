@@ -37,7 +37,7 @@ const GithubAppSchema = z
     installationId: z.string().min(1, 'GITHUB_APP_INSTALLATION_ID must not be empty'),
     privateKey: z.string().nullable().default(null),
     privateKeyPath: z.string().nullable().default(null),
-    webhookSecret: z.string().nullable().default(null),
+    webhookSecret: z.string().min(1).nullable().default(null),
   })
   .refine(
     (v) => !(v.privateKey !== null && v.privateKeyPath !== null),

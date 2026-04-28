@@ -122,6 +122,14 @@ export type EngineConfig = {
   githubApp?: GithubAppRuntimeConfig;
 };
 
+/** Reason context passed to Engine.triggerPullNow() from a webhook delivery. */
+export type WebhookTriggerReason = {
+  /** GitHub X-GitHub-Delivery UUID, for operator tracing. Never log as part of a secret. */
+  deliveryId: string;
+  /** The `after` SHA from the push payload, when present. Informational only. */
+  commitSha?: string;
+};
+
 /** Runtime status reported by GET /status. */
 export type EngineStatus = {
   running: boolean;

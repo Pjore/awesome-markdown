@@ -107,4 +107,25 @@ describe('githubApp config schema', () => {
     );
     expect(result.success).toBe(true);
   });
+
+  it('accepts non-empty webhookSecret', () => {
+    const result = EngineConfigSchema.safeParse(
+      baseInput({ githubApp: validApp({ webhookSecret: 'my-secret-value' }) }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('accepts null webhookSecret (webhook feature disabled)', () => {
+    const result = EngineConfigSchema.safeParse(
+      baseInput({ githubApp: validApp({ webhookSecret: null }) }),
+    );
+    expect(result.success).toBe(true);
+  });
+
+  it('rejects empty string webhookSecret (empty webhook secrets are not valid)', () => {
+    const result = EngineConfigSchema.safeParse(
+      baseInput({ githubApp: validApp({ webhookSecret: '' }) }),
+    );
+    expect(result.success).toBe(false);
+  });
 });

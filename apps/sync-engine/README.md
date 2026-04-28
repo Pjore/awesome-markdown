@@ -85,7 +85,77 @@ in commits, or emitted in SSE events.
 > git remote set-url origin https://github.com/<owner>/<repo>.git
 > ```
 
-> **Webhook push trigger** (faster-than-polling delivery) arrives in Milestone 2.
+### Webhook setup (faster-than-polling delivery)
+
+When a GitHub App webhook is configured, the sync-engine can react to a push
+within ≤ 5 s instead of waiting for the next poll cycle (see Milestone 3 for
+polling cadence changes). The webhook receiver mounts only when both `githubApp`
+config and a non-empty `GITHUB_APP_WEBHOOK_SECRET` are present.
+
+#### 1. Discover the public URL
+
+The sync-engine binds to `127.0.0.1:7402` and is exposed via the Coder
+workspace HTTPS proxy. To find the public URL, run:
+
+```bash
+coder port-forward <workspace> --tcp 7402
+# OR read the forwarded URL from the Coder UI → "Forwarded Ports"
+```
+
+The public webhook URL will be:
+```
+https://<coder-proxy-host>/webhooks/github
+```
+
+> **Note:** The proxy URL changes when the workspace is rebuilt. After a
+> rebuild, update the webhook URL in your GitHub App settings.
+
+#### 2. Configure the GitHub App webhook
+
+In your GitHub App settings (**Settings → Developer settings → GitHub Apps →
+your app → Edit**):
+
+| Field | Value |
+|-------|-------|
+| **Webhook URL** | `https://<coder-proxy-host>/webhooks/github` |
+| **Webhook secret** | A random string, e.g. `openssl rand -hex 32` |
+| **Content type** | `application/json` *(required — not `application/x-www-form-urlencoded`)* |
+| **Events** | Enable **Push** only |
+
+#### 3. Set the environment variable
+
+```bash
+# In apps/sync-engine/.env (gitignored):
+GITHUB_APP_WEBHOOK_SECRET=<your-secret>
+```
+
+The value must be a non-empty string that exactly matches the secret entered in
+the GitHub App webhook settings.
+
+#### 4. Expected responses
+
+| Scenario | HTTP status | Response body |
+|----------|-------------|---------------|
+| Valid `push` on target branch | `202` | `{ "ok": true, "action": "queued" }` |
+| Valid `push` on non-target branch | `202` | `{ "ok": true, "action": "ignored", "reason": "branch" }` |
+| Valid `ping` event | `202` | `{ "ok": true, "action": "ping" }` |
+| Any other event type | `202` | `{ "ok": true, "action": "ignored", "reason": "event-type" }` |
+| Missing or invalid signature | `401` | `{ "ok": false, "reason": "signature" }` |
+
+#### Troubleshooting
+
+- **401 responses** — The `GITHUB_APP_WEBHOOK_SECRET` doesn't match the secret
+  configured in the GitHub App settings. Update one of them to match.
+- **202 with `reason: "branch"`** — The push was to a branch other than
+  `SYNC_ENGINE_TARGET_BRANCH`. Check that the App is subscribed to the correct
+  repository and that the branch name matches.
+- **No pull after a push** — Confirm `remote.enabled=true` and that the engine
+  is running. The webhook triggers `Engine.triggerPullNow()` which runs through
+  the existing mutex-serialized pull worker. Check sync-engine logs for
+  `webhook delivery received` and `pull queued` messages.
+- **Polling fallback** — If the webhook is unavailable, the engine continues
+  polling on its regular interval (see Milestone 3 for cadence configuration).
+  The webhook is an optimisation, not a requirement for correctness.
 
 ### Example config file
 
