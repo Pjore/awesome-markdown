@@ -1,4 +1,5 @@
 import { simpleGit } from 'simple-git';
+import type { GitCredentialProvider } from './github-app/index.js';
 
 /**
  * Resolves the remote identity (URL, owner/repo, default branch) for a local
@@ -25,10 +26,11 @@ export type RemoteInfo = {
 export type RemoteConfig = RemoteInfo & {
   /**
    * Returns the authenticated HTTPS URL for use in git commands.
-   * Injects token as `https://x-access-token:<token>@...`.
-   * Returns the plain URL when no token is available or for non-GitHub remotes.
+   * Injects the GitHub App installation token as `https://x-access-token:<token>@...`.
+   * Returns the plain URL when no credential provider is available or for non-GitHub remotes.
+   * Throws `MintFailureError` if the token cannot be minted.
    */
-  getAuthenticatedUrl: () => string;
+  getAuthenticatedUrl: () => Promise<string>;
   /**
    * Re-reads origin URL and current branch from the git repo.
    * Use in tests to reset cached state.
@@ -76,16 +78,16 @@ function parseGitHubOwnerRepo(url: string): { owner: string; repo: string } | nu
 /**
  * Build a RemoteConfig for the given repository.
  *
- * @param repoRoot     Absolute path to the git repository root.
- * @param token        GitHub Fine-Grained PAT (or null when unavailable).
- * @param targetBranch Explicit branch to sync against. When omitted, the
- *                     current local branch is detected via `git branch --show-current`.
- *                     Set this when working on a feature branch so the sync-engine
- *                     pushes/pulls that branch rather than the remote default.
+ * @param repoRoot          Absolute path to the git repository root.
+ * @param credentialProvider GitHub App credential provider (or null for local-only / non-GitHub remotes).
+ * @param targetBranch      Explicit branch to sync against. When omitted, the
+ *                          current local branch is detected via `git branch --show-current`.
+ *                          Set this when working on a feature branch so the sync-engine
+ *                          pushes/pulls that branch rather than the remote default.
  */
 export async function createRemoteConfig(
   repoRoot: string,
-  token: string | null,
+  credentialProvider: GitCredentialProvider | null,
   targetBranch?: string,
 ): Promise<RemoteConfig> {
   const git = simpleGit({ baseDir: repoRoot });
@@ -128,11 +130,6 @@ export async function createRemoteConfig(
 
   const ownerRepo = parseGitHubOwnerRepo(originUrl);
 
-  function buildRedactedUrl(): string {
-    if (!token) return originUrl;
-    return redactToken(originUrl, token);
-  }
-
   return {
     owner: ownerRepo?.owner ?? null,
     repo: ownerRepo?.repo ?? null,
@@ -140,15 +137,21 @@ export async function createRemoteConfig(
       return branch;
     },
     get redactedUrl() {
-      return buildRedactedUrl();
+      // Use a static sentinel so this getter stays synchronous.
+      if (!credentialProvider) return originUrl;
+      if (!originUrl.startsWith('https://')) return originUrl;
+      return originUrl.replace(
+        /^(https:\/\/)([^@]+@)?/,
+        '$1x-access-token:***INSTALLATION_TOKEN***@',
+      );
     },
     get originUrl() {
       return originUrl;
     },
-    getAuthenticatedUrl(): string {
-      if (!token || !originUrl) return originUrl;
-      // Only inject for HTTPS URLs
+    async getAuthenticatedUrl(): Promise<string> {
+      if (!credentialProvider || !originUrl) return originUrl;
       if (!originUrl.startsWith('https://')) return originUrl;
+      const { token } = await credentialProvider.getInstallationToken();
       return injectToken(originUrl, token);
     },
     async refresh(): Promise<void> {

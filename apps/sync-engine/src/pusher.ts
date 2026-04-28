@@ -2,6 +2,7 @@ import { simpleGit } from 'simple-git';
 import type { NetworkFailureReason, PushResult } from './types.js';
 import type { RemoteConfig } from './remote-config.js';
 import { classifyGitError } from './puller.js';
+import { MintFailureError } from './github-app/index.js';
 
 /**
  * Optional fault injector for testing.
@@ -36,7 +37,16 @@ export async function pushOnce(params: PushOnceParams): Promise<PushResult> {
 
   const git = simpleGit({ baseDir: repoRoot });
   const branch = remoteConfig.branch;
-  const authenticatedUrl = remoteConfig.getAuthenticatedUrl();
+
+  let authenticatedUrl: string;
+  try {
+    authenticatedUrl = await remoteConfig.getAuthenticatedUrl();
+  } catch (err) {
+    if (err instanceof MintFailureError) {
+      return { kind: 'network-failure', reason: 'auth' };
+    }
+    return { kind: 'network-failure', reason: 'unknown' };
+  }
 
   // Capture current HEAD for the result
   let sha: string;
