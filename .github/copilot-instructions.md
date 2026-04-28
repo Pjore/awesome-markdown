@@ -76,6 +76,32 @@ pnpm verify:ui                     # aggregate agent-browser UI smoke suite
 pnpm --filter kanban-ui verify:m3  # per-milestone agent-browser
 ```
 
+## Environment / .env Files
+
+Each app ships a `.env.example` — copy to `.env` and fill in values.
+`.env` is gitignored; `.env.example` is committed.
+
+| App | Env file | Key variables |
+|-----|----------|---------------|
+| `apps/provider-fs` | `apps/provider-fs/.env` | `PROVIDER_FS_PORT`, `PROVIDER_FS_HOST`, `PROVIDER_FS_CONTENT_ROOT` |
+| `apps/sync-engine` | `apps/sync-engine/.env` | `SYNC_ENGINE_REPO_ROOT` (required), `SYNC_ENGINE_TARGET_BRANCH`, `GITHUB_TOKEN` |
+| `apps/kanban-ui` | `apps/kanban-ui/.env` | `VITE_PROVIDER_FS_URL` (pre-fills Settings panel URL) |
+
+`provider-fs` and `sync-engine` use Node 22 `--env-file-if-present` — the `.env`
+file is loaded by the `dev` script automatically. Vite loads `.env` natively.
+
+## Sync-engine: Feature Branch Workflow
+
+The sync-engine syncs against the **current local branch** by default
+(`git branch --show-current`). When working on a feature branch, ensure:
+
+1. `apps/sync-engine/.env` contains `SYNC_ENGINE_TARGET_BRANCH=<your-branch>`, **or**
+2. The env var matches whatever branch is checked out (`git branch --show-current`).
+
+If `SYNC_ENGINE_TARGET_BRANCH` is unset, the engine reads the current branch
+at startup — so checking out the feature branch before starting the engine is
+sufficient for most workflows.
+
 ## File Constraints
 
 | Type | Limit |
@@ -95,3 +121,24 @@ pnpm --filter kanban-ui verify:m3  # per-milestone agent-browser
 - **Branch + PR** — never commit to `main` directly
 - Load `branch-and-pr` skill before starting any feature work
 - Load `commit-work` skill before making commits
+
+## Browser Tooling — Prefer `agent-browser`
+
+For any frontend work against `kanban-ui`, **default to `agent-browser`**
+over the built-in browser tool (`open_browser_page`, `read_page`,
+`screenshot_page`, `click_element`). Load the `agent-browser` skill;
+project-specific notes (seeding, testids, DnD, noise filtering) live in
+`.github/skills/agent-browser/references/awesome-markdown-notes.md`.
+
+`agent-browser` is required for: annotated screenshots, DnD/animation
+debugging, full console logs, HAR network capture, request mocking,
+arbitrary JS scraping via `eval`, video recording, and visual/structural
+regression diffs. The repo's `pnpm verify:ui` suite uses it.
+
+The built-in browser tool is acceptable for: quick "does the URL load?"
+sanity checks during chat, inline JPEG screenshots when the user wants to
+see a result without a `view_image` follow-up, and trivial text scrapes.
+Its default viewport is narrow (~700 px) and truncates the kanban board —
+do not use it for layout debugging.
+
+Full comparison: [docs/agent-browser-vs-browser-tool.md](../docs/agent-browser-vs-browser-tool.md).

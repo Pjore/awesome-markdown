@@ -1,0 +1,13 @@
+- id: col-todo
+  boardId: board-demo
+  title: To Do
+  order: 0
+- id: col-inprogress
+  boardId: board-demo
+  title: In Progress
+  order: 1
+  wipLimit: 3
+- id: col-done
+  boardId: board-demo
+  title: Done
+  order: 2

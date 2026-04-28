@@ -73,8 +73,13 @@ export function useBoardBySlug(slug: string): BoardState {
       void fetchAll();
     });
 
+    // Also re-fetch when the sync-engine reports a remote pull change
+    const handleRemoteChange = (): void => { void fetchAll(); };
+    window.addEventListener('sync-engine:change', handleRemoteChange);
+
     return () => {
       unsubscribe();
+      window.removeEventListener('sync-engine:change', handleRemoteChange);
     };
   }, [provider, slug, fetchAll]);
 

@@ -131,6 +131,10 @@ export function ConflictProvider({ children }: ConflictProviderProps): React.Rea
       dispatch({ type: 'CLEAR_CONFLICT' });
     });
 
+    es.addEventListener('change', () => {
+      window.dispatchEvent(new CustomEvent('sync-engine:change'));
+    });
+
     // Clean up on unmount
     return () => {
       es.close();

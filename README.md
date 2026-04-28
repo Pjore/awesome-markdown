@@ -46,6 +46,12 @@ apps/
 
 ```bash
 pnpm install
+
+# Copy env templates and fill in your local values
+cp apps/provider-fs/.env.example apps/provider-fs/.env
+cp apps/sync-engine/.env.example apps/sync-engine/.env
+cp apps/kanban-ui/.env.example   apps/kanban-ui/.env
+
 pnpm typecheck && pnpm lint   # quality gates — must pass before committing
 ```
 
@@ -81,7 +87,7 @@ VS Code tasks are also available (Ctrl+Shift+P → "Tasks: Run Task"):
 - **Services: Start All** / **Services: Stop All** / **Services: Status**
 - **Services: Tail UI Log** / **Services: Tail FS Log** / **Services: Tail Sync Log**
 
-For remote git sync, set `GITHUB_TOKEN` and `SYNC_ENGINE_REMOTE_ENABLED=true` in your `.env` file before starting.
+For remote git sync, set `GITHUB_TOKEN` and `SYNC_ENGINE_REMOTE_ENABLED=true` in your `.env` file before starting. When working on a feature branch, also set `SYNC_ENGINE_TARGET_BRANCH=<branch>` in `apps/sync-engine/.env` so the engine syncs the right branch.
 
 > **Underlying commands** (used by the services wrapper internally):
 > ```bash

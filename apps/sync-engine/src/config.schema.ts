@@ -66,6 +66,14 @@ export const EngineConfigSchema = z.object({
    * is preserved unless explicitly opted in.
    */
   remote: RemoteSchema,
+
+  /**
+   * Git branch to sync against (pull from / push to).
+   * When omitted, the engine reads the current local branch at startup.
+   * Set this explicitly when you want to sync a feature branch rather
+   * than the remote default (e.g. SYNC_ENGINE_TARGET_BRANCH=fix/my-feature).
+   */
+  targetBranch: z.string().min(1).optional(),
 });
 
 export type EngineConfigInput = z.input<typeof EngineConfigSchema>;
