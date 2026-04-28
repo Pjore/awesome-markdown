@@ -14,7 +14,7 @@ Monorepo with pnpm workspaces:
 - `packages/provider-localstorage` — In-browser localStorage provider
 - `apps/kanban-ui` — React 19 + Vite 8 + Tailwind v4 SPA with @dnd-kit
 - `apps/provider-fs` — Fastify v5 sidecar (markdown files + YAML frontmatter)
-- `apps/sync-engine` — File watcher, git auto-commit, SSE event emitter
+- `apps/sync-engine` — File watcher, git auto-commit, SSE event emitter; webhook-triggered pull (primary) + 10 min fallback polling
 
 ## Tech Stack
 
@@ -84,7 +84,7 @@ Each app ships a `.env.example` — copy to `.env` and fill in values.
 | App | Env file | Key variables |
 |-----|----------|---------------|
 | `apps/provider-fs` | `apps/provider-fs/.env` | `PROVIDER_FS_PORT`, `PROVIDER_FS_HOST`, `PROVIDER_FS_CONTENT_ROOT` |
-| `apps/sync-engine` | `apps/sync-engine/.env` | `SYNC_ENGINE_REPO_ROOT` (required), `SYNC_ENGINE_TARGET_BRANCH`, `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY`/`GITHUB_APP_PRIVATE_KEY_PATH`, `GITHUB_APP_WEBHOOK_SECRET` (unused until M2) |
+| `apps/sync-engine` | `apps/sync-engine/.env` | `SYNC_ENGINE_REPO_ROOT` (required), `SYNC_ENGINE_TARGET_BRANCH`, `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY`/`GITHUB_APP_PRIVATE_KEY_PATH`, `GITHUB_APP_WEBHOOK_SECRET` (webhook primary trigger; polling is fallback at 10 min default) |
 | `apps/kanban-ui` | `apps/kanban-ui/.env` | `VITE_PROVIDER_FS_URL` (pre-fills Settings panel URL) |
 
 `provider-fs` and `sync-engine` use Node 22 `--env-file-if-present` — the `.env`

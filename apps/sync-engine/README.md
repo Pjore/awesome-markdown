@@ -25,7 +25,7 @@ Configuration is loaded from (highest priority first):
 | `port`              | `SYNC_ENGINE_PORT`                | `7402`                 | TCP port for the Fastify server                    |
 | `host`              | `SYNC_ENGINE_HOST`                | `127.0.0.1`            | Bind address for the Fastify server                |
 | `remote.enabled`    | `SYNC_ENGINE_REMOTE_ENABLED`      | `false`                | Enable remote pull/push (requires GitHub App)      |
-| `remote.pullIntervalMs` | `SYNC_ENGINE_REMOTE_PULL_INTERVAL_MS` | `30000`        | How often to poll for remote changes (ms, min 2s)  |
+| `remote.pullIntervalMs` | `SYNC_ENGINE_REMOTE_PULL_INTERVAL_MS` | `600000`       | Fallback polling interval (ms, min 60 s). Webhook is the primary trigger; polling is the safety net. |
 | `remote.pushTimeoutMs`  | `SYNC_ENGINE_REMOTE_PUSH_TIMEOUT_MS`  | `15000`        | Push timeout hint in ms                            |
 
 ### Remote auth: GitHub App
@@ -85,12 +85,17 @@ in commits, or emitted in SSE events.
 > git remote set-url origin https://github.com/<owner>/<repo>.git
 > ```
 
-### Webhook setup (faster-than-polling delivery)
+### Webhook setup (primary delivery trigger)
 
-When a GitHub App webhook is configured, the sync-engine can react to a push
-within ≤ 5 s instead of waiting for the next poll cycle (see Milestone 3 for
-polling cadence changes). The webhook receiver mounts only when both `githubApp`
-config and a non-empty `GITHUB_APP_WEBHOOK_SECRET` are present.
+The sync-engine uses **webhooks as its primary delivery mechanism**: when GitHub
+pushes a `push` event, the engine reacts within ≤ 5 s. Polling is a
+**safety-net fallback** only — it fires every 10 minutes (default) to backstop
+any webhook deliveries that were missed (e.g. during downtime or network
+partitions). The minimum polling interval is 60 s.
+
+The webhook receiver mounts only when both `githubApp` config and a non-empty
+`GITHUB_APP_WEBHOOK_SECRET` are present. If the webhook is unavailable or not
+configured, the engine falls back to the slow polling interval automatically.
 
 #### 1. Discover the public URL
 
@@ -154,7 +159,7 @@ the GitHub App webhook settings.
   the existing mutex-serialized pull worker. Check sync-engine logs for
   `webhook delivery received` and `pull queued` messages.
 - **Polling fallback** — If the webhook is unavailable, the engine continues
-  polling on its regular interval (see Milestone 3 for cadence configuration).
+  slow-polling every 10 minutes (default `pullIntervalMs: 600000`, min 60 s).
   The webhook is an optimisation, not a requirement for correctness.
 
 ### Example config file

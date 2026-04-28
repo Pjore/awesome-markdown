@@ -86,7 +86,7 @@ describe('githubApp config schema', () => {
 
   it('rejects remote.enabled=true without githubApp', () => {
     const result = EngineConfigSchema.safeParse(
-      baseInput({ remote: { enabled: true, pullIntervalMs: 30000, pushTimeoutMs: 15000 } }),
+      baseInput({ remote: { enabled: true, pullIntervalMs: 600000, pushTimeoutMs: 15000 } }),
     );
     expect(result.success).toBe(false);
     const msgs = result.success ? '' : result.error.issues.map((i) => i.message).join('\n');
@@ -101,7 +101,7 @@ describe('githubApp config schema', () => {
   it('accepts remote.enabled=true when githubApp is fully configured', () => {
     const result = EngineConfigSchema.safeParse(
       baseInput({
-        remote: { enabled: true, pullIntervalMs: 30000, pushTimeoutMs: 15000 },
+        remote: { enabled: true, pullIntervalMs: 600000, pushTimeoutMs: 15000 },
         githubApp: validApp(),
       }),
     );

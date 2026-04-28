@@ -15,13 +15,13 @@ const RemoteRetrySchema = z.object({
 const RemoteSchema = z
   .object({
     enabled: z.boolean().default(false),
-    pullIntervalMs: z.coerce.number().int().min(2000).default(30000),
+    pullIntervalMs: z.coerce.number().int().min(60000).default(600000),
     pushTimeoutMs: z.coerce.number().int().min(1000).default(15000),
     retry: RemoteRetrySchema,
   })
   .default(() => ({
     enabled: false,
-    pullIntervalMs: 30000,
+    pullIntervalMs: 600000,
     pushTimeoutMs: 15000,
     retry: { initialMs: 1000, maxMs: 60000, factor: 2, jitter: 0.2 },
   }));
