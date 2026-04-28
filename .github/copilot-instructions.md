@@ -23,7 +23,7 @@ Monorepo with pnpm workspaces:
 | UI | React 19, Vite 8, Tailwind v4, @dnd-kit |
 | API/sidecar | Fastify v5 + `fastify-type-provider-zod` |
 | Validation | Zod v4 — `import { z } from "zod"` |
-| Git | simple-git + GitHub Fine-Grained PAT (`GITHUB_TOKEN` env var) |
+| Git | simple-git + GitHub App installation tokens (`@octokit/auth-app`) |
 | File watching | chokidar |
 | Markdown | gray-matter |
 | Live channel | Native SSE (no WebSocket) |
@@ -36,7 +36,7 @@ Monorepo with pnpm workspaces:
 - **Imports**: `.js` extension in all local API/sync-engine imports (ESM)
 - **Shared types**: Import from `@awesome-markdown/contracts`
 - **Content dir**: `./content` relative to repo root
-- **Git auth**: `GITHUB_TOKEN` fine-grained PAT with `Contents: read/write`
+- **Git auth**: GitHub App installation tokens via `@octokit/auth-app`; required vars: `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY` or `GITHUB_APP_PRIVATE_KEY_PATH`; App needs `Contents: read/write`
 - **No `any`** in `packages/contracts`; all cross-package calls typed via exports
 
 ## Ports (defaults)
@@ -84,7 +84,7 @@ Each app ships a `.env.example` — copy to `.env` and fill in values.
 | App | Env file | Key variables |
 |-----|----------|---------------|
 | `apps/provider-fs` | `apps/provider-fs/.env` | `PROVIDER_FS_PORT`, `PROVIDER_FS_HOST`, `PROVIDER_FS_CONTENT_ROOT` |
-| `apps/sync-engine` | `apps/sync-engine/.env` | `SYNC_ENGINE_REPO_ROOT` (required), `SYNC_ENGINE_TARGET_BRANCH`, `GITHUB_TOKEN` |
+| `apps/sync-engine` | `apps/sync-engine/.env` | `SYNC_ENGINE_REPO_ROOT` (required), `SYNC_ENGINE_TARGET_BRANCH`, `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY`/`GITHUB_APP_PRIVATE_KEY_PATH`, `GITHUB_APP_WEBHOOK_SECRET` (unused until M2) |
 | `apps/kanban-ui` | `apps/kanban-ui/.env` | `VITE_PROVIDER_FS_URL` (pre-fills Settings panel URL) |
 
 `provider-fs` and `sync-engine` use Node 22 `--env-file-if-present` — the `.env`
@@ -111,7 +111,7 @@ sufficient for most workflows.
 
 ## Security
 
-- **Never commit `GITHUB_TOKEN`** — load from `.env` (gitignored)
+- **Never commit `GITHUB_APP_PRIVATE_KEY` or any token** — load from `.env` (gitignored)
 - Use `.env.example` as template; document required vars there
 - Mask credentials when confirming: `${VAR:0:8}...`
 
