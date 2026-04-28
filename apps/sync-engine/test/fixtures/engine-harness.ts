@@ -2,6 +2,7 @@ import type { SyncEvent } from '@awesome-markdown/contracts';
 import { SseHub } from '../../src/sse-hub.js';
 import { Engine } from '../../src/engine.js';
 import type { EngineConfig } from '../../src/types.js';
+import type { GitCredentialProvider, InstallationToken } from '../../src/github-app/index.js';
 import type { BareRemote } from './bare-remote.js';
 import type { NetworkFault } from './network-fault.js';
 
@@ -45,15 +46,28 @@ export type RemoteEngineHarness = {
 /**
  * Create a remote-enabled engine harness backed by a BareRemote fixture.
  *
- * @param remote     The BareRemote fixture providing engine clone + bare repo.
- * @param token      GitHub token to inject (defaults to empty string for local tests).
- * @param debounceMs Debounce window in ms. Default: 120 ms.
+ * @param remote              The BareRemote fixture providing engine clone + bare repo.
+ * @param credentialProvider  Optional stub GitCredentialProvider. Defaults to a stub that
+ *                            returns a fixed token with a far-future expiry, suitable for
+ *                            file:// remotes used in tests.
+ * @param debounceMs          Debounce window in ms. Default: 120 ms.
  */
 export async function createRemoteEngineHarness(
   remote: BareRemote,
-  token = '',
+  credentialProvider?: GitCredentialProvider,
   debounceMs = 120,
 ): Promise<RemoteEngineHarness> {
+  // Default stub: returns a fixed token with an expiry 1 hour in the future.
+  const stubProvider: GitCredentialProvider = credentialProvider ?? {
+    getInstallationToken(): Promise<InstallationToken> {
+      return Promise.resolve({
+        token: 'stub-installation-token',
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      });
+    },
+    dispose() {},
+  };
+
   const config: EngineConfig = {
     repoRoot: remote.engineClone,
     contentDir: 'content',
@@ -68,8 +82,6 @@ export async function createRemoteEngineHarness(
       pushTimeoutMs: 15_000,
       retry: { initialMs: 100, maxMs: 1000, factor: 2, jitter: 0 },
     },
-    // Token may be empty for file:// remotes; we'll set it if provided
-    ...(token ? { githubToken: token } : { githubToken: '' }),
   };
 
   // Build a custom hub so we can spy on broadcasts
@@ -84,7 +96,7 @@ export async function createRemoteEngineHarness(
     origBroadcast(event);
   };
 
-  const engine = new Engine(config, hub);
+  const engine = new Engine(config, hub, stubProvider);
   await engine.start();
 
   // Allow watcher to settle

@@ -3,18 +3,31 @@ import { createBareRemote } from './fixtures/bare-remote.js';
 import { createRemoteEngineHarness } from './fixtures/engine-harness.js';
 import { NetworkFault } from './fixtures/network-fault.js';
 import type { BareRemote } from './fixtures/bare-remote.js';
-import type { RemoteEngineHarness } from './fixtures/engine-harness.js';
+import type { GitCredentialProvider, InstallationToken } from '../src/github-app/index.js';
 
 /**
  * Token Redaction Tests
  *
- * Verifies that GITHUB_TOKEN never appears in:
+ * Verifies that installation tokens never appear in:
  *  - SSE event payloads
  *  - Engine status output
  *  - Error reasons surfaced in offline events
  */
 
-const SENTINEL_TOKEN = 'ghp_SENTINEL_TOKEN_DO_NOT_LOG_abc123xyz';
+const SENTINEL_TOKEN = 'ghs_SENTINEL_INSTALLATION_TOKEN_abc123xyz';
+
+/** Build a stub provider that returns the given sentinel token. */
+function makeStubProvider(token: string): GitCredentialProvider {
+  return {
+    getInstallationToken(): Promise<InstallationToken> {
+      return Promise.resolve({
+        token,
+        expiresAt: new Date(Date.now() + 60 * 60 * 1000),
+      });
+    },
+    dispose() {},
+  };
+}
 
 describe('token redaction', () => {
   let remote: BareRemote;
@@ -47,8 +60,8 @@ describe('token redaction', () => {
     const fault = new NetworkFault();
     fault.enable('auth');
 
-    // Create harness with sentinel token
-    const harness = await createRemoteEngineHarness(remote, SENTINEL_TOKEN);
+    // Create harness with sentinel token provider
+    const harness = await createRemoteEngineHarness(remote, makeStubProvider(SENTINEL_TOKEN));
     harness.setPushFault(fault);
 
     // Trigger push failures
@@ -66,7 +79,7 @@ describe('token redaction', () => {
   });
 
   it('token does not appear in engine status output', async () => {
-    const harness = await createRemoteEngineHarness(remote, SENTINEL_TOKEN);
+    const harness = await createRemoteEngineHarness(remote, makeStubProvider(SENTINEL_TOKEN));
     const status = harness.engine.getStatus();
     const serialized = JSON.stringify(status);
     expect(serialized).not.toContain(SENTINEL_TOKEN);
@@ -77,7 +90,7 @@ describe('token redaction', () => {
     const fault = new NetworkFault();
     fault.enable('auth');
 
-    const harness = await createRemoteEngineHarness(remote, SENTINEL_TOKEN);
+    const harness = await createRemoteEngineHarness(remote, makeStubProvider(SENTINEL_TOKEN));
     harness.setPushFault(fault);
 
     await harness.triggerPush();
@@ -93,27 +106,27 @@ describe('token redaction', () => {
     }
   });
 
-  it('createRemoteConfig builds authenticated URL without exposing token in redactedUrl', async () => {
+  it('createRemoteConfig redactedUrl shows sentinel, not live token', async () => {
     const { createRemoteConfig } = await import('../src/remote-config.js');
 
-    const remoteConfig = await createRemoteConfig(remote.engineClone, SENTINEL_TOKEN);
-    // redactedUrl should not contain the token
+    const provider = makeStubProvider(SENTINEL_TOKEN);
+    const remoteConfig = await createRemoteConfig(remote.engineClone, provider);
+    // redactedUrl should not contain the live token (uses a static sentinel)
     expect(remoteConfig.redactedUrl).not.toContain(SENTINEL_TOKEN);
-    // But the authenticated URL (privileged accessor) should work internally
-    // We do NOT log or assert its full value — just verify it exists as a function
+    // getAuthenticatedUrl is async
     expect(typeof remoteConfig.getAuthenticatedUrl).toBe('function');
   });
 
   it('authenticated URL contains token (privileged, for git use only)', async () => {
     const { createRemoteConfig } = await import('../src/remote-config.js');
 
-    // Use an HTTPS URL to test token injection
-    // For local file:// URLs, getAuthenticatedUrl returns the plain URL
-    const remoteConfig = await createRemoteConfig(remote.engineClone, SENTINEL_TOKEN);
-    const authUrl = remoteConfig.getAuthenticatedUrl();
-    // For file:// URLs, token is NOT injected (only HTTPS GitHub URLs get the token)
-    // Verify the function at least returns the origin URL
+    // Use a file:// remote — no token injection for non-HTTPS URLs
+    const remoteConfig = await createRemoteConfig(remote.engineClone, makeStubProvider(SENTINEL_TOKEN));
+    const authUrl = await remoteConfig.getAuthenticatedUrl();
+    // For file:// URLs, token is NOT injected
     expect(authUrl).toBeTruthy();
     expect(typeof authUrl).toBe('string');
+    // Even with an HTTPS URL, the token should not appear in status
+    expect(remoteConfig.redactedUrl).not.toContain(SENTINEL_TOKEN);
   });
 });
