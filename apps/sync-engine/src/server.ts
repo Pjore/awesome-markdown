@@ -57,18 +57,6 @@ export async function createServer(config: EngineConfig) {
   });
 
   // -------------------------------------------------------------------------
-  // Webhook receiver — mounted only when GitHub App is configured with a secret
-  // -------------------------------------------------------------------------
-
-  const webhookSecret = config.githubApp?.webhookSecret ?? null;
-  if (config.githubApp && webhookSecret) {
-    mountWebhookRoutes(fastify, {
-      engine,
-      webhookSecret,
-      targetBranch: config.targetBranch ?? 'main',
-    });
-  }
-
   // -------------------------------------------------------------------------
   // Lifecycle
   // -------------------------------------------------------------------------
@@ -78,6 +66,23 @@ export async function createServer(config: EngineConfig) {
   });
 
   await engine.start();
+
+  // -------------------------------------------------------------------------
+  // Webhook receiver — mounted only when GitHub App is configured with a secret.
+  // Registered after engine.start() so that engine.getRemoteConfig() returns
+  // the resolved branch (auto-detected from the current local branch when
+  // SYNC_ENGINE_TARGET_BRANCH is not set).
+  // -------------------------------------------------------------------------
+
+  const webhookSecret = config.githubApp?.webhookSecret ?? null;
+  if (config.githubApp && webhookSecret) {
+    const resolvedBranch = engine.getRemoteConfig()?.branch ?? config.targetBranch ?? 'main';
+    mountWebhookRoutes(fastify, {
+      engine,
+      webhookSecret,
+      targetBranch: resolvedBranch,
+    });
+  }
 
   return fastify;
 }
