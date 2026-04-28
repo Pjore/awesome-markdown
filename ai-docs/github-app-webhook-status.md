@@ -61,6 +61,6 @@
 | New tests: event filtering (push on target/other/non-push) | completed | yes | webhook.routes.test.ts (11 tests) |
 | New tests: App token minter (cache hit/expiry/mint failure) | completed | yes | github-app.token.test.ts (6 tests) |
 | New tests: polling-cadence floor | completed | yes | github-app.config.test.ts updated |
-| Manual e2e: push triggers UI change within 5 s | pending | - | Requires live GitHub App + Coder proxy URL; manual operator step |
+| Manual e2e: push triggers UI change within 5 s | completed | yes | Validated 2026-04-28: webhook delivery 202, local pull at exact delivery timestamp; see VERIFICATION.md |
 | README documents GitHub App setup & new env vars | completed | yes | apps/sync-engine/README.md |
 | `GITHUB_TOKEN` removed from .env.example, runtime config, code | completed | yes | Confirmed via grep: only in .env (gitignored) |

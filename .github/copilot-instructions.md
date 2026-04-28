@@ -102,6 +102,26 @@ If `SYNC_ENGINE_TARGET_BRANCH` is unset, the engine reads the current branch
 at startup — so checking out the feature branch before starting the engine is
 sufficient for most workflows.
 
+## Sync-engine: Coder Webhook URL
+
+The sync-engine binds to `127.0.0.1:7402`. Coder exposes it publicly via a
+subdomain proxy. The URL format uses **double-dash (`--`) separators**:
+
+```
+https://7402--<agent>--<workspace>--<owner>.coder.<domain>/webhooks/github
+```
+
+Example: `https://7402--main--awesome-markdown--pjore.coder.pjore.com/webhooks/github`
+
+> **Critical:** A single dash prefix (e.g. `7402s--` or `7402-`) creates a
+> different hostname that doesn't resolve — GitHub will receive 502 for every
+> delivery. Always verify the URL resolves before configuring the GitHub App:
+> `curl https://<url>/health` should return `{"ok":true}`.
+
+The webhook route is only mounted when `GITHUB_APP_WEBHOOK_SECRET` is set in
+`.env`. Confirm it is mounted: `curl -X POST http://localhost:7402/webhooks/github`
+should return `{"ok":false,"reason":"signature"}`, not a 404.
+
 ## File Constraints
 
 | Type | Limit |

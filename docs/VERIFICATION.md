@@ -119,6 +119,80 @@ Tests spin up real temp git repositories under `os.tmpdir()`. A local bare repo 
 | M6/M7 (sync-engine) | watcher → commit → push/pull, offline retry | Vitest | `pnpm --filter sync-engine test` |
 | M8 (conflict UI) | conflict banner, ours/theirs/open externally | agent-browser | `verify:m8` |
 | M9 (multi-board) | board list, navigation, deep-link | agent-browser | `verify:m9` |
+| GitHub App webhook | token mint, HMAC verify, branch filter, push | Vitest + manual e2e | see below |
+
+---
+
+## GitHub App Webhook — E2E Validation
+
+The webhook flow has both a unit-test layer and a live e2e procedure.
+
+### Unit tests (automated)
+
+```bash
+pnpm --filter sync-engine test
+# 132 tests, including:
+#   webhook.signature.test.ts  — HMAC-SHA256 constant-time verify
+#   webhook.routes.test.ts     — ping/push/wrong-branch/bad-sig/non-push
+#   github-app.token.test.ts   — cache hit, expiry, mint failure paths
+#   github-app.config.test.ts  — env var validation, mutual-exclusion checks
+```
+
+### Live e2e procedure
+
+**Prerequisites:**
+
+1. `apps/sync-engine/.env` populated with `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY_PATH`, `GITHUB_APP_WEBHOOK_SECRET`, `SYNC_ENGINE_REMOTE_ENABLED=true`.
+2. GitHub App installed on the target repo with **Contents: Read and write** permission, subscribed to `push` events.
+3. Webhook URL configured on the App settings page (see Coder URL note below).
+4. Services running: `./scripts/services start`.
+
+**Coder workspace webhook URL:**
+
+The sync-engine binds to `127.0.0.1:7402`. Coder exposes it publicly via a subdomain proxy using HTTPS with a **`--`** (double-dash) separator:
+
+```
+https://7402--<agent>--<workspace>--<owner>.coder.<domain>/webhooks/github
+```
+
+Example: `https://7402--main--awesome-markdown--pjore.coder.pjore.com/webhooks/github`
+
+> **Important:** Coder uses `--` (two dashes) between segments. A single dash (e.g. `7402-` prefix) results in a different, non-existent hostname — GitHub will receive 502 errors for every delivery.
+
+**Validation steps:**
+
+```bash
+# 1. Confirm webhook route is mounted (should return 401, not 404)
+curl -X POST http://localhost:7402/webhooks/github \
+  -H "Content-Type: application/json" -d '{}'
+# → {"ok":false,"reason":"signature"}
+
+# 2. Confirm token minting works
+node --env-file apps/sync-engine/.env --input-type=module << 'EOF'
+import { mintInstallationToken } from './apps/sync-engine/dist/github-app/octokit-minter.js';
+import { loadPrivateKey } from './apps/sync-engine/dist/github-app/private-key-loader.js';
+const pk = await loadPrivateKey({ privateKeyPath: process.env.GITHUB_APP_PRIVATE_KEY_PATH });
+const r = await mintInstallationToken({
+  credentials: { appId: Number(process.env.GITHUB_APP_ID), installationId: Number(process.env.GITHUB_APP_INSTALLATION_ID), privateKey: pk },
+  clock: { now: () => new Date() }
+});
+console.log('token:', r.token.slice(0,12)+'...', 'expires:', r.expiresAt.toISOString());
+EOF
+
+# 3. Make a push to the target branch on GitHub
+# 4. Check GitHub App → Settings → hook deliveries for a 202 response
+# 5. Confirm local repo pulled the commit:
+git log --oneline -3
+```
+
+**Expected delivery log on GitHub:**
+
+| Event | Expected status |
+|-------|----------------|
+| `push` (target branch) | 202 — `{ok:true,action:"queued"}` |
+| `push` (other branch) | 202 — `{ok:true,action:"ignored",reason:"branch"}` |
+| `ping` | 202 — `{ok:true,action:"ping"}` |
+| Any event (bad signature) | 401 — `{ok:false,reason:"signature"}` |
 
 ---
 
