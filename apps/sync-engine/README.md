@@ -2,7 +2,7 @@
 
 Watches a `content/` directory for filesystem changes, auto-commits batched
 changes to the local git repository, pushes to a GitHub remote, and broadcasts
-`change` / `synced` / `offline` / `conflict` events over a Server-Sent Events (SSE) stream.
+`change` / `synced` / `offline` / `conflict` events over a Server-Sent Events (SSE) stream...
 
 ---
 
