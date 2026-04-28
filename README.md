@@ -55,24 +55,46 @@ cp apps/kanban-ui/.env.example   apps/kanban-ui/.env
 pnpm typecheck && pnpm lint   # quality gates — must pass before committing
 ```
 
-## Running the Stack
+## Running Services
 
-Each component starts independently. The `dev` scripts load `.env` automatically:
+All three services are managed via a PM2-backed CLI wrapper:
 
 ```bash
-# UI dev server  →  http://localhost:5173
-pnpm --filter kanban-ui dev
+# Start all services (ui on 5173, provider-fs on 7701, sync-engine on 7402)
+./scripts/services start
 
-# Local-fs sidecar  →  http://localhost:7701  (configure in apps/provider-fs/.env)
-pnpm --filter provider-fs dev
+# Check status (name, PID, uptime, restarts, port, owning worktree)
+./scripts/services status
 
-# Sync-engine  →  http://localhost:7402  (configure in apps/sync-engine/.env)
-pnpm --filter sync-engine dev
+# Stream logs for a service (Ctrl-C to stop)
+./scripts/services logs ui
+./scripts/services logs fs
+./scripts/services logs sync
+
+# Get last 50 lines and exit (agent-friendly)
+./scripts/services logs ui --lines 50 --nostream
+
+# Stop all services
+./scripts/services stop
+
+# Switch services to another worktree (stops current, restarts from target path)
+./scripts/services switch /path/to/other-worktree
 ```
 
-For remote git sync, set `GITHUB_TOKEN` and `SYNC_ENGINE_REMOTE_ENABLED=true` in
-`apps/sync-engine/.env`. When working on a feature branch, also set
-`SYNC_ENGINE_TARGET_BRANCH=<branch>` so the engine syncs the right branch.
+Services survive terminal/agent-session close — PM2 keeps them running until explicitly stopped with `./scripts/services stop`.
+
+VS Code tasks are also available (Ctrl+Shift+P → "Tasks: Run Task"):
+- **Services: Start All** / **Services: Stop All** / **Services: Status**
+- **Services: Tail UI Log** / **Services: Tail FS Log** / **Services: Tail Sync Log**
+
+For remote git sync, set `GITHUB_TOKEN` and `SYNC_ENGINE_REMOTE_ENABLED=true` in your `.env` file before starting. When working on a feature branch, also set `SYNC_ENGINE_TARGET_BRANCH=<branch>` in `apps/sync-engine/.env` so the engine syncs the right branch.
+
+> **Underlying commands** (used by the services wrapper internally):
+> ```bash
+> pnpm --filter kanban-ui dev          # UI dev server → http://localhost:5173
+> pnpm --filter provider-fs dev        # FS sidecar   → http://localhost:7701
+> SYNC_ENGINE_REPO_ROOT=$(pwd) pnpm --filter sync-engine dev  # Sync → http://localhost:7402
+> ```
 
 ## Testing
 

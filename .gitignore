@@ -23,8 +23,12 @@ pnpm-debug.log*
 .DS_Store
 Thumbs.db
 
+# Runtime state
+.run/
+
 # Editor
-.vscode/
+.vscode/*
+!.vscode/tasks.json
 .idea/
 *.swp
 *.swo

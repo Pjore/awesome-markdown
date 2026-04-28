@@ -1,0 +1,153 @@
+#!/usr/bin/env sh
+# services — PM2-backed service manager for awesome-markdown
+# Usage: ./scripts/services <command> [args]
+set -eu
+
+# ---------------------------------------------------------------------------
+# Resolve repo root (works inside worktrees too)
+# ---------------------------------------------------------------------------
+REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+ECOSYSTEM="$REPO_ROOT/ecosystem.config.cjs"
+OWNER_FILE="$REPO_ROOT/.run/owner"
+PM2="pnpm exec pm2"
+
+# Load .env if present (non-fatal)
+if [ -f "$REPO_ROOT/.env" ]; then
+  # shellcheck disable=SC1091
+  set -a; . "$REPO_ROOT/.env"; set +a
+fi
+
+# ---------------------------------------------------------------------------
+# Helpers
+# ---------------------------------------------------------------------------
+_require_name() {
+  case "$1" in
+    ui|fs|sync) ;;
+    *) echo "error: unknown service '$1'. Valid names: ui, fs, sync" >&2; exit 1 ;;
+  esac
+}
+
+_write_owner() {
+  mkdir -p "$REPO_ROOT/.run"
+  printf '%s\n' "$1" > "$OWNER_FILE"
+}
+
+_clear_owner() {
+  rm -f "$OWNER_FILE"
+}
+
+_status() {
+  node "$REPO_ROOT/scripts/services-status.mjs"
+}
+
+# ---------------------------------------------------------------------------
+# Subcommands
+# ---------------------------------------------------------------------------
+cmd_start() {
+  # Warn if another worktree owns the services
+  if [ -f "$OWNER_FILE" ]; then
+    CURRENT_OWNER="$(cat "$OWNER_FILE")"
+    if [ "$CURRENT_OWNER" != "$REPO_ROOT" ]; then
+      echo "warning: services are owned by '$CURRENT_OWNER'." >&2
+      echo "  Run './scripts/services switch $REPO_ROOT' to take ownership," >&2
+      echo "  or './scripts/services stop' to stop them first." >&2
+    fi
+  fi
+  _write_owner "$REPO_ROOT"
+  $PM2 start "$ECOSYSTEM" --env production 2>/dev/null || $PM2 start "$ECOSYSTEM"
+  echo ""
+  _status
+}
+
+cmd_stop() {
+  $PM2 stop "$ECOSYSTEM" 2>/dev/null || true
+  $PM2 delete "$ECOSYSTEM" 2>/dev/null || true
+  _clear_owner
+  echo "Services stopped."
+}
+
+cmd_restart() {
+  NAME="${1:-}"
+  if [ -n "$NAME" ]; then
+    _require_name "$NAME"
+    $PM2 restart "$NAME"
+  else
+    $PM2 restart "$ECOSYSTEM"
+  fi
+  _status
+}
+
+cmd_status() {
+  _status
+}
+
+cmd_logs() {
+  NAME="${1:-}"
+  if [ -z "$NAME" ]; then
+    echo "Usage: services logs <name> [--lines N] [--nostream]" >&2
+    echo "  Valid names: ui, fs, sync" >&2
+    exit 1
+  fi
+  _require_name "$NAME"
+  shift
+  $PM2 logs "$NAME" "$@"
+}
+
+cmd_switch() {
+  TARGET="${1:-}"
+  if [ -z "$TARGET" ]; then
+    echo "Usage: services switch <absolute-worktree-path>" >&2
+    exit 1
+  fi
+  # Validate target is a sibling worktree of this repo
+  if [ ! -f "$TARGET/pnpm-workspace.yaml" ]; then
+    echo "error: '$TARGET' does not contain pnpm-workspace.yaml — not a valid worktree of this repo." >&2
+    exit 1
+  fi
+  echo "Stopping services in current worktree..."
+  $PM2 stop "$ECOSYSTEM" 2>/dev/null || true
+  $PM2 delete "$ECOSYSTEM" 2>/dev/null || true
+  _write_owner "$TARGET"
+  echo "Starting services from '$TARGET'..."
+  SERVICES_CWD="$TARGET" $PM2 start "$TARGET/ecosystem.config.cjs"
+  echo ""
+  _status
+}
+
+cmd_help() {
+  cat <<'HELP'
+Usage: ./scripts/services <command> [args]
+
+Commands:
+  start                   Start all services (ui, fs, sync) via PM2
+  stop                    Stop and delete all services; clear owner
+  restart [name]          Restart all services, or one by name (ui|fs|sync)
+  status                  Show status table (name, pid, uptime, restarts, port, owner)
+  logs <name> [opts]      Stream logs for a service; pass --lines N --nostream to exit
+  switch <path>           Stop services, transfer ownership to another worktree, restart
+  help                    Print this message
+
+Examples:
+  ./scripts/services start
+  ./scripts/services status
+  ./scripts/services logs fs --lines 50 --nostream
+  ./scripts/services switch /path/to/other-worktree
+HELP
+}
+
+# ---------------------------------------------------------------------------
+# Dispatch
+# ---------------------------------------------------------------------------
+COMMAND="${1:-help}"
+shift 2>/dev/null || true
+
+case "$COMMAND" in
+  start)   cmd_start "$@" ;;
+  stop)    cmd_stop "$@" ;;
+  restart) cmd_restart "$@" ;;
+  status)  cmd_status "$@" ;;
+  logs)    cmd_logs "$@" ;;
+  switch)  cmd_switch "$@" ;;
+  help|--help|-h) cmd_help ;;
+  *) echo "error: unknown command '$COMMAND'. Run './scripts/services help'." >&2; exit 1 ;;
+esac

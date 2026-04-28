@@ -1,0 +1,86 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Services: Start All",
+      "type": "shell",
+      "command": "./scripts/services",
+      "args": ["start"],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Services: Stop All",
+      "type": "shell",
+      "command": "./scripts/services",
+      "args": ["stop"],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Services: Status",
+      "type": "shell",
+      "command": "./scripts/services",
+      "args": ["status"],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared",
+        "clear": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Services: Tail UI Log",
+      "type": "shell",
+      "command": "./scripts/services",
+      "args": ["logs", "ui"],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "Services: Tail FS Log",
+      "type": "shell",
+      "command": "./scripts/services",
+      "args": ["logs", "fs"],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": [],
+      "isBackground": true
+    },
+    {
+      "label": "Services: Tail Sync Log",
+      "type": "shell",
+      "command": "./scripts/services",
+      "args": ["logs", "sync"],
+      "group": "none",
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "clear": true
+      },
+      "problemMatcher": [],
+      "isBackground": true
+    }
+  ]
+}
