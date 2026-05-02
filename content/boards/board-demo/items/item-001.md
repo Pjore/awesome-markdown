@@ -1,7 +1,7 @@
 ---
 id: item-001
 boardId: board-demo
-columnId: col-todo
+columnId: col-inprogress
 swimlaneId: lane-feature
 title: Add dark mode toggle
 status: todo
@@ -10,8 +10,9 @@ tags:
   - ui
   - settings
 createdAt: '2026-04-20T10:00:00.000Z'
-updatedAt: '2026-04-27T09:25:14.148Z'
-customFields: {}
+updatedAt: '2026-05-02T07:49:15.901Z'
+customFields:
+  _order: 1000
 ---
 ## Description
 
