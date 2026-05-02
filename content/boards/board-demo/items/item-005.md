@@ -1,7 +1,7 @@
 ---
 id: item-005
 boardId: board-demo
-columnId: col-inprogress
+columnId: col-done
 swimlaneId: lane-bugfix
 title: Item editor loses unsaved changes on route change
 status: in_progress
@@ -11,10 +11,10 @@ tags:
   - ux
 assignee: carol
 createdAt: '2026-04-23T08:45:00.000Z'
-updatedAt: '2026-04-27T16:58:18.172Z'
+updatedAt: '2026-05-02T07:49:17.062Z'
 customFields:
   sprint: 3
-  _order: 1000
+  _order: 0
 ---
 ## Description
 

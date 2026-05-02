@@ -16,7 +16,7 @@
 │  apps/provider-fs     │      │       apps/sync-engine           │
 │  Fastify v5 :7701     │      │       Fastify v5 :7402           │
 │  REST CRUD + SSE      │◄─────│  chokidar → simple-git → SSE    │
-│  content/ (markdown)  │      │  remote pull/push (GITHUB_TOKEN) │
+│  content/ (markdown)  │      │  remote pull/push (GitHub App)  │
 └───────────────────────┘      └──────────────────────────────────┘
             │
             ▼
@@ -49,9 +49,18 @@
 
 ## Data Flow — Remote Change (UC-4)
 
-1. sync-engine periodic `git pull` (every 30 s by default)
+**Primary path (webhook):**
+1. Remote push lands on GitHub → GitHub delivers `push` webhook to `POST /webhooks/github`
+2. sync-engine verifies HMAC-SHA256 signature; filters by branch; calls `triggerPullNow()`
+3. `git pull` runs through the mutex-serialized worker; fast-forward succeeds
+4. sync-engine emits one `change` event per modified file → kanban-ui re-fetches
+
+**Fallback path (polling):**
+1. sync-engine periodic `git pull` (default 10 min; kicks in when webhook is unreachable)
 2. Fast-forward succeeds → sync-engine emits one `change` event per modified file
 3. kanban-ui re-fetches affected entities from provider-fs
+
+**Remote auth:** GitHub App installation token (1-hour TTL, auto-refreshed ≥ 5 min before expiry) replaces the legacy `GITHUB_TOKEN` PAT for all `git fetch` / `git push` operations.
 
 **Conflict path:**
 

@@ -11,7 +11,7 @@ tags:
   - ui
 assignee: bob
 createdAt: '2026-04-18T11:00:00.000Z'
-updatedAt: '2026-04-27T15:11:34.985Z'
+updatedAt: '2026-05-02T07:49:15.781Z'
 customFields:
   sprint: 3
   _order: 0

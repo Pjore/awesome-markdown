@@ -114,4 +114,47 @@ describe('configuration loader', () => {
       await repo.cleanup();
     }
   });
+
+  it('reads GITHUB_APP_* env vars into config.githubApp', async () => {
+    const repo = await createTempRepo();
+    const origId = process.env['GITHUB_APP_ID'];
+    const origInstId = process.env['GITHUB_APP_INSTALLATION_ID'];
+    const origKey = process.env['GITHUB_APP_PRIVATE_KEY'];
+    try {
+      process.env['GITHUB_APP_ID'] = '12345';
+      process.env['GITHUB_APP_INSTALLATION_ID'] = '67890';
+      process.env['GITHUB_APP_PRIVATE_KEY'] = '-----BEGIN RSA PRIVATE KEY-----\nfake\n-----END RSA PRIVATE KEY-----';
+
+      const config = loadConfig({ repoRoot: repo.repoRoot });
+      expect(config.githubApp).toBeDefined();
+      expect(config.githubApp?.appId).toBe('12345');
+      expect(config.githubApp?.installationId).toBe('67890');
+      expect(config.githubApp?.privateKey).toBeTruthy();
+      expect(config.githubApp?.privateKeyPath).toBeNull();
+      // Verify githubToken is not on config
+      expect((config as Record<string, unknown>)['githubToken']).toBeUndefined();
+    } finally {
+      if (origId === undefined) delete process.env['GITHUB_APP_ID'];
+      else process.env['GITHUB_APP_ID'] = origId;
+      if (origInstId === undefined) delete process.env['GITHUB_APP_INSTALLATION_ID'];
+      else process.env['GITHUB_APP_INSTALLATION_ID'] = origInstId;
+      if (origKey === undefined) delete process.env['GITHUB_APP_PRIVATE_KEY'];
+      else process.env['GITHUB_APP_PRIVATE_KEY'] = origKey;
+      await repo.cleanup();
+    }
+  });
+
+  it('config.githubApp is absent when no GITHUB_APP_* vars are set', async () => {
+    const repo = await createTempRepo();
+    // Ensure none of the App vars are set in the test environment
+    const saved = ['GITHUB_APP_ID', 'GITHUB_APP_INSTALLATION_ID', 'GITHUB_APP_PRIVATE_KEY', 'GITHUB_APP_PRIVATE_KEY_PATH'].map((k) => [k, process.env[k]] as const);
+    for (const [k] of saved) delete process.env[k];
+    try {
+      const config = loadConfig({ repoRoot: repo.repoRoot });
+      expect(config.githubApp).toBeUndefined();
+    } finally {
+      for (const [k, v] of saved) if (v !== undefined) process.env[k] = v;
+      await repo.cleanup();
+    }
+  });
 });

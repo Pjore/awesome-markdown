@@ -83,6 +83,15 @@ export type RemoteEngineConfig = {
   retry: RemoteRetryConfig;
 };
 
+/** GitHub App credentials runtime config. Mirrors the Zod schema shape. */
+export type GithubAppRuntimeConfig = {
+  appId: string;
+  installationId: string;
+  privateKey: string | null;
+  privateKeyPath: string | null;
+  webhookSecret: string | null;
+};
+
 /** Validated runtime configuration for the sync-engine. */
 export type EngineConfig = {
   /** Absolute path to the git repository root. */
@@ -106,10 +115,19 @@ export type EngineConfig = {
    */
   targetBranch?: string;
   /**
-   * GitHub Fine-Grained PAT. Sourced exclusively from process.env.GITHUB_TOKEN.
+   * GitHub App credentials for remote authentication.
+   * Present when GITHUB_APP_* env vars are configured.
    * Never serialised to disk or emitted over SSE.
    */
-  githubToken?: string;
+  githubApp?: GithubAppRuntimeConfig;
+};
+
+/** Reason context passed to Engine.triggerPullNow() from a webhook delivery. */
+export type WebhookTriggerReason = {
+  /** GitHub X-GitHub-Delivery UUID, for operator tracing. Never log as part of a secret. */
+  deliveryId: string;
+  /** The `after` SHA from the push payload, when present. Informational only. */
+  commitSha?: string;
 };
 
 /** Runtime status reported by GET /status. */

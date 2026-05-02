@@ -14,7 +14,7 @@ Monorepo with pnpm workspaces:
 - `packages/provider-localstorage` — In-browser localStorage provider
 - `apps/kanban-ui` — React 19 + Vite 8 + Tailwind v4 SPA with @dnd-kit
 - `apps/provider-fs` — Fastify v5 sidecar (markdown files + YAML frontmatter)
-- `apps/sync-engine` — File watcher, git auto-commit, SSE event emitter
+- `apps/sync-engine` — File watcher, git auto-commit, SSE event emitter; webhook-triggered pull (primary) + 10 min fallback polling
 
 ## Tech Stack
 
@@ -23,7 +23,7 @@ Monorepo with pnpm workspaces:
 | UI | React 19, Vite 8, Tailwind v4, @dnd-kit |
 | API/sidecar | Fastify v5 + `fastify-type-provider-zod` |
 | Validation | Zod v4 — `import { z } from "zod"` |
-| Git | simple-git + GitHub Fine-Grained PAT (`GITHUB_TOKEN` env var) |
+| Git | simple-git + GitHub App installation tokens (`@octokit/auth-app`) |
 | File watching | chokidar |
 | Markdown | gray-matter |
 | Live channel | Native SSE (no WebSocket) |
@@ -36,7 +36,7 @@ Monorepo with pnpm workspaces:
 - **Imports**: `.js` extension in all local API/sync-engine imports (ESM)
 - **Shared types**: Import from `@awesome-markdown/contracts`
 - **Content dir**: `./content` relative to repo root
-- **Git auth**: `GITHUB_TOKEN` fine-grained PAT with `Contents: read/write`
+- **Git auth**: GitHub App installation tokens via `@octokit/auth-app`; required vars: `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY` or `GITHUB_APP_PRIVATE_KEY_PATH`; App needs `Contents: read/write`
 - **No `any`** in `packages/contracts`; all cross-package calls typed via exports
 
 ## Ports (defaults)
@@ -84,7 +84,7 @@ Each app ships a `.env.example` — copy to `.env` and fill in values.
 | App | Env file | Key variables |
 |-----|----------|---------------|
 | `apps/provider-fs` | `apps/provider-fs/.env` | `PROVIDER_FS_PORT`, `PROVIDER_FS_HOST`, `PROVIDER_FS_CONTENT_ROOT` |
-| `apps/sync-engine` | `apps/sync-engine/.env` | `SYNC_ENGINE_REPO_ROOT` (required), `SYNC_ENGINE_TARGET_BRANCH`, `GITHUB_TOKEN` |
+| `apps/sync-engine` | `apps/sync-engine/.env` | `SYNC_ENGINE_REPO_ROOT` (required), `SYNC_ENGINE_TARGET_BRANCH`, `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY`/`GITHUB_APP_PRIVATE_KEY_PATH`, `GITHUB_APP_WEBHOOK_SECRET` (webhook primary trigger; polling is fallback at 10 min default) |
 | `apps/kanban-ui` | `apps/kanban-ui/.env` | `VITE_PROVIDER_FS_URL` (pre-fills Settings panel URL) |
 
 `provider-fs` and `sync-engine` use Node 22 `--env-file-if-present` — the `.env`
@@ -102,6 +102,26 @@ If `SYNC_ENGINE_TARGET_BRANCH` is unset, the engine reads the current branch
 at startup — so checking out the feature branch before starting the engine is
 sufficient for most workflows.
 
+## Sync-engine: Coder Webhook URL
+
+The sync-engine binds to `127.0.0.1:7402`. Coder exposes it publicly via a
+subdomain proxy. The URL format uses **double-dash (`--`) separators**:
+
+```
+https://7402--<agent>--<workspace>--<owner>.coder.<domain>/webhooks/github
+```
+
+Example: `https://7402--main--awesome-markdown--pjore.coder.pjore.com/webhooks/github`
+
+> **Critical:** A single dash prefix (e.g. `7402s--` or `7402-`) creates a
+> different hostname that doesn't resolve — GitHub will receive 502 for every
+> delivery. Always verify the URL resolves before configuring the GitHub App:
+> `curl https://<url>/health` should return `{"ok":true}`.
+
+The webhook route is only mounted when `GITHUB_APP_WEBHOOK_SECRET` is set in
+`.env`. Confirm it is mounted: `curl -X POST http://localhost:7402/webhooks/github`
+should return `{"ok":false,"reason":"signature"}`, not a 404.
+
 ## File Constraints
 
 | Type | Limit |
@@ -111,7 +131,7 @@ sufficient for most workflows.
 
 ## Security
 
-- **Never commit `GITHUB_TOKEN`** — load from `.env` (gitignored)
+- **Never commit `GITHUB_APP_PRIVATE_KEY` or any token** — load from `.env` (gitignored)
 - Use `.env.example` as template; document required vars there
 - Mask credentials when confirming: `${VAR:0:8}...`
 

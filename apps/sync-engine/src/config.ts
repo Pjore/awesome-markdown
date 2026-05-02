@@ -68,18 +68,40 @@ function collectEnvVars(): Record<string, unknown> {
 }
 
 /**
+ * Collect GitHub App credentials from GITHUB_APP_* env vars (no SYNC_ENGINE_ prefix).
+ * Returns undefined when none of the App vars are set.
+ */
+function collectGithubAppEnvVars(): Record<string, unknown> | undefined {
+  const appId = process.env['GITHUB_APP_ID'];
+  const installationId = process.env['GITHUB_APP_INSTALLATION_ID'];
+  const privateKey = process.env['GITHUB_APP_PRIVATE_KEY'] ?? null;
+  const privateKeyPath = process.env['GITHUB_APP_PRIVATE_KEY_PATH'] ?? null;
+  const webhookSecret = process.env['GITHUB_APP_WEBHOOK_SECRET'] ?? null;
+
+  if (!appId && !installationId && !privateKey && !privateKeyPath && !webhookSecret) {
+    return undefined;
+  }
+
+  return {
+    ...(appId !== undefined ? { appId } : {}),
+    ...(installationId !== undefined ? { installationId } : {}),
+    privateKey,
+    privateKeyPath,
+    webhookSecret,
+  };
+}
+
+/**
  * Load, merge, and validate the EngineConfig.
  *
  * Priority (highest → lowest):
  * 1. Explicit `overrides` argument (passed programmatically, e.g. in tests)
- * 2. Environment variables (SYNC_ENGINE_*)
+ * 2. Environment variables (SYNC_ENGINE_* for most fields; GITHUB_APP_* for App credentials)
  * 3. Config file at `${repoRoot}/.awesome-markdown/sync.config.json`
  * 4. Schema defaults
  *
+ * GitHub App credentials are sourced from GITHUB_APP_* env vars (no SYNC_ENGINE_ prefix).
  * Fails fast with a descriptive error on invalid config.
- *
- * GITHUB_TOKEN is read from process.env directly and attached separately —
- * it is never included in the serialised config object.
  */
 export function loadConfig(overrides: Partial<Record<string, unknown>> = {}): EngineConfig {
   // Determine repoRoot early so we can read the config file
@@ -90,6 +112,7 @@ export function loadConfig(overrides: Partial<Record<string, unknown>> = {}): En
 
   const fileValues = readConfigFile(repoRootRaw);
   const envValues = collectEnvVars();
+  const appEnvValues = collectGithubAppEnvVars();
 
   // Merge in priority order (overrides > env > file > defaults)
   const merged: Record<string, unknown> = {
@@ -98,6 +121,11 @@ export function loadConfig(overrides: Partial<Record<string, unknown>> = {}): En
     ...overrides,
     repoRoot: repoRootRaw,
   };
+
+  // Merge githubApp from env when present and not already supplied via overrides
+  if (appEnvValues && !overrides['githubApp']) {
+    merged['githubApp'] = appEnvValues;
+  }
 
   const result = EngineConfigSchema.safeParse(merged);
   if (!result.success) {
@@ -116,14 +144,10 @@ export function loadConfig(overrides: Partial<Record<string, unknown>> = {}): En
     );
   }
 
-  // Read GITHUB_TOKEN from env exclusively — never from config file or overrides
-  const githubToken = process.env['GITHUB_TOKEN'] ?? undefined;
-
   // Resolve repoRoot to absolute path
   const resolvedConfig: EngineConfig = {
     ...config,
     repoRoot: path.resolve(config.repoRoot),
-    ...(githubToken ? { githubToken } : {}),
   };
 
   return Object.freeze(resolvedConfig);

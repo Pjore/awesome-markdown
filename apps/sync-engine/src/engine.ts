@@ -11,6 +11,7 @@ import { RetryScheduler } from './retry-scheduler.js';
 import { OfflineState } from './offline-state.js';
 import { ConflictSessionManager } from './conflict/session.js';
 import { simpleGit } from 'simple-git';
+import { createGitCredentialProvider, MintFailureError } from './github-app/index.js';
 import {
   Mutex,
   pullTask,
@@ -20,9 +21,10 @@ import {
   pushAfterCommit as pushAfterCommitWorker,
   type RemoteContext,
 } from './remote-worker.js';
-import type { EngineConfig, EngineStatus, CommitResult, PushResult } from './types.js';
+import type { EngineConfig, EngineStatus, CommitResult, PushResult, WebhookTriggerReason } from './types.js';
 import type { RawFsEvent, Batch } from './types.js';
 import type { RemoteConfig } from './remote-config.js';
+import type { GitCredentialProvider } from './github-app/index.js';
 import type { PullFault } from './puller.js';
 import type { PushFault } from './pusher.js';
 import type { ConflictState } from '@awesome-markdown/contracts';
@@ -48,6 +50,7 @@ export class Engine {
 
   // Remote sync state
   private remoteConfig: RemoteConfig | null = null;
+  private credentialProvider: GitCredentialProvider | null = null;
   private readonly mutex = new Mutex();
   private pullScheduler: RetryScheduler | null = null;
   private pushScheduler: RetryScheduler | null = null;
@@ -60,10 +63,17 @@ export class Engine {
   private _pullFault: PullFault | undefined;
   private _pushFault: PushFault | undefined;
 
+  // Webhook single-flight coalescing state
+  private _webhookPullInFlight = false;
+  private _webhookPullQueued = false;
+
   constructor(
     private readonly config: EngineConfig,
     hub?: SseHub,
+    /** Optional pre-built credential provider (for tests; skips factory construction). */
+    credentialProvider?: GitCredentialProvider,
   ) {
+    this.credentialProvider = credentialProvider ?? null;
     this.hub = hub ?? new SseHub();
     this.conflictSessionManager = new ConflictSessionManager();
     this.classifier = new SourceClassifier();
@@ -136,6 +146,9 @@ export class Engine {
     // Stop schedulers before flushing debounce
     this.pullScheduler?.cancel();
     this.pushScheduler?.cancel();
+    // Dispose credential provider
+    this.credentialProvider?.dispose?.();
+    this.credentialProvider = null;
     // Flush pending debounce batch before shutting down
     this.debouncer.flush();
     // Wait briefly to let the async commit complete
@@ -197,6 +210,37 @@ export class Engine {
   }
 
   /**
+   * Fire-and-forget webhook pull trigger with single-flight coalescing.
+   *
+   * While one pull is in flight, at most one additional pull is queued.
+   * Subsequent calls during in-flight + queued state are dropped silently
+   * (the queued pull will re-fetch the latest remote state when it runs).
+   * Errors from _pullTask are swallowed — the offline-state machine handles them.
+   * Returns synchronously; does not return a Promise.
+   */
+  triggerPullNow(reason: WebhookTriggerReason): void {
+    if (this._webhookPullInFlight) {
+      // Coalescing: at most one queued pull while one is in flight
+      this._webhookPullQueued = true;
+      return;
+    }
+    this._webhookPullInFlight = true;
+    void this._runWebhookPull(reason);
+  }
+
+  private async _runWebhookPull(_reason: WebhookTriggerReason): Promise<void> {
+    do {
+      this._webhookPullQueued = false;
+      try {
+        await this._pullTask();
+      } catch {
+        // offline-state machine already handles pull failures
+      }
+    } while (this._webhookPullQueued);
+    this._webhookPullInFlight = false;
+  }
+
+  /**
    * For testing: clear conflict-pending state (normally done by M8 resolution).
    */
   clearConflictState(): void {
@@ -248,10 +292,24 @@ export class Engine {
   }
 
   private async _initRemote(): Promise<void> {
+    // Build credential provider when App credentials are configured and not already injected
+    if (!this.credentialProvider && this.config.githubApp) {
+      try {
+        this.credentialProvider = createGitCredentialProvider({
+          githubApp: this.config.githubApp,
+        });
+      } catch (err) {
+        const msg = err instanceof MintFailureError
+          ? err.message
+          : `[sync-engine] GitHub App credential setup failed: ${String(err)}`;
+        throw new Error(msg);
+      }
+    }
+
     try {
       this.remoteConfig = await createRemoteConfig(
         this.config.repoRoot,
-        this.config.githubToken ?? null,
+        this.credentialProvider,
         this.config.targetBranch,
       );
     } catch {

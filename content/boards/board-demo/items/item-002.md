@@ -1,7 +1,7 @@
 ---
 id: item-002
 boardId: board-demo
-columnId: col-inprogress
+columnId: col-done
 swimlaneId: lane-feature
 title: Keyboard shortcut to create new card
 status: todo
@@ -10,7 +10,7 @@ tags:
   - accessibility
   - ux
 createdAt: '2026-04-21T09:30:00.000Z'
-updatedAt: '2026-04-27T15:11:35.045Z'
+updatedAt: '2026-05-02T07:47:26.741Z'
 customFields:
   _order: 1000
 ---

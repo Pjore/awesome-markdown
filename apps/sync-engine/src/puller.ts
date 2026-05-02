@@ -2,6 +2,7 @@ import path from 'node:path';
 import { simpleGit } from 'simple-git';
 import type { NetworkFailureReason, PullResult } from './types.js';
 import type { RemoteConfig } from './remote-config.js';
+import { MintFailureError } from './github-app/index.js';
 
 /**
  * Classifies a git error into a NetworkFailureReason.
@@ -70,7 +71,17 @@ export async function pullOnce(params: PullOnceParams): Promise<PullResult> {
 
   const git = simpleGit({ baseDir: repoRoot });
   const branch = remoteConfig.branch;
-  const authenticatedUrl = remoteConfig.getAuthenticatedUrl();
+
+  let authenticatedUrl: string;
+  try {
+    authenticatedUrl = await remoteConfig.getAuthenticatedUrl();
+  } catch (err) {
+    if (err instanceof MintFailureError) {
+      return { kind: 'network-failure', reason: 'auth' };
+    }
+    return { kind: 'network-failure', reason: 'unknown' };
+  }
+
   const contentAbsPath = path.join(repoRoot, contentDir);
 
   // Check for uncommitted changes in contentDir — defer if present

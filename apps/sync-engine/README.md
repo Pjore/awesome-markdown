@@ -2,7 +2,7 @@
 
 Watches a `content/` directory for filesystem changes, auto-commits batched
 changes to the local git repository, pushes to a GitHub remote, and broadcasts
-`change` / `synced` / `offline` / `conflict` events over a Server-Sent Events (SSE) stream.
+`change` / `synced` / `offline` / `conflict` events over a Server-Sent Events (SSE) stream...
 
 ---
 
@@ -24,30 +24,143 @@ Configuration is loaded from (highest priority first):
 | `debounceMs`        | `SYNC_ENGINE_DEBOUNCE_MS`         | `750`                  | Quiet window before a batch is committed (ms)      |
 | `port`              | `SYNC_ENGINE_PORT`                | `7402`                 | TCP port for the Fastify server                    |
 | `host`              | `SYNC_ENGINE_HOST`                | `127.0.0.1`            | Bind address for the Fastify server                |
-| `remote.enabled`    | `SYNC_ENGINE_REMOTE_ENABLED`      | `false`                | Enable remote pull/push (requires `GITHUB_TOKEN`)  |
-| `remote.pullIntervalMs` | `SYNC_ENGINE_REMOTE_PULL_INTERVAL_MS` | `30000`        | How often to poll for remote changes (ms, min 2s)  |
+| `remote.enabled`    | `SYNC_ENGINE_REMOTE_ENABLED`      | `false`                | Enable remote pull/push (requires GitHub App)      |
+| `remote.pullIntervalMs` | `SYNC_ENGINE_REMOTE_PULL_INTERVAL_MS` | `600000`       | Fallback polling interval (ms, min 60 s). Webhook is the primary trigger; polling is the safety net. |
 | `remote.pushTimeoutMs`  | `SYNC_ENGINE_REMOTE_PUSH_TIMEOUT_MS`  | `15000`        | Push timeout hint in ms                            |
 
-### Remote auth: GITHUB_TOKEN
+### Remote auth: GitHub App
 
-Remote sync requires a **GitHub Fine-Grained Personal Access Token** (PAT) with:
-- **Contents**: Read and write
-- **Metadata**: Read
+Remote sync uses a **GitHub App** installation access token that is minted
+on demand and cached. No long-lived Personal Access Token is required.
 
-Set it as an environment variable:
+#### 1. Register a GitHub App
+
+In your GitHub account / organisation settings → **Developer settings** →
+**GitHub Apps** → **New GitHub App**:
+
+- **App name**: anything descriptive (e.g. `awesome-markdown-sync`)
+- **Homepage URL**: your repo URL
+- **Permissions** → Repository permissions:
+  - **Contents**: Read and write
+- Disable webhooks for now (Milestone 2 adds webhook support)
+- Generate and download a **private key** (.pem file)
+
+Note the **App ID** shown on the App settings page.
+
+#### 2. Install the App on the target repository
+
+Settings → **Install App** → choose the owner and repository.
+After installation, note the **Installation ID** from the URL:
+`https://github.com/settings/installations/<INSTALLATION_ID>`.
+
+#### 3. Configure environment variables
 
 ```bash
-export GITHUB_TOKEN=ghp_YOUR_TOKEN_HERE
+# App ID from the App settings page
+GITHUB_APP_ID=123456
+
+# Installation ID for the target repository owner
+GITHUB_APP_INSTALLATION_ID=78901234
+
+# Private key — set EXACTLY ONE of:
+#   Inline PEM (newlines as \n):
+GITHUB_APP_PRIVATE_KEY="-----BEGIN RSA PRIVATE KEY-----\n...\n-----END RSA PRIVATE KEY-----"
+#   OR path to .pem file:
+# GITHUB_APP_PRIVATE_KEY_PATH=/path/to/private-key.pem
+
+# Webhook secret — unused until Milestone 2
+# GITHUB_APP_WEBHOOK_SECRET=your_webhook_secret_here
+
+# Enable remote sync
+SYNC_ENGINE_REMOTE_ENABLED=true
+SYNC_ENGINE_REPO_ROOT=/path/to/repo
 ```
 
-The token is **never** written to git config, included in commits, or emitted
-in SSE events. The engine injects it into HTTPS remote URLs only at command
-execution time.
+Installation tokens are minted via `@octokit/auth-app`, cached for ~55 minutes,
+and transparently refreshed. They are **never** written to git config, included
+in commits, or emitted in SSE events.
 
-> **SSH remotes are not supported** in M7. If your origin is SSH, convert it:
+> **SSH remotes are not supported.** If your origin is SSH, convert it:
 > ```bash
 > git remote set-url origin https://github.com/<owner>/<repo>.git
 > ```
+
+### Webhook setup (primary delivery trigger)
+
+The sync-engine uses **webhooks as its primary delivery mechanism**: when GitHub
+pushes a `push` event, the engine reacts within ≤ 5 s. Polling is a
+**safety-net fallback** only — it fires every 10 minutes (default) to backstop
+any webhook deliveries that were missed (e.g. during downtime or network
+partitions). The minimum polling interval is 60 s.
+
+The webhook receiver mounts only when both `githubApp` config and a non-empty
+`GITHUB_APP_WEBHOOK_SECRET` are present. If the webhook is unavailable or not
+configured, the engine falls back to the slow polling interval automatically.
+
+#### 1. Discover the public URL
+
+The sync-engine binds to `127.0.0.1:7402` and is exposed via the Coder
+workspace HTTPS proxy. To find the public URL, run:
+
+```bash
+coder port-forward <workspace> --tcp 7402
+# OR read the forwarded URL from the Coder UI → "Forwarded Ports"
+```
+
+The public webhook URL will be:
+```
+https://<coder-proxy-host>/webhooks/github
+```
+
+> **Note:** The proxy URL changes when the workspace is rebuilt. After a
+> rebuild, update the webhook URL in your GitHub App settings.
+
+#### 2. Configure the GitHub App webhook
+
+In your GitHub App settings (**Settings → Developer settings → GitHub Apps →
+your app → Edit**):
+
+| Field | Value |
+|-------|-------|
+| **Webhook URL** | `https://<coder-proxy-host>/webhooks/github` |
+| **Webhook secret** | A random string, e.g. `openssl rand -hex 32` |
+| **Content type** | `application/json` *(required — not `application/x-www-form-urlencoded`)* |
+| **Events** | Enable **Push** only |
+
+#### 3. Set the environment variable
+
+```bash
+# In apps/sync-engine/.env (gitignored):
+GITHUB_APP_WEBHOOK_SECRET=<your-secret>
+```
+
+The value must be a non-empty string that exactly matches the secret entered in
+the GitHub App webhook settings.
+
+#### 4. Expected responses
+
+| Scenario | HTTP status | Response body |
+|----------|-------------|---------------|
+| Valid `push` on target branch | `202` | `{ "ok": true, "action": "queued" }` |
+| Valid `push` on non-target branch | `202` | `{ "ok": true, "action": "ignored", "reason": "branch" }` |
+| Valid `ping` event | `202` | `{ "ok": true, "action": "ping" }` |
+| Any other event type | `202` | `{ "ok": true, "action": "ignored", "reason": "event-type" }` |
+| Missing or invalid signature | `401` | `{ "ok": false, "reason": "signature" }` |
+
+#### Troubleshooting
+
+- **401 responses** — The `GITHUB_APP_WEBHOOK_SECRET` doesn't match the secret
+  configured in the GitHub App settings. Update one of them to match.
+- **202 with `reason: "branch"`** — The push was to a branch other than
+  `SYNC_ENGINE_TARGET_BRANCH`. Check that the App is subscribed to the correct
+  repository and that the branch name matches.
+- **No pull after a push** — Confirm `remote.enabled=true` and that the engine
+  is running. The webhook triggers `Engine.triggerPullNow()` which runs through
+  the existing mutex-serialized pull worker. Check sync-engine logs for
+  `webhook delivery received` and `pull queued` messages.
+- **Polling fallback** — If the webhook is unavailable, the engine continues
+  slow-polling every 10 minutes (default `pullIntervalMs: 600000`, min 60 s).
+  The webhook is an optimisation, not a requirement for correctness.
 
 ### Example config file
 
@@ -71,13 +184,17 @@ execution time.
 ```bash
 # Development (ts-node / tsx hot-reload)
 SYNC_ENGINE_REPO_ROOT=/path/to/repo \
-GITHUB_TOKEN=ghp_... \
+GITHUB_APP_ID=123456 \
+GITHUB_APP_INSTALLATION_ID=78901234 \
+GITHUB_APP_PRIVATE_KEY_PATH=/path/to/private-key.pem \
 SYNC_ENGINE_REMOTE_ENABLED=true \
 pnpm --filter sync-engine dev
 
 # Production (after build)
 SYNC_ENGINE_REPO_ROOT=/path/to/repo \
-GITHUB_TOKEN=ghp_... \
+GITHUB_APP_ID=123456 \
+GITHUB_APP_INSTALLATION_ID=78901234 \
+GITHUB_APP_PRIVATE_KEY_PATH=/path/to/private-key.pem \
 SYNC_ENGINE_REMOTE_ENABLED=true \
 pnpm --filter sync-engine start
 ```
