@@ -6,9 +6,10 @@ swimlaneId: lane-feature
 title: Local test item 1
 status: in-progress
 priority: low
-tags: []
+tags:
+  - test
 createdAt: '2026-05-03T00:00:00.000Z'
-updatedAt: '2026-05-03T00:00:10.000Z'
+updatedAt: '2026-05-03T00:00:20.000Z'
 customFields:
   _order: 9000
 ---
