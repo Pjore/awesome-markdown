@@ -54,6 +54,12 @@ export interface RemoteContext {
   readonly remoteConfig: RemoteConfig;
   readonly pullFault: PullFault | undefined;
   readonly pushFault: PushFault | undefined;
+  /**
+   * When false, targetBranch was auto-detected at startup and may be stale
+   * if the user switches branches. refresh() is called before each push/pull
+   * to re-read the current local branch from git.
+   */
+  readonly hasExplicitTargetBranch: boolean;
   isRunning(): boolean;
   isConflictPending(): boolean;
   setConflictPending(v: boolean): void;
@@ -75,6 +81,9 @@ export interface RemoteContext {
 export async function pullTask(ctx: RemoteContext): Promise<TaskOutcome> {
   let result!: PullResult;
   await ctx.mutex.run(async () => {
+    if (!ctx.hasExplicitTargetBranch) {
+      await ctx.remoteConfig.refresh();
+    }
     result = await pullOnce({
       repoRoot: ctx.repoRoot,
       contentDir: ctx.contentDir,
@@ -126,6 +135,9 @@ export async function pullTask(ctx: RemoteContext): Promise<TaskOutcome> {
 export async function pushTask(ctx: RemoteContext): Promise<TaskOutcome> {
   let result!: PushResult;
   await ctx.mutex.run(async () => {
+    if (!ctx.hasExplicitTargetBranch) {
+      await ctx.remoteConfig.refresh();
+    }
     result = await pushOnce({
       repoRoot: ctx.repoRoot,
       remoteConfig: ctx.remoteConfig,
@@ -272,14 +284,17 @@ export async function handleConflict(
 export async function pushAfterCommit(ctx: RemoteContext): Promise<void> {
   let result: PushResult;
   try {
-    result = await ctx.mutex.run(() =>
-      pushOnce({
+    result = await ctx.mutex.run(async () => {
+      if (!ctx.hasExplicitTargetBranch) {
+        await ctx.remoteConfig.refresh();
+      }
+      return pushOnce({
         repoRoot: ctx.repoRoot,
         remoteConfig: ctx.remoteConfig,
         timeoutMs: ctx.pushTimeoutMs,
         fault: ctx.pushFault,
-      }),
-    );
+      });
+    });
   } catch {
     result = { kind: 'network-failure', reason: 'unknown' };
   }
