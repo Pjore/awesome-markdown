@@ -96,6 +96,28 @@ For remote git sync, set `GITHUB_TOKEN` and `SYNC_ENGINE_REMOTE_ENABLED=true` in
 > SYNC_ENGINE_REPO_ROOT=$(pwd) pnpm --filter sync-engine dev  # Sync → http://localhost:7402
 > ```
 
+## Board: Demo Board Items
+
+```mermaid
+---
+config:
+  kanban:
+    ticketBaseUrl: 'content/boards/board-demo/items/'
+---
+kanban
+  todo["To Do"]
+    item-003["SSE reconnect drops pending events"]@{ ticket: item-003, priority: 'High' }
+    item-007["CORS headers missing on SSE endpoint"]@{ ticket: item-007, priority: 'High' }
+  inprogress["In Progress"]
+    item-001["Add dark mode toggle"]@{ ticket: item-001, priority: 'Medium' }
+    item-004["Drag-and-drop swimlane reordering"]@{ ticket: item-004, priority: 'Medium' }
+    local-test-1["Local test item 1"]@{ ticket: local-test-1, priority: 'Low' }
+  done["Done"]
+    item-002["Keyboard shortcut to create new card"]@{ ticket: item-002, priority: 'Low' }
+    item-005["Item editor loses unsaved changes on route change"]@{ ticket: item-005, priority: 'Very High' }
+    item-006["Board list page"]@{ ticket: item-006, priority: 'Medium' }
+```
+
 ## Testing
 
 ```bash
