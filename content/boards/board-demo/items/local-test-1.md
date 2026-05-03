@@ -2,7 +2,7 @@
 id: local-test-1
 boardId: board-demo
 columnId: col-inprogress
-swimlanesId: lane-feature
+swimlaneId: lane-feature
 title: Local test item 1
 status: in-progress
 priority: low
