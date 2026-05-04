@@ -64,9 +64,19 @@ export async function applyConflictDecisions(
   try {
     await git.raw(['commit', '--no-edit']);
   } catch (commitErr) {
-    // Try with explicit message if no-edit fails (e.g. no MERGE_MSG)
-    const msg = `Merge: resolved ${session.paths.length} conflict(s)`;
-    await git.raw(['commit', '-m', msg]);
+    const errMsg = commitErr instanceof Error ? commitErr.message : String(commitErr);
+    // If the working tree is already clean (e.g. file watcher committed the merge
+    // before us), check whether MERGE_HEAD is gone — if so, the merge commit was
+    // already made and we can proceed normally.
+    const nothingToCommit =
+      errMsg.includes('nothing to commit') ||
+      errMsg.includes('nothing added to commit');
+    if (!nothingToCommit) {
+      // Try with explicit message for cases where MERGE_MSG is absent
+      const msg = `Merge: resolved ${session.paths.length} conflict(s)`;
+      await git.raw(['commit', '-m', msg]);
+    }
+    // else: merge was already committed (race with file watcher) — continue to push + synced
   }
 
   // Push if remote is configured

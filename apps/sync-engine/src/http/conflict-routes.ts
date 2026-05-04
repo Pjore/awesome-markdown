@@ -21,6 +21,8 @@ export interface ConflictRouteContext {
   commitAuthorName: string;
   commitAuthorEmail: string;
   testHooks: boolean;
+  /** Pause / resume the file watcher's auto-commit during conflict resolution. */
+  setConflictPending: (pending: boolean) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -62,7 +64,8 @@ export function mountConflictRoutes(
   ctx: ConflictRouteContext,
 ): void {
   const { sessionManager, repoRoot, contentDir, hub, getRemoteConfig,
-          commitAuthorName, commitAuthorEmail, testHooks } = ctx;
+          commitAuthorName, commitAuthorEmail, testHooks,
+          setConflictPending } = ctx;
 
   // ---- GET /sync/conflict/state -------------------------------------------
 
@@ -208,6 +211,9 @@ export function mountConflictRoutes(
           sessionManager,
           hub,
         });
+        // Pause the file watcher's auto-commit so it doesn't race with the
+        // resolver's merge commit when the user applies a decision.
+        setConflictPending(true);
         return reply.code(200).send({ mergeId });
       } catch (err) {
         const message = err instanceof Error ? err.message : String(err);

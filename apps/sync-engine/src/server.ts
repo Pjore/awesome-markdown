@@ -54,6 +54,7 @@ export async function createServer(config: EngineConfig) {
     commitAuthorName: config.commitAuthorName,
     commitAuthorEmail: config.commitAuthorEmail,
     testHooks: process.env['SYNC_ENGINE_TEST_HOOKS'] === '1',
+    setConflictPending: (pending) => engine.setConflictPending(pending),
   });
 
   // -------------------------------------------------------------------------
