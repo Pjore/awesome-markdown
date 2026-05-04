@@ -1,25 +1,13 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
+import { useTheme } from '../state/theme-store.js';
 
 /**
- * Theme toggle button — reads/writes [data-theme] on <html> and persists to localStorage.
+ * Theme toggle button — delegates to useTheme() from theme-store.
  * ☀ = currently light (click to switch to dark)
  * ☾ = currently dark (click to switch to light)
  */
 export function ThemeToggle(): React.ReactElement {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const stored = localStorage.getItem('theme');
-    if (stored === 'dark' || stored === 'light') return stored;
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  });
-
-  useEffect(() => {
-    document.documentElement.setAttribute('data-theme', theme);
-    localStorage.setItem('theme', theme);
-  }, [theme]);
-
-  const toggle = (): void => {
-    setTheme((t) => (t === 'light' ? 'dark' : 'light'));
-  };
+  const { theme, toggle } = useTheme();
 
   return (
     <button
