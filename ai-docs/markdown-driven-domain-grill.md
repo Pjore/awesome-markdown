@@ -214,8 +214,10 @@ entire cell read-only (no partial inverse application).
 - **Bulk editing, undo, history** beyond what git already provides.
 - **Auto-pruning of stale `boards[]` entries** — homeless items view
   surfaces them; user/agent decides what to do.
-- **WIP-limit enforcement** — axis schema may carry the field but
-  enforcement is not part of this realignment.
+- **WIP limits** — removed entirely from the schema in a post-session
+  pruning pass. May be reintroduced later if needed; not reserved.
+- **`customFields` open-ended catch-all** — removed in the same
+  post-session pass. Clean break, no legacy.
 - **Multi-bucket axis dimensions** — `9e-dimension` was rejected; one
   axis = one bucket.
 - **Numeric `order` with neighbor renumbering** — replaced by
@@ -237,9 +239,9 @@ entire cell read-only (no partial inverse application).
 
 ### Genuinely open / deferred
 - **Path syntax edge cases for `$board`** — `boards.$board.order` is the
-  agreed grammar, but corner cases (escaping a dot in a board slug, paths
-  through deeply nested `customFields`) need a small grammar spec during
-  implementation. Likely a milestone-1 sub-task in the contracts package.
+  agreed grammar, but corner cases (escaping a dot in a board slug)
+  need a small grammar spec during implementation. Likely a milestone-1
+  sub-task in the contracts package.
 - **Filter evaluator location for the localstorage provider** — server
   evaluates for provider-fs, but the localstorage provider has no server.
   The evaluator must therefore be importable from `packages/contracts` (or
@@ -249,10 +251,9 @@ entire cell read-only (no partial inverse application).
   requests may queue. The fractional-index scheme tolerates this fine
   (every drop produces a valid intermediate position), but the UI should
   debounce optimistically. Not a blocker; verification scope.
-- **WIP-limit field on axis** — agreed to keep the field in the schema
-  for forward compat, but enforcement is out of scope. Need to decide:
-  schema field name, type (`number | { soft: number, hard: number }`?).
-  Defer to planner.
+- **WIP-limit field on axis** — *post-session decision: removed.* The
+  field originally agreed for forward-compat is now dropped to keep the
+  v1 schema minimal. Reintroduce later if/when enforcement is planned.
 - **What happens when an item's slug collides with another item via git
   merge** — covered conceptually (validator catches on next load with a
   clear error) but the recovery UX is unspecified. Likely needs a small

@@ -50,8 +50,6 @@ boards:                         # per-board property bag (optional)
     note: blocked-on-design     # arbitrary additional fields allowed
   - board: release-1.2
     order: a1
-customFields:                   # open-ended catch-all
-  estimate: 3
 createdAt: 2026-04-20T10:00:00Z
 updatedAt: 2026-05-02T07:49:15Z
 ---
@@ -93,7 +91,6 @@ entityType: axis
 slug: in-progress
 title: In Progress
 description: Actively being worked on
-wipLimit: 3                      # field reserved; enforcement out of v1 scope
 filter:                          # optional; default = match-all
   property: status
   equals: in-progress
@@ -109,7 +106,7 @@ One axis = one bucket. The same axis slug may be referenced under
 
 **Slug-fallback:** if an item's filter properties cause it to land in a
 column whose axis slug has no definition file, the UI synthesizes a
-column with `title = slug`, no description, no WIP limit.
+column with `title = slug` and no description.
 
 ## 3. Filter Rule Grammar
 
@@ -143,8 +140,7 @@ column, swimlane).
 
 Dotted paths with one context substitution variable.
 
-- `priority`, `tags`, `status`, `dueDate`, `customFields.estimate` —
-  item-global properties.
+- `priority`, `tags`, `status`, `dueDate` — item-global properties.
 - `boards.$board.order`, `boards.$board.note` — per-board property bag,
   resolved against the board currently being rendered.
 - `order` — global fractional-index order field.
@@ -298,7 +294,8 @@ existing per-file git conflict detection covers all concurrency cases.
 - UI editor for board / axis definitions (file-edit only).
 - Body-content filter operators.
 - `schemaVersion` field.
-- WIP-limit enforcement (field reserved, enforcement deferred).
+- WIP limits — field removed entirely; may be reintroduced later if needed.
+- `customFields` open-ended catch-all — removed; clean break, no legacy.
 - Multi-bucket axis dimensions (rejected: each axis = one bucket).
 - Auto-pruning of stale `boards[]` entries (homeless view surfaces them).
 - Bulk-edit / undo / history (git is the history).
@@ -314,9 +311,6 @@ existing per-file git conflict detection covers all concurrency cases.
 - **Slug-collision recovery UX** — validator catches collisions on load,
   but the recovery flow (rename via UI? CLI lint? banner?) is
   unspecified.
-- **WIP-limit field shape** — `number` vs `{ soft, hard }`. Field is
-  reserved but enforcement is deferred; pick a shape now to avoid a
-  schema break later, or omit until enforcement lands.
 - **PATCH coalescing** — fast successive drops generate multiple
   PATCHes; UI should debounce optimistically. Not a correctness issue
   under fractional-index ordering; flagged for verification.
