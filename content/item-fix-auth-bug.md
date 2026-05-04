@@ -6,11 +6,11 @@ boards:
   - board: board-dev
     order: V
   - board: board-all
-    order: b0
+    order: V
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-04T13:06:24.005Z'
+updatedAt: '2026-05-04T13:10:15.278Z'
 project: dev
-status: doing
+status: todo
 priority: high
 tags:
   - urgent
