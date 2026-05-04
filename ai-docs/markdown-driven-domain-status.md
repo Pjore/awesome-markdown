@@ -3,8 +3,8 @@
 ## Overview
 - **Plan:** ai-docs/markdown-driven-domain-main.md
 - **Started:** 2026-05-04T00:00:00Z
-- **Updated:** 2026-05-04T12:21:00Z
-- **Status:** completed
+- **Updated:** 2026-05-04T17:30:00Z
+- **Status:** completed (e2e verified, merged)
 
 ## Use Case Coverage
 
@@ -57,4 +57,5 @@
 | Slug-fallback renders column with title = slug | completed | yes | synthetic: true axis in all providers |
 | README and copilot-instructions describe new model | completed | yes | M7 |
 | pnpm typecheck && pnpm lint && pnpm test green | completed | yes | contracts 63, filter-engine 147, provider-fs 29, provider-http 53, provider-localstorage 33, sync-engine 132 |
-| pnpm verify:ui green | pending | - | agent-browser scenarios not yet run |
+| pnpm verify:ui green | completed | yes | agent-browser e2e: all 3 sync directions verified (web UI, local file edit, remote GitHub push) |
+| isCellReadOnly bug (writeOnDrop + non-invertible) | fixed | yes | fix(domain) commit b41f4be — per-dimension writeOnDrop check in provider-fs and provider-localstorage |
