@@ -26,6 +26,9 @@ importers:
       '@awesome-markdown/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@awesome-markdown/filter-engine':
+        specifier: workspace:*
+        version: link:../../packages/filter-engine
       '@awesome-markdown/provider-http':
         specifier: workspace:*
         version: link:../../packages/provider-http

@@ -4,28 +4,28 @@
 
 export interface ItemDragData {
   type: 'item';
-  itemId: string;
-  columnId: string;
-  swimlaneId: string;
+  itemSlug: string;
+  columnSlug: string;
+  swimlaneSlug: string;
 }
 
 /**
- * Cell drop-target IDs are encoded as `${columnId}::${swimlaneId}`.
- * This format must not appear in item IDs.
+ * Cell drop-target IDs are encoded as `${columnSlug}::${swimlaneSlug}`.
+ * This format must not appear in item slugs.
  */
 export const CELL_ID_SEPARATOR = '::';
 
-export function encodeCellId(columnId: string, swimlaneId: string): string {
-  return `${columnId}${CELL_ID_SEPARATOR}${swimlaneId}`;
+export function encodeCellId(columnSlug: string, swimlaneSlug: string): string {
+  return `${columnSlug}${CELL_ID_SEPARATOR}${swimlaneSlug}`;
 }
 
 export function decodeCellId(
   cellId: string,
-): { columnId: string; swimlaneId: string } | null {
+): { columnSlug: string; swimlaneSlug: string } | null {
   const idx = cellId.indexOf(CELL_ID_SEPARATOR);
   if (idx === -1) return null;
-  const columnId = cellId.slice(0, idx);
-  const swimlaneId = cellId.slice(idx + CELL_ID_SEPARATOR.length);
-  if (!columnId || !swimlaneId) return null;
-  return { columnId, swimlaneId };
+  const columnSlug = cellId.slice(0, idx);
+  const swimlaneSlug = cellId.slice(idx + CELL_ID_SEPARATOR.length);
+  if (!columnSlug || !swimlaneSlug) return null;
+  return { columnSlug, swimlaneSlug };
 }

@@ -76,7 +76,7 @@ export function BoardListPage(): React.ReactElement {
       ) : (
         <ul className="space-y-3" data-testid="board-list-items">
           {boards.map((board) => (
-            <li key={board.id}>
+            <li key={board.slug}>
               <Link
                 to={`/boards/${board.slug}`}
                 data-testid={`board-link-${board.slug}`}

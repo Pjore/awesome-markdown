@@ -7,9 +7,8 @@ import { useOptionalConflict } from '../sync/conflict-store.js';
 
 interface ItemCardProps {
   item: Item;
-  columnId: string;
-  swimlaneId: string;
-  onEdit: () => void;
+  columnSlug: string;
+  swimlaneSlug: string;
 }
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -20,26 +19,28 @@ const PRIORITY_COLORS: Record<string, string> = {
 };
 
 /**
- * A draggable item card. Click to open the editor.
+ * A draggable item card.
  *
- * When the item is part of an active merge conflict, drag and edit are disabled
+ * Item fields beyond `slug`, `title`, and `body` are passthrough properties
+ * (e.g. `priority`, `tags`) — accessed via type-safe indexed access.
+ *
+ * When the item is part of an active merge conflict, drag is disabled
  * and a lock indicator is shown.
  */
 export function ItemCard({
   item,
-  columnId,
-  swimlaneId,
-  onEdit,
+  columnSlug,
+  swimlaneSlug,
 }: ItemCardProps): React.ReactElement {
   // Gracefully degrade if not inside ConflictProvider (e.g. unit tests)
   const conflict = useOptionalConflict();
-  const isConflicted = conflict?.isItemAffected(item.id) ?? false;
+  const isConflicted = conflict?.isItemAffected(item.slug) ?? false;
 
   const dragData: ItemDragData = {
     type: 'item',
-    itemId: item.id,
-    columnId,
-    swimlaneId,
+    itemSlug: item.slug,
+    columnSlug,
+    swimlaneSlug,
   };
 
   const {
@@ -50,7 +51,7 @@ export function ItemCard({
     transition,
     isDragging,
   } = useSortable({
-    id: item.id,
+    id: item.slug,
     data: dragData,
     disabled: isConflicted,
   });
@@ -61,7 +62,14 @@ export function ItemCard({
     opacity: isDragging ? 0.4 : 1,
   };
 
-  const priorityClass = PRIORITY_COLORS[item.priority] ?? 'bg-gray-100 text-gray-600';
+  // priority and tags are passthrough fields; access via index signature
+  const itemAsMap = item as Record<string, unknown>;
+  const priority = typeof itemAsMap['priority'] === 'string' ? itemAsMap['priority'] : undefined;
+  const tags = Array.isArray(itemAsMap['tags']) ? (itemAsMap['tags'] as string[]) : [];
+  const priorityClass =
+    priority !== undefined
+      ? (PRIORITY_COLORS[priority] ?? 'bg-gray-100 text-gray-600')
+      : 'bg-gray-100 text-gray-600';
 
   return (
     <div
@@ -72,8 +80,8 @@ export function ItemCard({
           ? 'border-amber-300 cursor-not-allowed opacity-70'
           : 'border-gray-200 cursor-grab active:cursor-grabbing'
       }`}
-      data-testid={`item-card-${item.id}`}
-      data-item-id={item.id}
+      data-testid={`item-card-${item.slug}`}
+      data-item-slug={item.slug}
       data-conflict={isConflicted ? 'true' : undefined}
       {...attributes}
       {...(isConflicted ? {} : listeners)}
@@ -81,52 +89,43 @@ export function ItemCard({
       <div className="flex items-start justify-between gap-1">
         <span
           className="text-sm font-medium text-gray-800 flex-1 min-w-0 truncate"
-          data-testid={`item-title-${item.id}`}
+          data-testid={`item-title-${item.slug}`}
         >
           {item.title}
         </span>
-        {isConflicted ? (
+        {isConflicted && (
           <span
             className="text-amber-500 flex-shrink-0 text-xs"
             title="This item is locked while a merge conflict is being resolved"
             aria-label="Conflict lock"
-            data-testid={`conflict-lock-${item.id}`}
+            data-testid={`conflict-lock-${item.slug}`}
           >
             🔒
           </span>
-        ) : (
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
-              onEdit();
-            }}
-            className="text-gray-300 hover:text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 text-xs px-1"
-            data-testid={`edit-item-${item.id}`}
-            aria-label={`Edit ${item.title}`}
-          >
-            ✏
-          </button>
         )}
       </div>
 
-      {item.body.trim() && (
+      {item.body !== undefined && item.body.trim() !== '' && (
         <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.body}</p>
       )}
 
-      <div className="flex flex-wrap gap-1 mt-1 items-center">
-        <span className={`text-xs rounded-full px-1.5 py-0.5 font-medium ${priorityClass}`}>
-          {item.priority}
-        </span>
-        {item.tags.slice(0, 3).map((tag) => (
-          <span
-            key={tag}
-            className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5"
-          >
-            {tag}
-          </span>
-        ))}
-      </div>
+      {(priority !== undefined || tags.length > 0) && (
+        <div className="flex flex-wrap gap-1 mt-1 items-center">
+          {priority !== undefined && (
+            <span className={`text-xs rounded-full px-1.5 py-0.5 font-medium ${priorityClass}`}>
+              {priority}
+            </span>
+          )}
+          {tags.slice(0, 3).map((tag) => (
+            <span
+              key={tag}
+              className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5"
+            >
+              {tag}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

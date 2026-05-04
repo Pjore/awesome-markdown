@@ -14,6 +14,7 @@
   "include": ["src", "vite.config.ts"],
   "references": [
     { "path": "../../packages/contracts" },
+    { "path": "../../packages/filter-engine" },
     { "path": "../../packages/provider-localstorage" },
     { "path": "../../packages/provider-http" }
   ]
