@@ -27,6 +27,7 @@ async function buildTestServer(
     commitAuthorName: 'test',
     commitAuthorEmail: 'test@local',
     testHooks,
+    setConflictPending: () => {},
   });
   await fastify.ready();
   return fastify;

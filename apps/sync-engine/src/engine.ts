@@ -257,6 +257,13 @@ export class Engine {
     return this.conflictSessionManager.toConflictState();
   }
 
+  /** M8: Set or clear the conflict-pending flag (used by inject test hook). */
+  setConflictPending(pending: boolean): void {
+    this.conflictPending = pending;
+    this.pullScheduler?.setConflictPending(pending);
+    this.pushScheduler?.setConflictPending(pending);
+  }
+
   /** M8: Expose remote config for conflict routes. */
   getRemoteConfig(): RemoteConfig | null {
     return this.remoteConfig;

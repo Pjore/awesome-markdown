@@ -98,6 +98,7 @@ async function buildTestServer(
     commitAuthorName: 'test',
     commitAuthorEmail: 'test@local',
     testHooks,
+    setConflictPending: () => {},
   });
   await fastify.ready();
   return fastify;
@@ -387,6 +388,7 @@ describe('conflict resolve endpoint', () => {
         commitAuthorName: 'test',
         commitAuthorEmail: 'test@local',
         testHooks: true,
+        setConflictPending: () => {},
       });
       await f.ready();
       return f;
