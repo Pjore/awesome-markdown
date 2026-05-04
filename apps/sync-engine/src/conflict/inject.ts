@@ -4,6 +4,7 @@ import { simpleGit } from 'simple-git';
 import type { InjectConflictRequest } from '@awesome-markdown/contracts';
 import type { ConflictSessionManager } from './session.js';
 import type { SseHub } from '../sse-hub.js';
+import { extractConflictContent } from './content-extractor.js';
 
 /**
  * Test-only: inject a deterministic merge conflict into the engine's working tree.
@@ -106,10 +107,13 @@ export async function injectConflict(params: {
     }
 
     // 6. Create session and emit event
+    // Use extractor to read git index stages 2/3 (populated by the merge above).
+    const content = await extractConflictContent({ repoRoot, paths: conflictedPaths });
     const session = sessionManager.create({
       repoRoot,
       branch: originalBranch,
       paths: conflictedPaths,
+      content,
     });
 
     hub.broadcast({

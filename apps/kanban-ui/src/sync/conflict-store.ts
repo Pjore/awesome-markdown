@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from 'react';
 import type { ConflictState, ResolveDecision } from '@awesome-markdown/contracts';
-import { fetchConflictState, submitDecisions, requestOpenExternal, getSyncEngineUrl } from './conflict-api.js';
+import { fetchConflictState, submitDecisions, getSyncEngineUrl } from './conflict-api.js';
 
 // ---------------------------------------------------------------------------
 // State
@@ -63,7 +63,6 @@ interface ConflictContextValue extends ConflictStoreState {
   isItemAffected: (itemId: string) => boolean;
   decisionFor: (filePath: string) => ResolveDecision | null;
   resolve: (decisions: Record<string, ResolveDecision>) => Promise<void>;
-  openExternal: (filePath: string) => Promise<void>;
   dismissError: () => void;
 }
 
@@ -190,20 +189,6 @@ export function ConflictProvider({ children }: ConflictProviderProps): React.Rea
     [state.activeConflict],
   );
 
-  const openExternal = useCallback(async (filePath: string) => {
-    try {
-      await requestOpenExternal(filePath);
-      // Refresh conflict state to reflect external decision
-      const updated = await fetchConflictState();
-      dispatch({ type: 'SET_CONFLICT', conflict: updated });
-    } catch (err) {
-      dispatch({
-        type: 'SET_ERROR',
-        message: err instanceof Error ? err.message : 'Failed to open file',
-      });
-    }
-  }, []);
-
   const dismissError = useCallback(() => {
     dispatch({ type: 'SET_ERROR', message: null });
   }, []);
@@ -214,7 +199,6 @@ export function ConflictProvider({ children }: ConflictProviderProps): React.Rea
     isItemAffected,
     decisionFor,
     resolve,
-    openExternal,
     dismissError,
   };
 

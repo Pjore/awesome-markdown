@@ -10,12 +10,20 @@ export type ResolveDecision = 'ours' | 'theirs' | 'external';
 /**
  * A single path involved in an active merge conflict, as exposed over HTTP.
  * `decision` is null while awaiting user input.
+ *
+ * Content fields carry the full ours/theirs text (UTF-8), capped at 16 KB.
+ * When a side exceeds the cap, the corresponding `*Truncated` flag is `true`
+ * and the content string is the first 16 KB bytes of the file.
  */
 export interface ConflictPathEntry {
   path: string;
   oursLabel: string;
   theirsLabel: string;
   decision: ResolveDecision | null;
+  oursContent: string;
+  theirsContent: string;
+  oursTruncated: boolean;
+  theirsTruncated: boolean;
 }
 
 /**

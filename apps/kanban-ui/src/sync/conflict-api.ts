@@ -2,7 +2,6 @@ import type {
   ConflictState,
   ResolveDecision,
   ResolveResponse,
-  OpenExternalResponse,
 } from '@awesome-markdown/contracts';
 
 /**
@@ -63,25 +62,4 @@ export async function submitDecisions(
     throw new Error(err.message ?? err.error ?? `HTTP ${resp.status}`);
   }
   return resp.json() as Promise<ResolveResponse>;
-}
-
-/**
- * Ask the sync-engine to open a conflicted file in the OS default editor.
- */
-export async function requestOpenExternal(filePath: string): Promise<OpenExternalResponse> {
-  const base = getSyncEngineUrl();
-  const resp = await fetch(`${base}/sync/conflict/open`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ path: filePath }),
-    signal: AbortSignal.timeout(5_000),
-  });
-  if (!resp.ok) {
-    const err = (await resp.json().catch(() => ({ message: resp.statusText }))) as {
-      message?: string;
-      error?: string;
-    };
-    throw new Error(err.message ?? err.error ?? `HTTP ${resp.status}`);
-  }
-  return resp.json() as Promise<OpenExternalResponse>;
 }

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { pullOnce } from './puller.js';
 import { pushOnce } from './pusher.js';
 import { detectConflict } from './conflict-detector.js';
+import { extractConflictContent } from './conflict/content-extractor.js';
 import { simpleGit } from 'simple-git';
 import type { TaskOutcome } from './retry-scheduler.js';
 import type { PullResult, PushResult } from './types.js';
@@ -258,10 +259,15 @@ export async function handleConflict(
 
   // M8: Create conflict session
   try {
+    const content = await extractConflictContent({
+      repoRoot: ctx.repoRoot,
+      paths: actualConflictedPaths,
+    });
     ctx.conflictSessionManager.create({
       repoRoot: ctx.repoRoot,
       branch,
       paths: actualConflictedPaths,
+      content,
     });
   } catch {
     // Session already exists — skip creation but still broadcast
