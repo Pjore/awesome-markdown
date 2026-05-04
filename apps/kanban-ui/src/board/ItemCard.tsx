@@ -11,6 +11,7 @@ interface ItemCardProps {
   item: Item;
   columnSlug: string;
   swimlaneSlug: string;
+  boardSlug: string;
 }
 
 /**
@@ -26,6 +27,7 @@ export function ItemCard({
   item,
   columnSlug,
   swimlaneSlug,
+  boardSlug,
 }: ItemCardProps): React.ReactElement {
   const navigate = useNavigate();
   const conflict = useOptionalConflict();
@@ -76,7 +78,7 @@ export function ItemCard({
     // Don't navigate if the user is dragging
     if (isDragging) return;
     e.stopPropagation();
-    navigate(`/items/${item.slug}`);
+    navigate(`/items/${item.slug}`, { state: { boardSlug, from: `/boards/${boardSlug}` } });
   };
 
   return (
