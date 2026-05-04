@@ -5,6 +5,7 @@ import { SettingsPanel } from './settings/SettingsPanel.js';
 import { useActiveProvider } from './providers/active-provider.js';
 import { BoardListPage } from './pages/BoardListPage.js';
 import { BoardPage } from './pages/BoardPage.js';
+import { ItemEditorPage } from './pages/ItemEditorPage.js';
 import { ConflictProvider } from './sync/conflict-store.js';
 import { ConflictBanner } from './components/ConflictBanner.js';
 
@@ -55,6 +56,7 @@ export function App(): React.ReactElement {
     <Routes>
       <Route path="/" element={<BoardListPage />} />
       <Route path="/boards/:slug" element={<BoardPage />} />
+      <Route path="/items/:slug" element={<ItemEditorPage />} />
       <Route
         path="*"
         element={
