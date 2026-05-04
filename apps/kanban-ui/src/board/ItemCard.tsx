@@ -11,28 +11,42 @@ interface ItemCardProps {
   swimlaneSlug: string;
 }
 
-const PRIORITY_COLORS: Record<string, string> = {
-  low: 'bg-gray-100 text-gray-600',
-  medium: 'bg-blue-100 text-blue-700',
-  high: 'bg-orange-100 text-orange-700',
-  urgent: 'bg-red-100 text-red-700',
-};
+/**
+ * Extracts the first non-empty, non-heading line from a markdown body,
+ * strips inline markdown syntax, and returns it for use as a summary.
+ * Caller handles truncation via CSS line-clamp.
+ */
+function extractSummary(body: string): string {
+  const lines = body.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed === '' || trimmed.startsWith('#')) continue;
+    // Strip inline markdown
+    let cleaned = trimmed;
+    // Remove images: ![alt](url)
+    cleaned = cleaned.replace(/!\[([^\]]*)\]\([^)]*\)/g, '');
+    // Convert links: [text](url) → text
+    cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
+    // Remove bold/italic markers
+    cleaned = cleaned.replace(/\*\*|__|\*|_|`/g, '');
+    return cleaned.trim();
+  }
+  return '';
+}
 
 /**
- * A draggable item card.
+ * A draggable item card with three-layer layout:
+ * 1. Title (Inter Tight 14px/500)
+ * 2. Summary (first prose line from body, 12.5px/400, muted)
+ * 3. Tags row (mono uppercase, dot-separated, muted)
  *
- * Item fields beyond `slug`, `title`, and `body` are passthrough properties
- * (e.g. `priority`, `tags`) — accessed via type-safe indexed access.
- *
- * When the item is part of an active merge conflict, drag is disabled
- * and a lock indicator is shown.
+ * When conflicted: drag disabled, dashed ink-muted border, 🔒 indicator.
  */
 export function ItemCard({
   item,
   columnSlug,
   swimlaneSlug,
 }: ItemCardProps): React.ReactElement {
-  // Gracefully degrade if not inside ConflictProvider (e.g. unit tests)
   const conflict = useOptionalConflict();
   const isConflicted = conflict?.isItemAffected(item.slug) ?? false;
 
@@ -60,42 +74,55 @@ export function ItemCard({
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.4 : 1,
+    padding: '10px 12px',
+    border: isConflicted
+      ? '1px dashed var(--ink-muted)'
+      : '1px solid var(--border)',
+    borderRadius: 0,
+    boxShadow: 'none',
+    background: 'transparent',
+    cursor: isConflicted ? 'not-allowed' : isDragging ? 'grabbing' : 'grab',
+    userSelect: 'none',
   };
 
-  // priority and tags are passthrough fields; access via index signature
   const itemAsMap = item as Record<string, unknown>;
-  const priority = typeof itemAsMap['priority'] === 'string' ? itemAsMap['priority'] : undefined;
   const tags = Array.isArray(itemAsMap['tags']) ? (itemAsMap['tags'] as string[]) : [];
-  const priorityClass =
-    priority !== undefined
-      ? (PRIORITY_COLORS[priority] ?? 'bg-gray-100 text-gray-600')
-      : 'bg-gray-100 text-gray-600';
+  const summary = item.body !== undefined && item.body.trim() !== ''
+    ? extractSummary(item.body)
+    : '';
 
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className={`bg-white border rounded shadow-sm p-2 select-none group ${
-        isConflicted
-          ? 'border-amber-300 cursor-not-allowed opacity-70'
-          : 'border-gray-200 cursor-grab active:cursor-grabbing'
-      }`}
       data-testid={`item-card-${item.slug}`}
       data-item-slug={item.slug}
       data-conflict={isConflicted ? 'true' : undefined}
       {...attributes}
       {...(isConflicted ? {} : listeners)}
     >
+      {/* Layer 1: Title */}
       <div className="flex items-start justify-between gap-1">
         <span
-          className="text-sm font-medium text-gray-800 flex-1 min-w-0 truncate"
+          style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '14px',
+            fontWeight: 500,
+            color: 'var(--ink)',
+            lineHeight: 1.3,
+            flex: 1,
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
           data-testid={`item-title-${item.slug}`}
         >
           {item.title}
         </span>
         {isConflicted && (
           <span
-            className="text-amber-500 flex-shrink-0 text-xs"
+            style={{ flexShrink: 0, fontSize: '12px' }}
             title="This item is locked while a merge conflict is being resolved"
             aria-label="Conflict lock"
             data-testid={`conflict-lock-${item.slug}`}
@@ -105,26 +132,41 @@ export function ItemCard({
         )}
       </div>
 
-      {item.body !== undefined && item.body.trim() !== '' && (
-        <p className="text-xs text-gray-400 mt-1 line-clamp-2">{item.body}</p>
+      {/* Layer 2: Summary */}
+      {summary !== '' && (
+        <p
+          style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '12.5px',
+            fontWeight: 400,
+            color: 'var(--ink-muted)',
+            lineHeight: 1.4,
+            marginTop: '4px',
+            overflow: 'hidden',
+            display: '-webkit-box',
+            WebkitLineClamp: 2,
+            WebkitBoxOrient: 'vertical',
+          }}
+        >
+          {summary}
+        </p>
       )}
 
-      {(priority !== undefined || tags.length > 0) && (
-        <div className="flex flex-wrap gap-1 mt-1 items-center">
-          {priority !== undefined && (
-            <span className={`text-xs rounded-full px-1.5 py-0.5 font-medium ${priorityClass}`}>
-              {priority}
-            </span>
-          )}
-          {tags.slice(0, 3).map((tag) => (
-            <span
-              key={tag}
-              className="text-xs bg-gray-100 text-gray-500 rounded-full px-1.5 py-0.5"
-            >
-              {tag}
-            </span>
-          ))}
-        </div>
+      {/* Layer 3: Tags */}
+      {tags.length > 0 && (
+        <p
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10.5px',
+            fontWeight: 400,
+            color: 'var(--ink-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            marginTop: '6px',
+          }}
+        >
+          {tags.join(' · ')}
+        </p>
       )}
     </div>
   );

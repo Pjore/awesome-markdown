@@ -140,12 +140,15 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
       data-board-slug={render.board.slug}
     >
       {/* Board title */}
-      <div className="px-4 py-3 border-b border-gray-200 bg-white">
-        <h1 className="text-lg font-bold text-gray-800" data-testid="board-title">
+      <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+        <h1
+          style={{ fontFamily: 'var(--font-sans)', fontSize: '1.125rem', fontWeight: 500, color: 'var(--ink)' }}
+          data-testid="board-title"
+        >
           {render.board.title}
         </h1>
         {render.board.description !== undefined && (
-          <p className="text-sm text-gray-500 mt-0.5">{render.board.description}</p>
+          <p style={{ fontSize: '0.875rem', color: 'var(--ink-muted)', marginTop: '2px' }}>{render.board.description}</p>
         )}
       </div>
 
@@ -177,12 +180,15 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
           onDragCancel={handleDragCancel}
         >
           {/* Column header row */}
-          <div className="flex sticky top-0 z-10 bg-white border-b border-gray-200">
+          <div className="flex sticky top-0 z-10" style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
             {/* Spacer aligned with swimlane label width */}
             <div className="w-28 flex-shrink-0" />
-            {render.axes.columns.map((col) => (
-              <ColumnHeader key={col.slug} column={col} />
-            ))}
+            {render.axes.columns.map((col) => {
+              const count = cells
+                .filter((c) => c.columnSlug === col.slug)
+                .reduce((sum, c) => sum + c.items.length, 0);
+              return <ColumnHeader key={col.slug} column={col} itemCount={count} />;
+            })}
           </div>
 
           {/* Swimlane rows */}
@@ -203,7 +209,7 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
           {/* Drag overlay — ghost card while dragging */}
           <DragOverlay>
             {activeItem !== null && (
-              <div className="bg-white border border-blue-300 rounded shadow-lg p-2 text-sm font-medium text-gray-800 rotate-2 opacity-90">
+              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: '10px 12px', fontSize: '14px', fontWeight: 500, color: 'var(--ink)', transform: 'rotate(2deg)', opacity: 0.9, fontFamily: 'var(--font-sans)' }}>
                 {activeItem.title}
               </div>
             )}

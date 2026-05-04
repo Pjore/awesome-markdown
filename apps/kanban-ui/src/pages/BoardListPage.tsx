@@ -11,6 +11,7 @@ export function BoardListPage(): React.ReactElement {
   const provider = useProvider();
   const [boards, setBoards] = useState<Board[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
+  const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -34,7 +35,6 @@ export function BoardListPage(): React.ReactElement {
       void load();
     });
 
-    // Also reload when the sync-engine reports a remote pull change
     const handleRemoteChange = (): void => { void load(); };
     window.addEventListener('sync-engine:change', handleRemoteChange);
 
@@ -48,7 +48,7 @@ export function BoardListPage(): React.ReactElement {
   if (status === 'loading') {
     return (
       <div className="flex items-center justify-center h-full" data-testid="board-list-loading">
-        <span className="text-gray-400 text-lg">Loading boards…</span>
+        <span style={{ color: 'var(--ink-muted)', fontSize: '1.125rem' }}>Loading boards…</span>
       </div>
     );
   }
@@ -56,7 +56,8 @@ export function BoardListPage(): React.ReactElement {
   if (status === 'error') {
     return (
       <div
-        className="flex items-center justify-center h-full text-red-500"
+        className="flex items-center justify-center h-full"
+        style={{ color: '#E53E3E' }}
         data-testid="board-list-error"
       >
         Failed to load boards. Please refresh.
@@ -66,12 +67,22 @@ export function BoardListPage(): React.ReactElement {
 
   return (
     <div className="p-8 max-w-2xl mx-auto" data-testid="board-list">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Your Boards</h2>
+      <h2
+        style={{
+          fontFamily: 'var(--font-sans)',
+          fontSize: '20px',
+          fontWeight: 500,
+          color: 'var(--ink)',
+          marginBottom: '24px',
+        }}
+      >
+        Your Boards
+      </h2>
 
       {boards.length === 0 ? (
         <div className="text-center py-16" data-testid="board-list-empty">
           <div className="text-5xl mb-4">📋</div>
-          <p className="text-gray-500">No boards yet. Create one via settings.</p>
+          <p style={{ color: 'var(--ink-muted)' }}>No boards yet. Create one via settings.</p>
         </div>
       ) : (
         <ul className="space-y-3" data-testid="board-list-items">
@@ -80,18 +91,54 @@ export function BoardListPage(): React.ReactElement {
               <Link
                 to={`/boards/${board.slug}`}
                 data-testid={`board-link-${board.slug}`}
-                className="flex flex-col gap-1 p-4 bg-white border border-gray-200 rounded-lg shadow-sm hover:shadow-md hover:border-blue-300 transition-all group"
+                onMouseEnter={() => setHoveredSlug(board.slug)}
+                onMouseLeave={() => setHoveredSlug(null)}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  gap: '4px',
+                  padding: '16px',
+                  background: 'transparent',
+                  border: hoveredSlug === board.slug
+                    ? '1px solid var(--accent)'
+                    : '1px solid var(--border)',
+                  borderRadius: 0,
+                  textDecoration: 'none',
+                  transition: 'border-color 0.15s',
+                }}
               >
                 <span
-                  className="text-lg font-semibold text-gray-800 group-hover:text-blue-600 transition-colors"
+                  style={{
+                    fontFamily: 'var(--font-sans)',
+                    fontSize: '16px',
+                    fontWeight: 500,
+                    color: 'var(--ink)',
+                  }}
                   data-testid={`board-title-${board.slug}`}
                 >
                   {board.title}
                 </span>
                 {board.description && (
-                  <span className="text-sm text-gray-500">{board.description}</span>
+                  <span
+                    style={{
+                      fontFamily: 'var(--font-sans)',
+                      fontSize: '13px',
+                      color: 'var(--ink-muted)',
+                    }}
+                  >
+                    {board.description}
+                  </span>
                 )}
-                <span className="text-xs text-gray-400 font-mono mt-1">/boards/{board.slug}</span>
+                <span
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '12px',
+                    color: 'var(--ink-muted)',
+                    marginTop: '4px',
+                  }}
+                >
+                  /boards/{board.slug}
+                </span>
               </Link>
             </li>
           ))}
@@ -100,3 +147,4 @@ export function BoardListPage(): React.ReactElement {
     </div>
   );
 }
+

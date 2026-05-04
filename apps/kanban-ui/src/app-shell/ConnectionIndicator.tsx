@@ -3,6 +3,14 @@ import { useProvider } from '../provider/ProviderContext.js';
 import { isHttpProvider } from '@awesome-markdown/provider-http';
 import type { ConnectionState } from '@awesome-markdown/provider-http';
 
+const STATE_COLORS: Record<ConnectionState, string> = {
+  idle: 'var(--ink-muted)',
+  connecting: 'var(--accent)',
+  online: '#4CAF50',
+  reconnecting: 'var(--accent)',
+  offline: '#E53E3E',
+};
+
 const STATE_LABELS: Record<ConnectionState, string> = {
   idle: 'Idle',
   connecting: 'Connecting',
@@ -11,22 +19,10 @@ const STATE_LABELS: Record<ConnectionState, string> = {
   offline: 'Offline',
 };
 
-const STATE_COLORS: Record<ConnectionState, string> = {
-  idle: 'bg-gray-400',
-  connecting: 'bg-yellow-400 animate-pulse',
-  online: 'bg-green-500',
-  reconnecting: 'bg-orange-400 animate-pulse',
-  offline: 'bg-red-500',
-};
-
 /**
- * Small connection-state pill displayed in the app chrome.
- *
- * - Shows a coloured dot and label reflecting the SSE connection state when
- *   the active provider is an HTTP provider.
- * - Renders "n/a" for the localStorage provider.
- * - Updates within 1 second of a state change via onConnectionStateChange().
- * - Includes an accessible aria-label.
+ * 6px connection-state circle displayed in the app chrome.
+ * No text label, no border, no bg pill.
+ * connecting/reconnecting: animated pulse using CSS animation.
  */
 export function ConnectionIndicator(): React.ReactElement {
   const provider = useProvider();
@@ -49,29 +45,39 @@ export function ConnectionIndicator(): React.ReactElement {
   if (!isHttp || state === null) {
     return (
       <span
-        className="text-xs text-gray-400 px-2 py-0.5"
+        style={{
+          display: 'inline-block',
+          width: '6px',
+          height: '6px',
+          borderRadius: '50%',
+          background: 'var(--ink-muted)',
+          flexShrink: 0,
+        }}
         aria-label="Connection: not applicable (localStorage provider)"
         data-testid="connection-indicator"
         data-connection-state="n/a"
-      >
-        n/a
-      </span>
+      />
     );
   }
 
-  const label = STATE_LABELS[state];
-  const dotClass = STATE_COLORS[state];
+  const isPulsing = state === 'connecting' || state === 'reconnecting';
 
   return (
     <span
-      className="inline-flex items-center gap-1.5 text-xs text-gray-600 px-2 py-0.5 rounded-full border border-gray-200 bg-gray-50"
-      aria-label={`Connection: ${label}`}
-      title={`SSE: ${label}`}
+      style={{
+        display: 'inline-block',
+        width: '6px',
+        height: '6px',
+        borderRadius: '50%',
+        background: STATE_COLORS[state],
+        flexShrink: 0,
+        animation: isPulsing ? 'pulse 1.5s ease-in-out infinite' : undefined,
+      }}
+      aria-label={`Connection: ${STATE_LABELS[state]}`}
+      title={`SSE: ${STATE_LABELS[state]}`}
       data-testid="connection-indicator"
       data-connection-state={state}
-    >
-      <span className={`w-2 h-2 rounded-full ${dotClass}`} aria-hidden="true" />
-      {label}
-    </span>
+    />
   );
 }
+
