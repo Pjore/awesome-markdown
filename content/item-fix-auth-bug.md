@@ -1,7 +1,7 @@
 ---
 entityType: item
 slug: item-fix-auth-bug
-title: Fix authentication bug in login flow
+title: Authentication bug in login flow
 boards:
   - board: board-dev
     order: V
