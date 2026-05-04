@@ -84,12 +84,18 @@ importers:
       '@awesome-markdown/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
+      '@awesome-markdown/filter-engine':
+        specifier: workspace:*
+        version: link:../../packages/filter-engine
       '@fastify/cors':
         specifier: ^11.2.0
         version: 11.2.0
       '@fastify/sensible':
         specifier: ^6.0.4
         version: 6.0.4
+      chokidar:
+        specifier: ^3.6.0
+        version: 3.6.0
       fastify:
         specifier: ^5.0.0
         version: 5.8.5
@@ -215,6 +221,9 @@ importers:
       '@awesome-markdown/contracts':
         specifier: workspace:*
         version: link:../contracts
+      '@awesome-markdown/filter-engine':
+        specifier: workspace:*
+        version: link:../filter-engine
       zod:
         specifier: ^4.0.0
         version: 4.3.6

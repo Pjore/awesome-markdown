@@ -85,12 +85,13 @@ export type {
 } from './dtos.js';
 
 // ---------------------------------------------------------------------------
-// Provider capability stubs (full interface defined in M3)
+// Provider interface and events
 // ---------------------------------------------------------------------------
 export type {
   ProviderCapabilities,
   ProviderEvent,
   ProviderEventHandler,
   Unsubscribe,
+  PersistenceProvider,
 } from './provider.js';
 

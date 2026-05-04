@@ -1,29 +1,24 @@
 import {
-  BoardsListResponseSchema,
-  BoardResponseSchema,
-  ItemsListResponseSchema,
-  ItemResponseSchema,
-  ColumnsListResponseSchema,
-  ColumnResponseSchema,
-  SwimlanesListResponseSchema,
-  SwimlaneResponseSchema,
+  BoardSchema,
+  AxisSchema,
+  BoardRenderSchema,
+  HomelessSchema,
+  ItemSchema,
   DeleteResponseSchema,
   ErrorResponseSchema,
+  CreateItemRequestSchema,
+  PatchItemRequestSchema,
 } from '@awesome-markdown/contracts';
 import type {
   Board,
+  Axis,
+  BoardRender,
+  Homeless,
   Item,
-  Column,
-  Swimlane,
-  CreateBoardInput,
-  UpdateBoardInput,
-  CreateItemInput,
-  UpdateItemInput,
-  CreateColumnInput,
-  UpdateColumnInput,
-  CreateSwimlaneInput,
-  UpdateSwimlaneInput,
+  CreateItemRequest,
+  PatchItemRequest,
 } from '@awesome-markdown/contracts';
+import { z } from 'zod';
 import { endpoints } from './endpoints.js';
 
 // ---------------------------------------------------------------------------
@@ -109,20 +104,19 @@ export class SidecarHttpClient {
   // -- Boards ----------------------------------------------------------------
 
   async listBoards(signal?: AbortSignal): Promise<Board[]> {
-    const r = await this.req(
+    return this.req(
       endpoints.boards(this.base),
       { method: 'GET', signal },
-      (d) => BoardsListResponseSchema.parse(d),
+      (d) => z.array(BoardSchema).parse(d),
     );
-    return r.boards;
   }
 
-  async getBoard(boardId: string, signal?: AbortSignal): Promise<Board | null> {
+  async getBoard(slug: string, signal?: AbortSignal): Promise<Board | null> {
     try {
       return await this.req(
-        endpoints.board(this.base, boardId),
+        `${endpoints.boards(this.base)}/${slug}`,
         { method: 'GET', signal },
-        (d) => BoardResponseSchema.parse(d),
+        (d) => BoardSchema.parse(d),
       );
     } catch (err) {
       if (err instanceof ProviderHttpError && err.status === 404) return null;
@@ -130,47 +124,55 @@ export class SidecarHttpClient {
     }
   }
 
-  async createBoard(data: CreateBoardInput, signal?: AbortSignal): Promise<Board> {
+  // -- Axes ------------------------------------------------------------------
+
+  async listAxes(signal?: AbortSignal): Promise<Axis[]> {
     return this.req(
-      endpoints.boards(this.base),
-      { method: 'POST', body: JSON.stringify(data), signal },
-      (d) => BoardResponseSchema.parse(d),
+      endpoints.axes(this.base),
+      { method: 'GET', signal },
+      (d) => z.array(AxisSchema).parse(d),
     );
   }
 
-  async updateBoard(id: string, data: UpdateBoardInput, signal?: AbortSignal): Promise<Board> {
+  async getAxis(slug: string, signal?: AbortSignal): Promise<Axis | null> {
+    try {
+      return await this.req(
+        `${endpoints.axes(this.base)}/${slug}`,
+        { method: 'GET', signal },
+        (d) => AxisSchema.parse(d),
+      );
+    } catch (err) {
+      if (err instanceof ProviderHttpError && err.status === 404) return null;
+      throw err;
+    }
+  }
+
+  // -- Render / Homeless -----------------------------------------------------
+
+  async getBoardRender(slug: string, signal?: AbortSignal): Promise<BoardRender> {
     return this.req(
-      endpoints.board(this.base, id),
-      { method: 'PUT', body: JSON.stringify(data), signal },
-      (d) => BoardResponseSchema.parse(d),
+      endpoints.boardRender(this.base, slug),
+      { method: 'GET', signal },
+      (d) => BoardRenderSchema.parse(d),
     );
   }
 
-  async deleteBoard(id: string, signal?: AbortSignal): Promise<void> {
-    await this.req(
-      endpoints.board(this.base, id),
-      { method: 'DELETE', signal },
-      (d) => DeleteResponseSchema.parse(d),
+  async getHomeless(boardSlug: string, signal?: AbortSignal): Promise<Homeless> {
+    return this.req(
+      endpoints.boardHomeless(this.base, boardSlug),
+      { method: 'GET', signal },
+      (d) => HomelessSchema.parse(d),
     );
   }
 
   // -- Items -----------------------------------------------------------------
 
-  async listItems(boardId: string, signal?: AbortSignal): Promise<Item[]> {
-    const r = await this.req(
-      endpoints.items(this.base, boardId),
-      { method: 'GET', signal },
-      (d) => ItemsListResponseSchema.parse(d),
-    );
-    return r.items;
-  }
-
-  async getItem(boardId: string, itemId: string, signal?: AbortSignal): Promise<Item | null> {
+  async getItem(slug: string, signal?: AbortSignal): Promise<Item | null> {
     try {
       return await this.req(
-        endpoints.item(this.base, boardId, itemId),
+        endpoints.item(this.base, slug),
         { method: 'GET', signal },
-        (d) => ItemResponseSchema.parse(d),
+        (d) => ItemSchema.parse(d),
       );
     } catch (err) {
       if (err instanceof ProviderHttpError && err.status === 404) return null;
@@ -178,138 +180,28 @@ export class SidecarHttpClient {
     }
   }
 
-  async createItem(data: CreateItemInput, signal?: AbortSignal): Promise<Item> {
+  async createItem(req: CreateItemRequest, signal?: AbortSignal): Promise<Item> {
     return this.req(
-      endpoints.items(this.base, data.boardId),
-      { method: 'POST', body: JSON.stringify(data), signal },
-      (d) => ItemResponseSchema.parse(d),
+      endpoints.items(this.base),
+      { method: 'POST', body: JSON.stringify(CreateItemRequestSchema.parse(req)), signal },
+      (d) => ItemSchema.parse(d),
     );
   }
 
-  async updateItem(
-    boardId: string,
-    itemId: string,
-    data: UpdateItemInput,
-    signal?: AbortSignal,
-  ): Promise<Item> {
+  async patchItem(slug: string, req: PatchItemRequest, signal?: AbortSignal): Promise<Item> {
     return this.req(
-      endpoints.item(this.base, boardId, itemId),
-      { method: 'PUT', body: JSON.stringify(data), signal },
-      (d) => ItemResponseSchema.parse(d),
+      endpoints.item(this.base, slug),
+      { method: 'PATCH', body: JSON.stringify(PatchItemRequestSchema.parse(req)), signal },
+      (d) => ItemSchema.parse(d),
     );
   }
 
-  async deleteItem(boardId: string, itemId: string, signal?: AbortSignal): Promise<void> {
+  async deleteItem(slug: string, signal?: AbortSignal): Promise<void> {
     await this.req(
-      endpoints.item(this.base, boardId, itemId),
-      { method: 'DELETE', signal },
-      (d) => DeleteResponseSchema.parse(d),
-    );
-  }
-
-  // -- Columns ---------------------------------------------------------------
-
-  async listColumns(boardId: string, signal?: AbortSignal): Promise<Column[]> {
-    const r = await this.req(
-      endpoints.columns(this.base, boardId),
-      { method: 'GET', signal },
-      (d) => ColumnsListResponseSchema.parse(d),
-    );
-    return r.columns;
-  }
-
-  async getColumn(boardId: string, colId: string, signal?: AbortSignal): Promise<Column | null> {
-    try {
-      return await this.req(
-        endpoints.column(this.base, boardId, colId),
-        { method: 'GET', signal },
-        (d) => ColumnResponseSchema.parse(d),
-      );
-    } catch (err) {
-      if (err instanceof ProviderHttpError && err.status === 404) return null;
-      throw err;
-    }
-  }
-
-  async createColumn(data: CreateColumnInput, signal?: AbortSignal): Promise<Column> {
-    return this.req(
-      endpoints.columns(this.base, data.boardId),
-      { method: 'POST', body: JSON.stringify(data), signal },
-      (d) => ColumnResponseSchema.parse(d),
-    );
-  }
-
-  async updateColumn(
-    boardId: string,
-    colId: string,
-    data: UpdateColumnInput,
-    signal?: AbortSignal,
-  ): Promise<Column> {
-    return this.req(
-      endpoints.column(this.base, boardId, colId),
-      { method: 'PUT', body: JSON.stringify(data), signal },
-      (d) => ColumnResponseSchema.parse(d),
-    );
-  }
-
-  async deleteColumn(boardId: string, colId: string, signal?: AbortSignal): Promise<void> {
-    await this.req(
-      endpoints.column(this.base, boardId, colId),
-      { method: 'DELETE', signal },
-      (d) => DeleteResponseSchema.parse(d),
-    );
-  }
-
-  // -- Swimlanes -------------------------------------------------------------
-
-  async listSwimlanes(boardId: string, signal?: AbortSignal): Promise<Swimlane[]> {
-    const r = await this.req(
-      endpoints.swimlanes(this.base, boardId),
-      { method: 'GET', signal },
-      (d) => SwimlanesListResponseSchema.parse(d),
-    );
-    return r.swimlanes;
-  }
-
-  async getSwimlane(boardId: string, slId: string, signal?: AbortSignal): Promise<Swimlane | null> {
-    try {
-      return await this.req(
-        endpoints.swimlane(this.base, boardId, slId),
-        { method: 'GET', signal },
-        (d) => SwimlaneResponseSchema.parse(d),
-      );
-    } catch (err) {
-      if (err instanceof ProviderHttpError && err.status === 404) return null;
-      throw err;
-    }
-  }
-
-  async createSwimlane(data: CreateSwimlaneInput, signal?: AbortSignal): Promise<Swimlane> {
-    return this.req(
-      endpoints.swimlanes(this.base, data.boardId),
-      { method: 'POST', body: JSON.stringify(data), signal },
-      (d) => SwimlaneResponseSchema.parse(d),
-    );
-  }
-
-  async updateSwimlane(
-    boardId: string,
-    slId: string,
-    data: UpdateSwimlaneInput,
-    signal?: AbortSignal,
-  ): Promise<Swimlane> {
-    return this.req(
-      endpoints.swimlane(this.base, boardId, slId),
-      { method: 'PUT', body: JSON.stringify(data), signal },
-      (d) => SwimlaneResponseSchema.parse(d),
-    );
-  }
-
-  async deleteSwimlane(boardId: string, slId: string, signal?: AbortSignal): Promise<void> {
-    await this.req(
-      endpoints.swimlane(this.base, boardId, slId),
+      endpoints.item(this.base, slug),
       { method: 'DELETE', signal },
       (d) => DeleteResponseSchema.parse(d),
     );
   }
 }
+

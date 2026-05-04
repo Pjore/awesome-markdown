@@ -19,6 +19,7 @@
   },
   "dependencies": {
     "@awesome-markdown/contracts": "workspace:*",
+    "@awesome-markdown/filter-engine": "workspace:*",
     "zod": "^4.0.0"
   },
   "devDependencies": {
