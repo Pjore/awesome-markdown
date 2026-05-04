@@ -2,6 +2,20 @@
 
 Recorded after grilling session, May 2026. Ready for implementation.
 
+## Overview
+
+The current UI is a generic Tailwind dashboard: system sans, indigo links, white rounded cards with drop-shadows, a bulky header. It communicates nothing specific about the product.
+
+The redesign replaces it with a **typography-led minimalist system** whose every detail is grounded in what the app actually is: a git-backed, markdown-file-driven kanban. The visual language is built around two ideas:
+
+1. **The file system has a voice.** Everything the system speaks in — board names, slugs, breadcrumb paths, column headers, tag labels, status indicators — is rendered in monospace (JetBrains Mono). Slugs are filenames; paths are real; the browser URL and the board breadcrumb say the same thing. Typography makes the domain model legible without documentation.
+
+2. **Radical restraint.** No shadows. No rounded corners. No colored badges. One chromatic accent (highlighter yellow `#FFE94A`) used exactly once per interaction state — the focus ring, the active tab, the drop target. Cards are hairline-bordered tiles on a paper-white ground. Everything that doesn't need to be there is removed.
+
+The result should feel like an IDE crossed with a Swiss archive index: precise, fast, calm, and instantly recognizable as a tool for people who think in files and commits.
+
+**Scope of change:** all visual styling in `apps/kanban-ui/` — CSS variables, typography, card layout, column headers, top bar, drag-and-drop feedback, item editor route. No changes to data contracts, API, or filter-engine logic.
+
 ---
 
 ## Q1 · Aesthetic direction
