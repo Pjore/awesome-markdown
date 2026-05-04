@@ -156,11 +156,12 @@ function sortItems(items: Item[], order: AxisOrder | undefined, ctx: Ctx): Item[
 function isCellReadOnly(boardFilter: FilterRule | undefined, col: Axis, lane: Axis): boolean {
   if (!Array.isArray(col.writeOnDrop) && col.writeOnDrop?.readonly) return true;
   if (!Array.isArray(lane.writeOnDrop) && lane.writeOnDrop?.readonly) return true;
-  if (Array.isArray(col.writeOnDrop) || Array.isArray(lane.writeOnDrop)) return false;
+  // Dimensions with explicit writeOnDrop arrays don't require filter invertibility.
+  // Only include filters for dimensions that still rely on inversion.
   const filters: FilterRule[] = [];
   if (boardFilter) filters.push(boardFilter);
-  if (col.filter) filters.push(col.filter);
-  if (lane.filter) filters.push(lane.filter);
+  if (!Array.isArray(col.writeOnDrop) && col.filter) filters.push(col.filter);
+  if (!Array.isArray(lane.writeOnDrop) && lane.filter) filters.push(lane.filter);
   if (filters.length === 0) return false;
   const combined: FilterRule = filters.length === 1 ? filters[0]! : { all: filters };
   return !analyzeInvertibility(combined).invertible;
