@@ -2,19 +2,22 @@
 
 ## Purpose
 
-Lightweight, git-backed kanban system. Pluggable persistence providers
-(localStorage in-browser, local-fs markdown sidecar), independent sync-engine
-for git + external-change notifications, and a React drag-and-drop kanban UI.
+Lightweight, git-backed kanban system. Flat pool of markdown items projected through query-based boards. Pluggable providers, isomorphic filter engine, independent sync-engine.
+
+## Domain Model
+
+All domain objects live as `.md` files in `content/` with `entityType: item | board | axis`. Boards project the item pool through filter rules — boards don't own items. Drop mutations are derived from the combined cell filter (board ∧ column ∧ swimlane); non-invertible filters (e.g., `or`/`any`) produce read-only cells. One drop = one file write. Items in a board's `boards[]` that match no column appear in the `/homeless` view.
 
 ## Architecture
 
 Monorepo with pnpm workspaces:
 
 - `packages/contracts` — Zod v4 schemas + inferred TypeScript types (shared)
+- `packages/filter-engine` — Isomorphic filter evaluate, invertibility analysis, mutation derivation
 - `packages/provider-localstorage` — In-browser localStorage provider
 - `apps/kanban-ui` — React 19 + Vite 8 + Tailwind v4 SPA with @dnd-kit
-- `apps/provider-fs` — Fastify v5 sidecar (markdown files + YAML frontmatter)
-- `apps/sync-engine` — File watcher, git auto-commit, SSE event emitter; webhook-triggered pull (primary) + 10 min fallback polling
+- `apps/provider-fs` — Fastify v5 sidecar (flat content pool via REST, port 7701)
+- `apps/sync-engine` — File watcher, git auto-commit, SSE; webhook pull (primary) + 10 min polling (port 7402)
 
 ## Tech Stack
 
@@ -22,105 +25,59 @@ Monorepo with pnpm workspaces:
 |-------|------|
 | UI | React 19, Vite 8, Tailwind v4, @dnd-kit |
 | API/sidecar | Fastify v5 + `fastify-type-provider-zod` |
+| Filter engine | `packages/filter-engine` (isomorphic, no Node globals) |
 | Validation | Zod v4 — `import { z } from "zod"` |
-| Git | simple-git + GitHub App installation tokens (`@octokit/auth-app`) |
-| File watching | chokidar |
-| Markdown | gray-matter |
+| Git | simple-git + GitHub App tokens (`@octokit/auth-app`) |
+| Markdown | gray-matter + chokidar |
 | Live channel | Native SSE (no WebSocket) |
-| Monorepo | pnpm workspaces |
+
+## provider-fs Endpoints
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/boards` | List boards |
+| GET | `/axes` | List axes |
+| GET | `/boards/:slug/render` | Cells with items + invertibility flags |
+| GET | `/boards/:slug/homeless` | Items matching no column cell |
+| GET | `/items/:slug` | Fetch item |
+| POST | `/items` | Create item (slug auto-generated) |
+| PATCH | `/items/:slug` | Update item fields (one file write) |
+| DELETE | `/items/:slug` | Delete item |
 
 ## Key Conventions
 
-- **Routes**: Always `FastifyPluginAsyncZod` — Zod schemas auto-type request properties
-- **Validation**: Zod v4 throughout; import from `"zod"` only
-- **Imports**: `.js` extension in all local API/sync-engine imports (ESM)
+- **Routes**: `FastifyPluginAsyncZod` — Zod schemas auto-type request properties
+- **Validation**: Zod v4; import from `"zod"` only
+- **Imports**: `.js` extension in all local ESM imports
 - **Shared types**: Import from `@awesome-markdown/contracts`
 - **Content dir**: `./content` relative to repo root
-- **Git auth**: GitHub App installation tokens via `@octokit/auth-app`; required vars: `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY` or `GITHUB_APP_PRIVATE_KEY_PATH`; App needs `Contents: read/write`
-- **No `any`** in `packages/contracts`; all cross-package calls typed via exports
-
-## Ports (defaults)
-
-| Service | Port |
-|---------|------|
-| kanban-ui dev server | 5173 |
-| provider-fs sidecar | 7701 |
-| sync-engine | 7402 |
+- **Git auth**: `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY` (or `_PATH`); App needs `Contents: read/write`
 
 ## Dev Commands
 
 ```bash
-# Install (requires Node.js 22+)
-pnpm install
-
-# Quality gates (run before every commit)
-pnpm typecheck && pnpm lint
-
-# Start all services (canonical — uses PM2, survives terminal close)
+pnpm install && pnpm typecheck && pnpm lint
 ./scripts/services start
-
-# Service management
-./scripts/services status          # show name/PID/uptime/restarts/port/owner
-./scripts/services logs <name>     # stream logs (ui | fs | sync)
-./scripts/services stop            # stop and delete all services
-./scripts/services switch <path>   # move services to another worktree
-
-# Underlying per-service commands (used by the wrapper internally)
-# pnpm --filter kanban-ui dev
-# pnpm --filter provider-fs dev
-# SYNC_ENGINE_REPO_ROOT=$(pwd) pnpm --filter sync-engine dev
-
-# Tests
-pnpm test                          # all Vitest suites
-pnpm verify:ui                     # aggregate agent-browser UI smoke suite
-pnpm --filter kanban-ui verify:m3  # per-milestone agent-browser
+./scripts/services status | logs <ui|fs|sync> | stop
+pnpm test && pnpm verify:ui
 ```
 
-## Environment / .env Files
+## Environment
 
-Each app ships a `.env.example` — copy to `.env` and fill in values.
-`.env` is gitignored; `.env.example` is committed.
+Each app ships `.env.example` — copy to `.env`. Key vars:
+- `apps/sync-engine`: `SYNC_ENGINE_REPO_ROOT` (required), `SYNC_ENGINE_TARGET_BRANCH`, GitHub App vars, `GITHUB_APP_WEBHOOK_SECRET`
+- `apps/provider-fs`: `PROVIDER_FS_PORT`, `PROVIDER_FS_CONTENT_ROOT`
+- `apps/kanban-ui`: `VITE_PROVIDER_FS_URL`
 
-| App | Env file | Key variables |
-|-----|----------|---------------|
-| `apps/provider-fs` | `apps/provider-fs/.env` | `PROVIDER_FS_PORT`, `PROVIDER_FS_HOST`, `PROVIDER_FS_CONTENT_ROOT` |
-| `apps/sync-engine` | `apps/sync-engine/.env` | `SYNC_ENGINE_REPO_ROOT` (required), `SYNC_ENGINE_TARGET_BRANCH`, `GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY`/`GITHUB_APP_PRIVATE_KEY_PATH`, `GITHUB_APP_WEBHOOK_SECRET` (webhook primary trigger; polling is fallback at 10 min default) |
-| `apps/kanban-ui` | `apps/kanban-ui/.env` | `VITE_PROVIDER_FS_URL` (pre-fills Settings panel URL) |
+## Sync-engine
 
-`provider-fs` and `sync-engine` use Node 22 `--env-file-if-present` — the `.env`
-file is loaded by the `dev` script automatically. Vite loads `.env` natively.
+**Feature branch:** Set `SYNC_ENGINE_TARGET_BRANCH=<branch>` in `.env`, or check out the branch before starting the engine.
 
-## Sync-engine: Feature Branch Workflow
+**Coder webhook URL:** `https://7402--<agent>--<workspace>--<owner>.coder.<domain>/webhooks/github` (double-dash separators). Verify: `curl -X POST http://localhost:7402/webhooks/github` → `{"ok":false,"reason":"signature"}` (not 404).
 
-The sync-engine syncs against the **current local branch** by default
-(`git branch --show-current`). When working on a feature branch, ensure:
+**Port sharing:** Port 7402 must be set to **Public** in the Coder workspace "Shared Ports" panel. GitHub webhooks cannot pass Coder's proxy auth challenge — "Authenticated" sharing causes all deliveries to return 401 before they reach the sync-engine.
 
-1. `apps/sync-engine/.env` contains `SYNC_ENGINE_TARGET_BRANCH=<your-branch>`, **or**
-2. The env var matches whatever branch is checked out (`git branch --show-current`).
-
-If `SYNC_ENGINE_TARGET_BRANCH` is unset, the engine reads the current branch
-at startup — so checking out the feature branch before starting the engine is
-sufficient for most workflows.
-
-## Sync-engine: Coder Webhook URL
-
-The sync-engine binds to `127.0.0.1:7402`. Coder exposes it publicly via a
-subdomain proxy. The URL format uses **double-dash (`--`) separators**:
-
-```
-https://7402--<agent>--<workspace>--<owner>.coder.<domain>/webhooks/github
-```
-
-Example: `https://7402--main--awesome-markdown--pjore.coder.pjore.com/webhooks/github`
-
-> **Critical:** A single dash prefix (e.g. `7402s--` or `7402-`) creates a
-> different hostname that doesn't resolve — GitHub will receive 502 for every
-> delivery. Always verify the URL resolves before configuring the GitHub App:
-> `curl https://<url>/health` should return `{"ok":true}`.
-
-The webhook route is only mounted when `GITHUB_APP_WEBHOOK_SECRET` is set in
-`.env`. Confirm it is mounted: `curl -X POST http://localhost:7402/webhooks/github`
-should return `{"ok":false,"reason":"signature"}`, not a 404.
+**Puller dirty-check:** If `content/` has any unstaged changes (including deletions), `pullOnce` silently returns `up-to-date` and defers the pull. Webhook-triggered pulls are dropped without error. Run `git status` and commit or stash any pending changes if pulls aren't landing.
 
 ## File Constraints
 
@@ -132,7 +89,6 @@ should return `{"ok":false,"reason":"signature"}`, not a 404.
 ## Security
 
 - **Never commit `GITHUB_APP_PRIVATE_KEY` or any token** — load from `.env` (gitignored)
-- Use `.env.example` as template; document required vars there
 - Mask credentials when confirming: `${VAR:0:8}...`
 
 ## Workflow
@@ -142,23 +98,6 @@ should return `{"ok":false,"reason":"signature"}`, not a 404.
 - Load `branch-and-pr` skill before starting any feature work
 - Load `commit-work` skill before making commits
 
-## Browser Tooling — Prefer `agent-browser`
+## Browser Tooling
 
-For any frontend work against `kanban-ui`, **default to `agent-browser`**
-over the built-in browser tool (`open_browser_page`, `read_page`,
-`screenshot_page`, `click_element`). Load the `agent-browser` skill;
-project-specific notes (seeding, testids, DnD, noise filtering) live in
-`.github/skills/agent-browser/references/awesome-markdown-notes.md`.
-
-`agent-browser` is required for: annotated screenshots, DnD/animation
-debugging, full console logs, HAR network capture, request mocking,
-arbitrary JS scraping via `eval`, video recording, and visual/structural
-regression diffs. The repo's `pnpm verify:ui` suite uses it.
-
-The built-in browser tool is acceptable for: quick "does the URL load?"
-sanity checks during chat, inline JPEG screenshots when the user wants to
-see a result without a `view_image` follow-up, and trivial text scrapes.
-Its default viewport is narrow (~700 px) and truncates the kanban board —
-do not use it for layout debugging.
-
-Full comparison: [docs/agent-browser-vs-browser-tool.md](../docs/agent-browser-vs-browser-tool.md).
+Default to `agent-browser` for all frontend work. Load the `agent-browser` skill; notes in `.github/skills/agent-browser/references/awesome-markdown-notes.md`. Its narrow viewport truncates the kanban board — avoid for layout debugging.

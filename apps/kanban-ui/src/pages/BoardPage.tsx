@@ -1,37 +1,17 @@
-import React, { useCallback, useState } from 'react';
+import React from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { Board } from '../board/Board.js';
-import { useBoardBySlug } from '../state/useBoardBySlug.js';
-import { useProvider } from '../provider/ProviderContext.js';
+import { useBoardRender } from '../state/useBoardRender.js';
 
 /**
  * Board page — rendered at route `/boards/:slug`.
- * Loads the board matching the slug param and renders the full kanban board.
+ * Loads the board's render envelope and renders the full kanban board.
  */
 export function BoardPage(): React.ReactElement {
   const { slug = '' } = useParams<{ slug: string }>();
-  const { status, board, boardId, columns, swimlanes, items } = useBoardBySlug(slug);
-  const provider = useProvider();
-  const [creating, setCreating] = useState(false);
+  const { status, render, homeless, refetch } = useBoardRender(slug);
 
-  const handleCreateDefault = useCallback(async (): Promise<void> => {
-    setCreating(true);
-    try {
-      const newBoard = await provider.createBoard({
-        slug,
-        title: slug.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()),
-        description: '',
-      });
-      await provider.createColumn({ boardId: newBoard.id, title: 'To Do', order: 0 });
-      await provider.createColumn({ boardId: newBoard.id, title: 'In Progress', order: 1 });
-      await provider.createColumn({ boardId: newBoard.id, title: 'Done', order: 2 });
-      await provider.createSwimlane({ boardId: newBoard.id, title: 'Default', order: 0 });
-    } finally {
-      setCreating(false);
-    }
-  }, [provider, slug]);
-
-  if (status === 'loading') {
+  if (status === 'loading' || (status !== 'error' && render === null)) {
     return (
       <div className="flex items-center justify-center h-full" data-testid="loading">
         <span className="text-gray-400 text-lg">Loading…</span>
@@ -39,18 +19,7 @@ export function BoardPage(): React.ReactElement {
     );
   }
 
-  if (status === 'error') {
-    return (
-      <div
-        className="flex items-center justify-center h-full text-red-500"
-        data-testid="error-state"
-      >
-        Failed to load board. Please refresh.
-      </div>
-    );
-  }
-
-  if (status === 'empty' || board === null || boardId === null) {
+  if (status === 'error' || render === null) {
     return (
       <div
         className="flex flex-col items-center justify-center h-full text-center p-8"
@@ -61,26 +30,15 @@ export function BoardPage(): React.ReactElement {
           Board &quot;{slug}&quot; not found
         </h2>
         <p className="text-gray-500 mb-6 max-w-sm">
-          No board with this slug exists in the current provider.
+          No board with this slug exists in the current provider, or it failed to load.
         </p>
-        <div className="flex gap-3">
-          <Link
-            to="/"
-            className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
-            data-testid="back-to-list"
-          >
-            ← All Boards
-          </Link>
-          <button
-            type="button"
-            onClick={() => void handleCreateDefault()}
-            disabled={creating}
-            className="px-5 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 disabled:opacity-50 transition-colors"
-            data-testid="create-board-btn"
-          >
-            {creating ? 'Creating…' : 'Create This Board'}
-          </button>
-        </div>
+        <Link
+          to="/"
+          className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 transition-colors"
+          data-testid="back-to-list"
+        >
+          ← All Boards
+        </Link>
       </div>
     );
   }
@@ -97,17 +55,11 @@ export function BoardPage(): React.ReactElement {
           ← All Boards
         </Link>
         <span className="text-sm text-gray-400">/</span>
-        <span className="text-sm text-gray-600 font-medium">{board.title}</span>
+        <span className="text-sm text-gray-600 font-medium">{render.board.title}</span>
       </div>
 
       <div className="flex-1 overflow-hidden">
-        <Board
-          board={board}
-          boardId={boardId}
-          columns={columns}
-          swimlanes={swimlanes}
-          items={items}
-        />
+        <Board render={render} homeless={homeless} onRefetch={refetch} />
       </div>
     </div>
   );

@@ -12,7 +12,20 @@ Project-specific findings for using `agent-browser` against this repo's UI.
 | provider-fs sidecar | `http://localhost:7701` (or `PROVIDER_FS_PORT`) |
 | sync-engine | `http://localhost:7402` |
 
-## Seeding Boards — Critical
+## Provider mode
+
+The UI can use either the provider-fs sidecar or localStorage. With
+provider-fs running on port 7701, open without any `?seed` parameter and
+navigate directly to `/boards/<slug>` — boards come from `content/`.
+
+```bash
+agent-browser open "http://localhost:5173/boards/board-all"
+agent-browser wait --load networkidle
+```
+
+With localStorage mode, seed first (see below).
+
+## Seeding Boards — Critical (localStorage mode only)
 
 The `?seed=m{N}` query parameters only run on the **home page** and write
 into `localStorage["awesome-markdown:v1"]`. **Do not** open

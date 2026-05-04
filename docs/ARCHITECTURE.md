@@ -20,18 +20,32 @@
 └───────────────────────┘      └──────────────────────────────────┘
             │
             ▼
-   content/boards/{id}/
-     board.yaml
-     columns.yaml
-     swimlanes.yaml
-     items/{itemId}.md
+   content/
+     {slug}.md   (entityType: item | board | axis)
 ```
 
 **packages/contracts** is consumed by every component. It is never a runtime service.
 
+**packages/filter-engine** is an isomorphic package (no Node.js globals) consumed by both kanban-ui (drop mutation preview) and provider-fs (invertibility guard on write). It exposes three operations: `evaluate(filter, item)` → boolean, `isInvertible(filter)` → boolean, and `deriveMutations(cellFilter)` → field patch.
+
 **packages/provider-localstorage** runs entirely in-browser — no server needed for the zero-setup path.
 
 **packages/provider-http** is the fetch-based client that wraps the provider-fs REST API, loaded in kanban-ui when the user selects the FS provider.
+
+---
+
+## provider-fs Endpoint Reference
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | `/boards` | List all board slugs + titles |
+| GET | `/axes` | List all axis slugs + titles |
+| GET | `/boards/:slug/render` | Rendered board: cells with items, invertibility flags |
+| GET | `/boards/:slug/homeless` | Items in `boards[]` that match no column cell |
+| GET | `/items/:slug` | Fetch single item |
+| POST | `/items` | Create item (slug auto-generated, deduped with suffix) |
+| PATCH | `/items/:slug` | Update item fields (one file write per call) |
+| DELETE | `/items/:slug` | Delete item file |
 
 ---
 
@@ -40,7 +54,7 @@
 1. User drags a card → `@dnd-kit` fires `onDragEnd`
 2. `BoardPage` calls `provider.updateItem(id, patch)`
 3. If localStorage provider: in-memory update + `subscribe` callback fires → re-render.
-4. If HTTP provider: `PATCH /boards/:bid/items/:id` → provider-fs writes `{itemId}.md`
+4. If HTTP provider: `PATCH /items/:slug` → provider-fs writes `{slug}.md`
 5. chokidar in sync-engine detects the write → debounce window expires → `simple-git add/commit`
 6. sync-engine emits `change` SSE event → kanban-ui `SyncStore` receives it
 7. `SyncStore` dispatches re-fetch of the affected entity → board re-renders

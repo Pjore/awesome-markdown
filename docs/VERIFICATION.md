@@ -23,6 +23,7 @@ Each UI milestone owns a directory under `apps/kanban-ui/agent-browser/`:
 apps/kanban-ui/agent-browser/
   m3/   board render, DnD, CRUD
   m5/   runtime provider switch, SSE indicator
+  m6/   writable drop, read-only cell rejection, homeless panel, slug-fallback
   m8/   conflict banner + resolution flow
   m9/   board list, navigation, deep-link
 ```
@@ -41,6 +42,7 @@ Each `*.scenario.json` file defines:
 ```bash
 pnpm --filter kanban-ui verify:m3   # M3: board + DnD scenarios
 pnpm --filter kanban-ui verify:m5   # M5: provider switch + SSE indicator
+pnpm --filter kanban-ui verify:m6   # M6: domain model scenarios
 pnpm --filter kanban-ui verify:m8   # M8: conflict resolution UI
 pnpm --filter kanban-ui verify:m9   # M9: multi-board routing
 ```
@@ -116,6 +118,8 @@ Tests spin up real temp git repositories under `os.tmpdir()`. A local bare repo 
 | M3 (board UI) | board renders, DnD, CRUD via UI | agent-browser | `verify:m3` |
 | M4 (fs sidecar) | HTTP/SSE provider contract, temp content dir | Vitest | `pnpm --filter provider-fs test` |
 | M5 (provider switch) | runtime switch via settings, SSE indicator | agent-browser | `verify:m5` |
+| M5/M6 (filter-engine) | operator evaluate, invertibility, mutation derivation | Vitest | `pnpm --filter @awesome-markdown/filter-engine test` |
+| M6 (domain model UI) | writable drop, read-only rejection, homeless panel, slug-fallback | agent-browser | `verify:m6` |
 | M6/M7 (sync-engine) | watcher → commit → push/pull, offline retry | Vitest | `pnpm --filter sync-engine test` |
 | M8 (conflict UI) | conflict banner, ours/theirs/open externally | agent-browser | `verify:m8` |
 | M9 (multi-board) | board list, navigation, deep-link | agent-browser | `verify:m9` |

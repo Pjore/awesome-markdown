@@ -12,6 +12,10 @@ export default defineConfig({
         __dirname,
         '../../packages/contracts/src/index.ts'
       ),
+      '@awesome-markdown/filter-engine': resolve(
+        __dirname,
+        '../../packages/filter-engine/src/index.ts'
+      ),
     },
   },
 });
