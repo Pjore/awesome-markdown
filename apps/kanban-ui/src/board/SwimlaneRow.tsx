@@ -31,11 +31,22 @@ export function SwimlaneRow({
     >
       {/* Swimlane label */}
       <div
-        className="w-28 flex-shrink-0 bg-gray-50 border border-gray-200 flex items-center px-2 py-2"
+        className="w-28 flex-shrink-0 flex items-center px-2 py-2"
+        style={{ borderRight: '1px solid var(--border)', borderBottom: '1px solid var(--border)' }}
         data-testid={`swimlane-label-${swimlane.slug}`}
         data-synthetic={swimlane.synthetic ? 'true' : undefined}
       >
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide truncate">
+        <span
+          className="truncate"
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10.5px',
+            fontWeight: 500,
+            color: 'var(--ink-muted)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+          }}
+        >
           {swimlane.title}
         </span>
       </div>

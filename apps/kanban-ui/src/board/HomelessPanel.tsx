@@ -17,18 +17,30 @@ export function HomelessPanel({ homeless }: HomelessPanelProps): React.ReactElem
 
   return (
     <div
-      className="border-t border-amber-200 bg-amber-50"
+      style={{ borderTop: '1px solid var(--border)' }}
       data-testid="homeless-panel"
     >
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center justify-between px-4 py-2 text-sm font-semibold text-amber-800 hover:bg-amber-100 transition-colors"
+        className="w-full flex items-center justify-between px-4 py-2"
+        style={{
+          fontFamily: 'var(--font-mono)',
+          fontSize: '11px',
+          fontWeight: 500,
+          color: 'var(--ink-muted)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          background: 'var(--bg)',
+          border: 'none',
+          cursor: 'pointer',
+          borderBottom: open ? '1px solid var(--border)' : 'none',
+        }}
         data-testid="homeless-panel-toggle"
         aria-expanded={open}
       >
         <span>
-          ⚠ {items.length} homeless item{items.length !== 1 ? 's' : ''} on &quot;
+          ⚠ {items.length} homeless item{items.length !== 1 ? 's' : ''} — &quot;
           {homeless.board.title}&quot;
         </span>
         <span aria-hidden="true">{open ? '▲' : '▼'}</span>
@@ -37,12 +49,20 @@ export function HomelessPanel({ homeless }: HomelessPanelProps): React.ReactElem
       {open && (
         <ul
           className="px-4 pb-3 flex flex-wrap gap-2"
+          style={{ paddingTop: '8px' }}
           data-testid="homeless-item-list"
         >
           {items.map((item) => (
             <li
               key={item.slug}
-              className="bg-white border border-amber-200 rounded px-3 py-1 text-sm text-gray-700 shadow-sm"
+              style={{
+                fontFamily: 'var(--font-sans)',
+                fontSize: '13px',
+                color: 'var(--ink)',
+                border: '1px solid var(--border)',
+                padding: '2px 10px',
+                background: 'var(--bg)',
+              }}
               data-testid={`homeless-item-${item.slug}`}
               data-item-slug={item.slug}
             >

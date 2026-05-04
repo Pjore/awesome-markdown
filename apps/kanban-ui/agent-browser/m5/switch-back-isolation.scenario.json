@@ -43,12 +43,12 @@
       "check": "not-exists"
     },
     {
-      "id": "connection-indicator-na",
-      "description": "Connection indicator shows n/a when localStorage provider is active",
-      "selector": "[data-testid='connection-indicator']",
+      "id": "sync-dot-clean",
+      "description": "Sync status dot shows 'clean' state when localStorage provider is active",
+      "selector": "[data-testid='sync-status-dot']",
       "check": "attribute-equals",
-      "attribute": "data-connection-state",
-      "value": "n/a"
+      "attribute": "data-sync-state",
+      "value": "clean"
     },
     {
       "id": "localStorage-items-restored",

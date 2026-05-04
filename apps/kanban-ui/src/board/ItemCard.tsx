@@ -1,9 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Item } from '@awesome-markdown/contracts';
 import type { ItemDragData } from './dnd/dragTypes.js';
 import { useOptionalConflict } from '../sync/conflict-store.js';
+import { deriveSummary } from '../lib/derive-summary.js';
 
 interface ItemCardProps {
   item: Item;
@@ -12,34 +14,12 @@ interface ItemCardProps {
 }
 
 /**
- * Extracts the first non-empty, non-heading line from a markdown body,
- * strips inline markdown syntax, and returns it for use as a summary.
- * Caller handles truncation via CSS line-clamp.
- */
-function extractSummary(body: string): string {
-  const lines = body.split('\n');
-  for (const line of lines) {
-    const trimmed = line.trim();
-    if (trimmed === '' || trimmed.startsWith('#')) continue;
-    // Strip inline markdown
-    let cleaned = trimmed;
-    // Remove images: ![alt](url)
-    cleaned = cleaned.replace(/!\[([^\]]*)\]\([^)]*\)/g, '');
-    // Convert links: [text](url) → text
-    cleaned = cleaned.replace(/\[([^\]]+)\]\([^)]*\)/g, '$1');
-    // Remove bold/italic markers
-    cleaned = cleaned.replace(/\*\*|__|\*|_|`/g, '');
-    return cleaned.trim();
-  }
-  return '';
-}
-
-/**
  * A draggable item card with three-layer layout:
  * 1. Title (Inter Tight 14px/500)
  * 2. Summary (first prose line from body, 12.5px/400, muted)
  * 3. Tags row (mono uppercase, dot-separated, muted)
  *
+ * Clicking the card navigates to /items/:slug (full-page editor).
  * When conflicted: drag disabled, dashed ink-muted border, 🔒 indicator.
  */
 export function ItemCard({
@@ -47,6 +27,7 @@ export function ItemCard({
   columnSlug,
   swimlaneSlug,
 }: ItemCardProps): React.ReactElement {
+  const navigate = useNavigate();
   const conflict = useOptionalConflict();
   const isConflicted = conflict?.isItemAffected(item.slug) ?? false;
 
@@ -88,13 +69,21 @@ export function ItemCard({
   const itemAsMap = item as Record<string, unknown>;
   const tags = Array.isArray(itemAsMap['tags']) ? (itemAsMap['tags'] as string[]) : [];
   const summary = item.body !== undefined && item.body.trim() !== ''
-    ? extractSummary(item.body)
+    ? deriveSummary(item.body)
     : '';
+
+  const handleClick = (e: React.MouseEvent): void => {
+    // Don't navigate if the user is dragging
+    if (isDragging) return;
+    e.stopPropagation();
+    navigate(`/items/${item.slug}`);
+  };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
+      onClick={isConflicted ? undefined : handleClick}
       data-testid={`item-card-${item.slug}`}
       data-item-slug={item.slug}
       data-conflict={isConflicted ? 'true' : undefined}

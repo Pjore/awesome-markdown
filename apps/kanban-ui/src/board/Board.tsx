@@ -155,7 +155,14 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
       {/* Error toast */}
       {error !== null && (
         <div
-          className="bg-red-50 border-b border-red-200 text-red-700 text-sm px-4 py-2 flex items-center justify-between"
+          className="flex items-center justify-between px-4 py-2 flex-shrink-0"
+          style={{
+            borderBottom: '1px solid var(--border)',
+            fontFamily: 'var(--font-mono)',
+            fontSize: '12px',
+            color: 'var(--ink)',
+            background: 'var(--bg)',
+          }}
           data-testid="board-error-toast"
           role="alert"
         >
@@ -163,7 +170,15 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
           <button
             type="button"
             onClick={() => setError(null)}
-            className="ml-4 text-red-400 hover:text-red-600"
+            style={{
+              marginLeft: '1rem',
+              color: 'var(--ink-muted)',
+              background: 'none',
+              border: 'none',
+              cursor: 'pointer',
+              fontFamily: 'var(--font-mono)',
+              fontSize: '12px',
+            }}
             aria-label="Dismiss error"
           >
             ✕
