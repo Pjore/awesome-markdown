@@ -10,7 +10,11 @@ boards:
 createdAt: '2026-05-04T00:00:00.000Z'
 updatedAt: '2026-05-04T18:29:59.943Z'
 project: dev
+<<<<<<< HEAD
 status: todo
+=======
+status: done
+>>>>>>> refs/remotes/origin/main
 priority: high
 tags:
   - urgent
