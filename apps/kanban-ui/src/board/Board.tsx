@@ -221,10 +221,22 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
             ))}
           </div>
 
-          {/* Drag overlay — ghost card while dragging */}
+          {/* Drag overlay — ghost card following cursor while dragging */}
           <DragOverlay>
             {activeItem !== null && (
-              <div style={{ background: 'var(--bg)', border: '1px solid var(--border)', padding: '10px 12px', fontSize: '14px', fontWeight: 500, color: 'var(--ink)', transform: 'rotate(2deg)', opacity: 0.9, fontFamily: 'var(--font-sans)' }}>
+              <div
+                style={{
+                  background: 'var(--bg)',
+                  border: '1px solid var(--border)',
+                  padding: '10px 12px',
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  color: 'var(--ink)',
+                  fontFamily: 'var(--font-sans)',
+                  opacity: 0.9,
+                  boxShadow: 'none',
+                }}
+              >
                 {activeItem.title}
               </div>
             )}
