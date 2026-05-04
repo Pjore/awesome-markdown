@@ -1,7 +1,6 @@
 import React, { useState, createContext, useContext } from 'react';
-import { Routes, Route, Link, useLocation } from 'react-router-dom';
-import { ConnectionIndicator } from './app-shell/ConnectionIndicator.js';
-import { ThemeToggle } from './app-shell/ThemeToggle.js';
+import { Routes, Route, Link } from 'react-router-dom';
+import { TopBar } from './app-shell/TopBar.js';
 import { SettingsPanel } from './settings/SettingsPanel.js';
 import { useActiveProvider } from './providers/active-provider.js';
 import { BoardListPage } from './pages/BoardListPage.js';
@@ -26,51 +25,11 @@ export const BreadcrumbContext = createContext<{
   setSegments: () => undefined,
 });
 
+/**
+ * Route-aware breadcrumb hook — used by pages to push their path segment.
+ */
 export function useBreadcrumb(): { setSegments: (s: BreadcrumbSegment[]) => void } {
   return useContext(BreadcrumbContext);
-}
-
-/**
- * Breadcrumb rendered in the top bar center.
- * Shows path-style: boards / board-slug
- */
-function TopBarBreadcrumb(): React.ReactElement {
-  const { segments } = useContext(BreadcrumbContext);
-  useLocation();
-
-  // Default: on "/" just show "boards"
-  const allSegments: BreadcrumbSegment[] =
-    segments.length > 0 ? segments : [{ label: 'boards', to: '/' }];
-
-  return (
-    <nav
-      aria-label="Breadcrumb"
-      className="flex items-center gap-1 text-xs"
-      style={{ fontFamily: 'var(--font-mono)' }}
-      data-testid="breadcrumb"
-    >
-      {allSegments.map((seg, i) => (
-        <React.Fragment key={`${seg.label}-${i}`}>
-          {i > 0 && (
-            <span style={{ color: 'var(--ink-muted)' }} aria-hidden="true">
-              {' / '}
-            </span>
-          )}
-          {seg.to !== undefined ? (
-            <Link
-              to={seg.to}
-              style={{ color: 'var(--ink-muted)', textDecoration: 'none' }}
-              className="hover:underline"
-            >
-              {seg.label}
-            </Link>
-          ) : (
-            <span style={{ color: 'var(--ink)' }}>{seg.label}</span>
-          )}
-        </React.Fragment>
-      ))}
-    </nav>
-  );
 }
 
 /**
@@ -128,46 +87,7 @@ export function App(): React.ReactElement {
       value={{ segments: breadcrumbSegments, setSegments: setBreadcrumbSegments }}
     >
       <ConflictProvider>
-        <header
-          className="flex items-center justify-between px-4 py-2 flex-shrink-0"
-          style={{
-            borderBottom: '1px solid var(--border)',
-            background: 'var(--bg)',
-            height: '36px',
-            minHeight: '36px',
-          }}
-          data-testid="app-header"
-        >
-          {/* Left: product mark */}
-          <button
-            type="button"
-            onClick={() => setSettingsOpen((o) => !o)}
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontWeight: 400,
-              fontSize: '13px',
-              color: 'var(--ink)',
-              background: 'none',
-              border: 'none',
-              padding: 0,
-              cursor: 'pointer',
-            }}
-            aria-label="awesome-markdown — click to open settings"
-            title="Provider settings"
-            data-testid="home-link"
-          >
-            awesome-markdown
-          </button>
-
-          {/* Center: breadcrumb */}
-          <TopBarBreadcrumb />
-
-          {/* Right: connection indicator + theme toggle */}
-          <div className="flex items-center gap-2">
-            <ConnectionIndicator />
-            <ThemeToggle />
-          </div>
-        </header>
+        <TopBar onSettingsToggle={() => setSettingsOpen((o) => !o)} />
         <ConflictBanner />
         <div className="flex-1 overflow-hidden">
           {content}

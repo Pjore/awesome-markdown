@@ -93,6 +93,7 @@ button, input, select, textarea {
 .h-full { height: 100%; }
 .h-screen { height: 100vh; }
 .w-full { width: 100%; }
+.w-28 { width: 112px; }
 .min-w-\[240px\] { min-width: 240px; }
 .w-\[240px\] { width: 240px; }
 .min-h-\[120px\] { min-height: 120px; }

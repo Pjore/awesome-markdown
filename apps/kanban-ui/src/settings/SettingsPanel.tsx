@@ -68,15 +68,46 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
       role="dialog"
       aria-modal="true"
       aria-label="Provider settings"
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/40"
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      style={{ background: 'rgba(0,0,0,0.5)' }}
       data-testid="settings-panel"
     >
-      <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6 space-y-5 mx-4">
-        <h2 className="text-lg font-semibold text-gray-800">Provider Settings</h2>
+      <div
+        className="w-full max-w-md p-6 space-y-5 mx-4"
+        style={{
+          background: 'var(--bg)',
+          border: '1px solid var(--border)',
+          boxShadow: 'none',
+        }}
+      >
+        <h2
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '13px',
+            fontWeight: 500,
+            color: 'var(--ink)',
+            textTransform: 'uppercase',
+            letterSpacing: '0.06em',
+            margin: 0,
+          }}
+        >
+          Provider Settings
+        </h2>
 
         {/* Provider selection */}
-        <fieldset className="space-y-3">
-          <legend className="text-sm font-medium text-gray-600 mb-2">Active provider</legend>
+        <fieldset className="space-y-3" style={{ border: 'none', padding: 0, margin: 0 }}>
+          <legend
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '11px',
+              color: 'var(--ink-muted)',
+              textTransform: 'uppercase',
+              letterSpacing: '0.06em',
+              marginBottom: '8px',
+            }}
+          >
+            Active provider
+          </legend>
 
           <label className="flex items-center gap-3 cursor-pointer">
             <input
@@ -85,10 +116,9 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
               value="localStorage"
               checked={kind === 'localStorage'}
               onChange={() => setKind('localStorage')}
-              className="accent-blue-600"
               data-testid="provider-radio-localStorage"
             />
-            <span className="text-sm text-gray-700">
+            <span style={{ fontFamily: 'var(--font-sans)', fontSize: '13px', color: 'var(--ink)' }}>
               <strong>Local browser storage</strong> — no server required
             </span>
           </label>
@@ -100,10 +130,9 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
               value="http"
               checked={kind === 'http'}
               onChange={() => setKind('http')}
-              className="accent-blue-600"
               data-testid="provider-radio-http"
             />
-            <span className="text-sm text-gray-700">
+            <span style={{ fontFamily: 'var(--font-sans)', fontSize: '13px', color: 'var(--ink)' }}>
               <strong>Local FS sidecar</strong> — HTTP/SSE
             </span>
           </label>
@@ -112,7 +141,17 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
         {/* HTTP URL input */}
         {kind === 'http' && (
           <div className="space-y-2">
-            <label htmlFor="sidecar-url" className="block text-sm font-medium text-gray-600">
+            <label
+              htmlFor="sidecar-url"
+              style={{
+                display: 'block',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                color: 'var(--ink-muted)',
+                textTransform: 'uppercase',
+                letterSpacing: '0.06em',
+              }}
+            >
               Sidecar base URL
             </label>
             <input
@@ -124,12 +163,25 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
                 setTestStatus('idle');
               }}
               placeholder={import.meta.env['VITE_PROVIDER_FS_URL'] ?? 'http://localhost:7701'}
-              className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="w-full px-3 py-2"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '12px',
+                border: '1px solid var(--border)',
+                background: 'var(--bg)',
+                color: 'var(--ink)',
+                outline: 'none',
+              }}
               aria-describedby={urlError !== null ? 'url-error' : undefined}
               data-testid="sidecar-url-input"
             />
             {urlError !== null && (
-              <p id="url-error" role="alert" className="text-xs text-red-600" data-testid="url-error">
+              <p
+                id="url-error"
+                role="alert"
+                style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--ink)', margin: 0 }}
+                data-testid="url-error"
+              >
                 {urlError}
               </p>
             )}
@@ -140,16 +192,33 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
                 type="button"
                 onClick={() => void handleTestConnection()}
                 disabled={urlError !== null || testStatus === 'testing'}
-                className="text-xs px-3 py-1.5 rounded border border-gray-300 hover:bg-gray-50 disabled:opacity-50"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: '11px',
+                  padding: '3px 10px',
+                  border: '1px solid var(--border)',
+                  background: 'var(--bg)',
+                  color: 'var(--ink)',
+                  cursor: urlError !== null || testStatus === 'testing' ? 'not-allowed' : 'pointer',
+                  opacity: urlError !== null || testStatus === 'testing' ? 0.5 : 1,
+                }}
                 data-testid="test-connection-btn"
               >
                 {testStatus === 'testing' ? 'Testing…' : 'Test connection'}
               </button>
               {testStatus === 'ok' && (
-                <span className="text-xs text-green-600" data-testid="test-status-ok">✓ Connected</span>
+                <span
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--ink)' }}
+                  data-testid="test-status-ok"
+                >
+                  ✓ Connected
+                </span>
               )}
               {testStatus === 'fail' && (
-                <span className="text-xs text-red-600" data-testid="test-status-fail">
+                <span
+                  style={{ fontFamily: 'var(--font-mono)', fontSize: '11px', color: 'var(--ink-muted)' }}
+                  data-testid="test-status-fail"
+                >
                   ✗ {testError ?? 'Failed'}
                 </span>
               )}
@@ -158,7 +227,14 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
         )}
 
         {/* Current active provider info */}
-        <p className="text-xs text-gray-400">
+        <p
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '11px',
+            color: 'var(--ink-muted)',
+            margin: 0,
+          }}
+        >
           Current:{' '}
           <strong>
             {activeSettings.kind === 'http'
@@ -168,11 +244,19 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
         </p>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3 pt-1">
+        <div className="flex justify-end gap-3">
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm rounded-lg border border-gray-300 hover:bg-gray-50"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '12px',
+              padding: '5px 14px',
+              border: '1px solid var(--border)',
+              background: 'var(--bg)',
+              color: 'var(--ink)',
+              cursor: 'pointer',
+            }}
             data-testid="settings-cancel"
           >
             Cancel
@@ -181,7 +265,16 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
             type="button"
             onClick={() => void handleSave()}
             disabled={!canSave}
-            className="px-4 py-2 text-sm rounded-lg bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50"
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '12px',
+              padding: '5px 14px',
+              border: '1px solid var(--border)',
+              background: canSave ? 'var(--accent)' : 'var(--bg)',
+              color: 'var(--ink)',
+              cursor: canSave ? 'pointer' : 'not-allowed',
+              opacity: canSave ? 1 : 0.5,
+            }}
             data-testid="settings-save"
           >
             {saving || isSwitching ? 'Saving…' : 'Save'}
