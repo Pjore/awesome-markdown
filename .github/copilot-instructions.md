@@ -73,9 +73,7 @@ Each app ships `.env.example` — copy to `.env`. Key vars:
 
 **Feature branch:** Set `SYNC_ENGINE_TARGET_BRANCH=<branch>` in `.env`, or check out the branch before starting the engine.
 
-**Coder webhook URL:** `https://7402--<agent>--<workspace>--<owner>.coder.<domain>/webhooks/github` (double-dash separators). Verify: `curl -X POST http://localhost:7402/webhooks/github` → `{"ok":false,"reason":"signature"}` (not 404).
-
-**Port sharing:** Port 7402 must be set to **Public** in the Coder workspace "Shared Ports" panel. GitHub webhooks cannot pass Coder's proxy auth challenge — "Authenticated" sharing causes all deliveries to return 401 before they reach the sync-engine.
+**Webhook endpoint:** Verify locally: `curl -X POST http://localhost:7402/webhooks/github` → `{"ok":false,"reason":"signature"}` (not 404). For remote delivery the sync-engine must be reachable from the internet — load the `dev-environment-coder` skill for Coder workspace specifics (port sharing, subdomain URL format).
 
 **Puller dirty-check:** If `content/` has any unstaged changes (including deletions), `pullOnce` silently returns `up-to-date` and defers the pull. Webhook-triggered pulls are dropped without error. Run `git status` and commit or stash any pending changes if pulls aren't landing.
 

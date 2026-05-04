@@ -28,9 +28,9 @@ Verify installation:
 agent-browser --version
 ```
 
-### ARM64 Environments (e.g. Coder workspaces)
+### ARM64 environments
 
-`agent-browser install --with-deps` has no ARM64 builds. See [references/arm64-setup.md](references/arm64-setup.md) for the Playwright Chromium workaround.
+`agent-browser install --with-deps` has no ARM64 builds (common on aarch64 hosts such as Coder workspaces or Apple-silicon devcontainers). See [references/arm64-setup.md](references/arm64-setup.md) for the Playwright Chromium workaround, or load the `dev-environment-coder` skill for Coder-specific guidance.
 
 ## Core Workflow
 
