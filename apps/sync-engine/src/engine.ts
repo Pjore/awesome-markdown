@@ -421,6 +421,7 @@ export class Engine {
       remoteConfig: this.remoteConfig!,
       pullFault: this._pullFault,
       pushFault: this._pushFault,
+      hasExplicitTargetBranch: !!this.config.targetBranch,
       isRunning: () => this.running,
       isConflictPending: () => this.conflictPending,
       setConflictPending: (v) => {

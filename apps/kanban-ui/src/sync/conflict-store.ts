@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from 'react';
 import type { ConflictState, ResolveDecision } from '@awesome-markdown/contracts';
-import { fetchConflictState, submitDecisions, requestOpenExternal } from './conflict-api.js';
+import { fetchConflictState, submitDecisions, requestOpenExternal, getSyncEngineUrl } from './conflict-api.js';
 
 // ---------------------------------------------------------------------------
 // State
@@ -106,10 +106,7 @@ export function ConflictProvider({ children }: ConflictProviderProps): React.Rea
 
   // Subscribe to SSE events
   useEffect(() => {
-    const base =
-      typeof window !== 'undefined' && (window as unknown as Record<string, unknown>)['__SYNC_ENGINE_URL__']
-        ? String((window as unknown as Record<string, unknown>)['__SYNC_ENGINE_URL__'])
-        : 'http://localhost:7402';
+    const base = getSyncEngineUrl();
 
     const es = new EventSource(`${base}/events`);
     esRef.current = es;
