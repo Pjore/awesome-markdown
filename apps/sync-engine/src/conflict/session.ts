@@ -1,5 +1,6 @@
 import type { ConflictState, ResolveDecision, ConflictPathEntry } from '@awesome-markdown/contracts';
 import { randomUUID } from 'node:crypto';
+import type { PathContent } from './content-extractor.js';
 
 /**
  * Internal representation of an active conflict session.
@@ -17,6 +18,8 @@ export interface ConflictSessionData {
   /** Temp directories created for this session (inject endpoint). */
   tempDirs: string[];
   status: 'awaiting' | 'completing' | 'completed';
+  /** Per-path ours/theirs content extracted from git index stages. */
+  content: Record<string, PathContent>;
 }
 
 /**
@@ -39,6 +42,7 @@ export class ConflictSessionManager {
     branch: string;
     paths: string[];
     tempDirs?: string[];
+    content: Record<string, PathContent>;
   }): ConflictSessionData {
     if (this.session && this.session.status !== 'completed') {
       throw new Error(
@@ -54,6 +58,7 @@ export class ConflictSessionManager {
       branch: params.branch,
       tempDirs: params.tempDirs ?? [],
       status: 'awaiting',
+      content: params.content,
     };
     this.session = session;
     return session;
@@ -132,12 +137,19 @@ export class ConflictSessionManager {
   toConflictState(): ConflictState | null {
     const s = this.getActive();
     if (!s) return null;
-    const entries: ConflictPathEntry[] = s.paths.map((p) => ({
-      path: p,
-      oursLabel: 'HEAD',
-      theirsLabel: `origin/${s.branch}`,
-      decision: s.decisions[p] ?? null,
-    }));
+    const entries: ConflictPathEntry[] = s.paths.map((p) => {
+      const c = s.content[p];
+      return {
+        path: p,
+        oursLabel: 'HEAD',
+        theirsLabel: `origin/${s.branch}`,
+        decision: s.decisions[p] ?? null,
+        oursContent: c?.ours ?? '',
+        theirsContent: c?.theirs ?? '',
+        oursTruncated: c?.oursTruncated ?? false,
+        theirsTruncated: c?.theirsTruncated ?? false,
+      };
+    });
     return {
       mergeId: s.mergeId,
       startedAt: s.startedAt,

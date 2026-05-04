@@ -9,6 +9,7 @@ import { getBareHeadSha } from './fixtures/bare-remote.js';
 import { ConflictSessionManager } from '../src/conflict/session.js';
 import { mountConflictRoutes } from '../src/http/conflict-routes.js';
 import { SseHub } from '../src/sse-hub.js';
+import { extractConflictContent } from '../src/conflict/content-extractor.js';
 import type { BareRemote } from './fixtures/bare-remote.js';
 
 // ---------------------------------------------------------------------------
@@ -135,7 +136,7 @@ describe('conflict resolve endpoint', () => {
     const paths = await seedRealConflict(remote, [
       { relPath: 'content/file-a.md', oursContent: '# Ours A\n', theirsContent: '# Theirs A\n' },
     ]);
-    sessionManager.create({ repoRoot: remote.engineClone, branch: remote.branch, paths });
+    sessionManager.create({ repoRoot: remote.engineClone, branch: remote.branch, paths, content: {} });
 
     const resp = await server.inject({ method: 'GET', url: '/sync/conflict/state' });
     expect(resp.statusCode).toBe(200);
@@ -143,6 +144,36 @@ describe('conflict resolve endpoint', () => {
     expect(body.conflict).not.toBeNull();
     expect(body.conflict?.mergeId).toBeTruthy();
     expect(body.conflict?.paths.length).toBeGreaterThan(0);
+  });
+
+  it('GET /sync/conflict/state returns oursContent and theirsContent for each path', async () => {
+    const paths = await seedRealConflict(remote, [
+      { relPath: 'content/diff-a.md', oursContent: '# Ours\n', theirsContent: '# Theirs\n' },
+    ]);
+    const content = await extractConflictContent({ repoRoot: remote.engineClone, paths });
+    sessionManager.create({ repoRoot: remote.engineClone, branch: remote.branch, paths, content });
+
+    const resp = await server.inject({ method: 'GET', url: '/sync/conflict/state' });
+    expect(resp.statusCode).toBe(200);
+    const body = resp.json<{
+      conflict: {
+        paths: Array<{
+          path: string;
+          oursContent: string;
+          theirsContent: string;
+          oursTruncated: boolean;
+          theirsTruncated: boolean;
+        }>;
+      };
+    }>();
+    expect(body.conflict).not.toBeNull();
+    const entry = body.conflict!.paths[0]!;
+    expect(entry.oursContent).toBeTruthy();
+    expect(entry.theirsContent).toBeTruthy();
+    expect(entry.oursTruncated).toBe(false);
+    expect(entry.theirsTruncated).toBe(false);
+    expect(entry.oursContent).toContain('# Ours');
+    expect(entry.theirsContent).toContain('# Theirs');
   });
 
   it('resolves ours for one path and theirs for another, produces correct content', async () => {
@@ -155,6 +186,7 @@ describe('conflict resolve endpoint', () => {
       repoRoot: remote.engineClone,
       branch: remote.branch,
       paths,
+      content: {},
     });
 
     const decisions: Record<string, string> = {};
@@ -201,6 +233,7 @@ describe('conflict resolve endpoint', () => {
       repoRoot: remote.engineClone,
       branch: remote.branch,
       paths,
+      content: {},
     });
 
     const decisions: Record<string, string> = {};
@@ -248,6 +281,7 @@ describe('conflict resolve endpoint', () => {
       repoRoot: remote.engineClone,
       branch: remote.branch,
       paths,
+      content: {},
     });
 
     const resp = await server.inject({
@@ -270,6 +304,7 @@ describe('conflict resolve endpoint', () => {
       repoRoot: remote.engineClone,
       branch: remote.branch,
       paths,
+      content: {},
     });
 
     const resp = await server.inject({
@@ -300,6 +335,7 @@ describe('conflict resolve endpoint', () => {
       repoRoot: remote.engineClone,
       branch: remote.branch,
       paths,
+      content: {},
     });
 
     const syncedEvents: unknown[] = [];
@@ -332,6 +368,7 @@ describe('conflict resolve endpoint', () => {
       repoRoot: remote.engineClone,
       branch: remote.branch,
       paths,
+      content: {},
     });
 
     // Build server with a real remote config for push

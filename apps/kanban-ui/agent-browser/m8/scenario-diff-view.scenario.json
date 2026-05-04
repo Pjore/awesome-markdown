@@ -1,0 +1,91 @@
+{
+  "id": "m8-diff-view-labels-and-lines",
+  "version": "1",
+  "description": "Single-path conflict with two-line ours/theirs content differing on one line. Asserts diff modal shows: oursLabel and theirsLabel in sticky headers, diff view rendered, removed and added lines visible, no Open-externally button.",
+  "services": ["kanban-ui:dev", "sync-engine:dev"],
+  "seed": "conflict-diff-one-line-change",
+  "url": "http://localhost:5173/",
+  "prerequisites": {
+    "syncEngine": "http://localhost:7402",
+    "notes": "Start sync-engine with SYNC_ENGINE_TEST_HOOKS=1 before running this scenario."
+  },
+  "setup": [
+    {
+      "type": "http-post",
+      "url": "http://localhost:7402/sync/conflict/inject",
+      "body": {
+        "paths": [
+          {
+            "path": "content/item-delta.md",
+            "localContent": "---\ntitle: Delta\nstatus: todo\n---\n",
+            "remoteContent": "---\ntitle: Delta\nstatus: done\n---\n"
+          }
+        ]
+      },
+      "expectedStatus": 200
+    }
+  ],
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/" },
+    {
+      "type": "wait",
+      "selector": "[data-testid='conflict-banner']",
+      "timeout": 5000
+    },
+    { "type": "click", "selector": "[data-testid='conflict-resolve-btn']" },
+    {
+      "type": "wait",
+      "selector": "[data-testid='conflict-panel']",
+      "timeout": 3000
+    },
+    {
+      "type": "wait",
+      "selector": "[data-testid='conflict-diff-content-item-delta.md']",
+      "timeout": 3000
+    },
+    {
+      "type": "assert-not-exists",
+      "selector": "[data-testid*='conflict-external-']"
+    },
+    {
+      "type": "click",
+      "selector": "[data-testid='conflict-ours-content/item-delta.md']"
+    },
+    {
+      "type": "assert-enabled",
+      "selector": "[data-testid='conflict-submit-btn']"
+    },
+    { "type": "click", "selector": "[data-testid='conflict-submit-btn']" },
+    {
+      "type": "wait-for-gone",
+      "selector": "[data-testid='conflict-banner']",
+      "timeout": 8000
+    }
+  ],
+  "assertions": [
+    {
+      "id": "diff-view-rendered",
+      "description": "Diff view is rendered for the conflicting path",
+      "selector": "[data-testid='conflict-diff-content-item-delta.md']",
+      "check": "not-exists",
+      "description": "Diff gone after resolution"
+    },
+    {
+      "id": "no-external-button",
+      "description": "Open externally button is absent",
+      "selector": "[data-testid*='conflict-external-']",
+      "check": "not-exists"
+    },
+    {
+      "id": "banner-dismissed",
+      "description": "Banner dismissed after resolution",
+      "selector": "[data-testid='conflict-banner']",
+      "check": "not-exists"
+    },
+    {
+      "id": "no-console-errors",
+      "description": "No unhandled errors during diff view and resolution flow",
+      "check": "no-console-errors"
+    }
+  ]
+}

@@ -69,7 +69,7 @@ function validateScenario(file, data) {
             a.selector.includes('conflict-submit-btn') ||
             a.selector.includes('conflict-ours-') ||
             a.selector.includes('conflict-theirs-') ||
-            a.selector.includes('conflict-external-'))) ||
+            a.selector.includes('conflict-diff-'))) ||
         (typeof a.url === 'string' && a.url.includes('/sync/conflict')),
     ) ||
     data.assertions.some(

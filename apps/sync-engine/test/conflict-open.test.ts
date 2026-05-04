@@ -68,6 +68,7 @@ describe('conflict open-external endpoint', () => {
       repoRoot: remote.engineClone,
       branch: remote.branch,
       paths: ['content/known.md'],
+      content: {},
     });
 
     const resp = await server.inject({
@@ -89,6 +90,7 @@ describe('conflict open-external endpoint', () => {
       repoRoot: remote.engineClone,
       branch: remote.branch,
       paths: ['../../../etc/passwd'],
+      content: {},
     });
 
     const resp = await server.inject({
@@ -112,6 +114,7 @@ describe('conflict open-external endpoint', () => {
       repoRoot: remote.engineClone,
       branch: remote.branch,
       paths: ['content/real-file.md'],
+      content: {},
     });
 
     // openExternalFile spawns+unrefs without waiting — it won't throw in CI
@@ -137,6 +140,7 @@ describe('conflict open-external endpoint', () => {
       repoRoot: remote.engineClone,
       branch: remote.branch,
       paths: ['content/a.md'],
+      content: {},
     });
 
     const resp = await server.inject({

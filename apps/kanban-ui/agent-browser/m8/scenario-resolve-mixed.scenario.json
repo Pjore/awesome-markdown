@@ -1,7 +1,7 @@
 {
   "id": "m8-resolve-mixed-conflict",
-  "version": "1",
-  "description": "Two-path merge conflict: one path resolved with 'ours', one with 'theirs'. Asserts banner appears, panel lists both paths, resolve completes, banner dismisses.",
+  "version": "2",
+  "description": "Two-path merge conflict: one path resolved with 'ours', one with 'theirs'. Asserts banner appears, panel lists both paths with diff views, resolve completes, banner dismisses.",
   "services": ["kanban-ui:dev", "sync-engine:dev"],
   "seed": "conflict-two-paths",
   "url": "http://localhost:5173/",
@@ -49,6 +49,16 @@
       "timeout": 3000
     },
     {
+      "type": "wait",
+      "selector": "[data-testid='conflict-diff-content-item-alpha.md']",
+      "timeout": 3000
+    },
+    {
+      "type": "wait",
+      "selector": "[data-testid='conflict-diff-content-item-beta.md']",
+      "timeout": 3000
+    },
+    {
       "type": "click",
       "selector": "[data-testid='conflict-ours-content/item-alpha.md']"
     },
@@ -69,11 +79,17 @@
   ],
   "assertions": [
     {
-      "id": "banner-appears",
-      "description": "Conflict banner is shown when a merge conflict is active",
-      "selector": "[data-testid='conflict-banner']",
+      "id": "diff-views-present",
+      "description": "Diff view shown for each conflicting path",
+      "selector": "[data-testid='conflict-diff-content-item-alpha.md']",
       "check": "not-exists",
-      "description": "Banner is gone after successful resolution"
+      "description": "Diff view gone after resolution"
+    },
+    {
+      "id": "banner-appears",
+      "description": "Conflict banner is gone after successful resolution",
+      "selector": "[data-testid='conflict-banner']",
+      "check": "not-exists"
     },
     {
       "id": "panel-closes",

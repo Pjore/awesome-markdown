@@ -105,4 +105,69 @@ describe('conflict inject endpoint', () => {
 
     expect(resp.statusCode).toBe(409);
   }, 30_000);
+
+  it('inject populates oursContent and theirsContent in conflict state', async () => {
+    const resp = await server.inject({
+      method: 'POST',
+      url: '/sync/conflict/inject',
+      payload: {
+        paths: ['content/content-check.md'],
+        oursContent: { 'content/content-check.md': '# Ours content\n' },
+        theirsContent: { 'content/content-check.md': '# Theirs content\n' },
+      },
+    });
+    expect(resp.statusCode).toBe(200);
+
+    const stateResp = await server.inject({ method: 'GET', url: '/sync/conflict/state' });
+    expect(stateResp.statusCode).toBe(200);
+    const body = stateResp.json<{
+      conflict: {
+        paths: Array<{
+          oursContent: string;
+          theirsContent: string;
+          oursTruncated: boolean;
+          theirsTruncated: boolean;
+        }>;
+      };
+    }>();
+    const entry = body.conflict!.paths[0]!;
+    expect(entry.oursContent).toBeTruthy();
+    expect(entry.theirsContent).toBeTruthy();
+    expect(entry.oursTruncated).toBe(false);
+    expect(entry.theirsTruncated).toBe(false);
+  }, 30_000);
+
+  it('inject sets truncation flag when content exceeds 16 KB', async () => {
+    // Generate > 16 KB of content on the ours side
+    const bigOurs = 'x'.repeat(17 * 1024);
+    const smallTheirs = '# Small theirs\n';
+
+    const resp = await server.inject({
+      method: 'POST',
+      url: '/sync/conflict/inject',
+      payload: {
+        paths: ['content/big-ours.md'],
+        oursContent: { 'content/big-ours.md': bigOurs },
+        theirsContent: { 'content/big-ours.md': smallTheirs },
+      },
+    });
+    expect(resp.statusCode).toBe(200);
+
+    const stateResp = await server.inject({ method: 'GET', url: '/sync/conflict/state' });
+    expect(stateResp.statusCode).toBe(200);
+    const body = stateResp.json<{
+      conflict: {
+        paths: Array<{
+          oursContent: string;
+          theirsContent: string;
+          oursTruncated: boolean;
+          theirsTruncated: boolean;
+        }>;
+      };
+    }>();
+    const entry = body.conflict!.paths[0]!;
+    expect(entry.oursTruncated).toBe(true);
+    expect(Buffer.byteLength(entry.oursContent)).toBeLessThanOrEqual(16 * 1024);
+    expect(entry.theirsTruncated).toBe(false);
+  }, 30_000);
 });
