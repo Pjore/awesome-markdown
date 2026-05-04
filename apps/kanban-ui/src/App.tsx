@@ -59,22 +59,30 @@ export function App(): React.ReactElement {
         path="*"
         element={
           <div
-            className="flex flex-col items-center justify-center h-full text-center p-8"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--ink-muted)',
+              gap: '12px',
+            }}
             data-testid="not-found"
           >
-            <div className="text-5xl mb-4">🤷</div>
-            <h2
-              className="text-xl mb-4"
-              style={{ fontWeight: 500, color: 'var(--ink)' }}
-            >
-              Page not found
-            </h2>
+            <span style={{ fontSize: '13px' }}>page not found</span>
             <Link
               to="/"
-              style={{ color: 'var(--ink-muted)', textDecoration: 'underline' }}
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '13px',
+                color: 'var(--ink-muted)',
+                textDecoration: 'underline',
+              }}
               data-testid="go-home"
             >
-              ← Back to boards
+              ← boards
             </Link>
           </div>
         }
