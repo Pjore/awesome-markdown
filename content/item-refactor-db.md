@@ -2,19 +2,20 @@
 entityType: item
 slug: item-refactor-db
 title: Refactor database connection pooling
+boards:
+  - board: board-dev
+    order: c0
+  - board: board-all
+    order: V
+createdAt: '2026-05-04T00:00:00.000Z'
+updatedAt: '2026-05-04T20:00:50.935Z'
 project: dev
-status: done
+status: doing
 priority: medium
 tags:
   - backend
 dueDate: '2026-06-01'
-boards:
-  - board: board-dev
-    order: c0
-createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-04T00:00:00.000Z'
 ---
-
 Migrate from ad-hoc `pg.Pool` calls to a managed connection pool with proper
 lifecycle hooks and graceful shutdown.
 
