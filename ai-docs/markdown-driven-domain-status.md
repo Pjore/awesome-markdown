@@ -22,7 +22,7 @@
 
 | Wave | Milestones | Status | Started | Completed |
 |------|------------|--------|---------|-----------|
-| 1 | M1, M2 | not-started | - | - |
+| 1 | M1, M2 | in-progress | 2026-05-04T00:05:00Z | - |
 | 2 | M3 | not-started | - | - |
 | 3 | M4 | not-started | - | - |
 | 4 | M5 | not-started | - | - |
