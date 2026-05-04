@@ -1,38 +1,52 @@
-// Schemas and inferred types
+// ---------------------------------------------------------------------------
+// Entity schemas and inferred types
+// ---------------------------------------------------------------------------
+
+// Shared building blocks
+export { SlugSchema } from './schemas/item.js';
+export type { Slug } from './schemas/item.js';
+
+export { DottedPathSchema, FilterLeafSchema, FilterRuleSchema } from './schemas/filter-rule.js';
+export type { DottedPath, FilterLeaf, FilterRule } from './schemas/filter-rule.js';
+
+export {
+  PropertyValueSchema,
+  SetMutationSchema,
+  AppendMutationSchema,
+  RemoveMutationSchema,
+  DeleteMutationSchema,
+  MutationSchema,
+  WriteOnDropSchema,
+} from './schemas/mutation.js';
+export type {
+  PropertyValue,
+  SetMutation,
+  AppendMutation,
+  RemoveMutation,
+  DeleteMutation,
+  Mutation,
+  WriteOnDrop,
+} from './schemas/mutation.js';
+
+// Entity schemas
+export { ItemSchema } from './schemas/item.js';
+export type { Item } from './schemas/item.js';
+
 export { BoardSchema } from './schemas/board.js';
 export type { Board } from './schemas/board.js';
 
-export { ColumnSchema } from './schemas/column.js';
-export type { Column } from './schemas/column.js';
+export { AxisOrderSchema, AxisSchema } from './schemas/axis.js';
+export type { AxisOrder, Axis } from './schemas/axis.js';
 
-export { SwimlaneSchema } from './schemas/swimlane.js';
-export type { Swimlane } from './schemas/swimlane.js';
-
-export { ItemSchema, ItemPrioritySchema } from './schemas/item.js';
-export type { Item, ItemPriority } from './schemas/item.js';
-
-// Provider interface and related types
-export type {
-  ProviderCapabilities,
-  ProviderEvent,
-  ProviderEventHandler,
-  Unsubscribe,
-  CreateBoardInput,
-  UpdateBoardInput,
-  CreateItemInput,
-  UpdateItemInput,
-  CreateColumnInput,
-  UpdateColumnInput,
-  CreateSwimlaneInput,
-  UpdateSwimlaneInput,
-  PersistenceProvider,
-} from './provider.js';
-
-// Sync-engine event union
+// ---------------------------------------------------------------------------
+// Sync-engine event union (used by sync-engine and provider-http)
+// ---------------------------------------------------------------------------
 export { SyncEventSchema } from './events.js';
 export type { SyncEvent } from './events.js';
 
+// ---------------------------------------------------------------------------
 // Conflict resolution (M8)
+// ---------------------------------------------------------------------------
 export type {
   ResolveDecision,
   ConflictPathEntry,
@@ -44,48 +58,39 @@ export type {
   InjectConflictRequest,
 } from './conflict.js';
 
+// ---------------------------------------------------------------------------
 // HTTP/SSE wire DTOs
+// ---------------------------------------------------------------------------
 export {
-  CreateBoardRequestSchema,
-  UpdateBoardRequestSchema,
-  BoardResponseSchema,
-  BoardsListResponseSchema,
-  CreateItemRequestSchema,
-  UpdateItemRequestSchema,
-  ItemResponseSchema,
-  ItemsListResponseSchema,
-  CreateColumnRequestSchema,
-  UpdateColumnRequestSchema,
-  ColumnResponseSchema,
-  ColumnsListResponseSchema,
-  CreateSwimlaneRequestSchema,
-  UpdateSwimlaneRequestSchema,
-  SwimlaneResponseSchema,
-  SwimlanesListResponseSchema,
   DeleteResponseSchema,
   ErrorResponseSchema,
   SseEnvelopeSchema,
   SsePayloadSchema,
+  CellSchema,
+  BoardRenderSchema,
+  HomelessSchema,
+  CreateItemRequestSchema,
+  PatchItemRequestSchema,
 } from './dtos.js';
 export type {
-  CreateBoardRequest,
-  UpdateBoardRequest,
-  BoardResponse,
-  BoardsListResponse,
-  CreateItemRequest,
-  UpdateItemRequest,
-  ItemResponse,
-  ItemsListResponse,
-  CreateColumnRequest,
-  UpdateColumnRequest,
-  ColumnResponse,
-  ColumnsListResponse,
-  CreateSwimlaneRequest,
-  UpdateSwimlaneRequest,
-  SwimlaneResponse,
-  SwimlanesListResponse,
   DeleteResponse,
   ErrorResponse,
   SseEnvelope,
   SsePayload,
+  Cell,
+  BoardRender,
+  Homeless,
+  CreateItemRequest,
+  PatchItemRequest,
 } from './dtos.js';
+
+// ---------------------------------------------------------------------------
+// Provider capability stubs (full interface defined in M3)
+// ---------------------------------------------------------------------------
+export type {
+  ProviderCapabilities,
+  ProviderEvent,
+  ProviderEventHandler,
+  Unsubscribe,
+} from './provider.js';
+
