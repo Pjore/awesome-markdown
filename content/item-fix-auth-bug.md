@@ -8,9 +8,9 @@ boards:
   - board: board-all
     order: V
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-04T13:12:25.379Z'
+updatedAt: '2026-05-04T13:12:33.927Z'
 project: dev
-status: todo
+status: doing
 priority: high
 tags:
   - urgent
