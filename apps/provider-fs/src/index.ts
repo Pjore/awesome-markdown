@@ -1,12 +1,22 @@
 import { loadConfig } from './config.js';
-import { createServer } from './server.js';
+import { createServer, IndexStore } from './server.js';
+import { scanDirectory } from './fs/scanner.js';
+import { startWatcher } from './fs/watcher.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
-  const server = await createServer(config);
+
+  // Build store before creating the server so the watcher can share the same instance.
+  const store = new IndexStore();
+  const entities = await scanDirectory(config.contentRoot);
+  store.loadFrom(entities);
+
+  const server = await createServer(config, store);
+  const stopWatcher = startWatcher(config.contentRoot, store);
 
   const shutdown = async (): Promise<void> => {
     server.log.info('Shutting down...');
+    stopWatcher();
     await server.close();
     process.exit(0);
   };

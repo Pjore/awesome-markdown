@@ -1,38 +1,30 @@
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
-import { createServer } from '../src/server.js';
-import { tmpContentRoot } from './fixtures/temp-content.js';
-import type { TempContentRoot } from './fixtures/temp-content.js';
+import { describe, it, expect, beforeEach, afterEach } from "vitest";
+import { readFile } from "node:fs/promises";
+import { glob } from "node:fs/promises";
+import path from "node:path";
+import { createServer } from "../src/server.js";
+import {
+  tmpContentRoot,
+  writeItemFixture,
+  makeItem,
+} from "./fixtures/temp-content.js";
+import type { TempContentRoot } from "./fixtures/temp-content.js";
+import type { Item } from "@awesome-markdown/contracts";
 
-describe('items routes', () => {
+const BASE_POST = {
+  slug: "my-item",
+  title: "My Item",
+  mutations: [],
+};
+
+describe("items routes", () => {
   let tmp: TempContentRoot;
   let server: Awaited<ReturnType<typeof createServer>>;
-  let boardId: string;
-
-  const itemPayload = (boardId: string) => ({
-    boardId,
-    columnId: 'col-1',
-    swimlaneId: 'lane-1',
-    title: 'Test Item',
-    body: '# Hello\n\nWorld',
-    status: 'todo',
-    priority: 'medium' as const,
-    tags: ['test'],
-    customFields: {},
-  });
 
   beforeEach(async () => {
     tmp = await tmpContentRoot();
-    server = await createServer({ port: 0, host: '127.0.0.1', contentRoot: tmp.contentRoot });
+    server = await createServer({ port: 0, host: "127.0.0.1", contentRoot: tmp.contentRoot });
     await server.ready();
-
-    // Create a board for item operations
-    const boardRes = await server.inject({
-      method: 'POST',
-      url: '/boards',
-      headers: { 'content-type': 'application/json' },
-      payload: { slug: 'test-board', title: 'Test Board' },
-    });
-    boardId = boardRes.json<{ id: string }>().id;
   });
 
   afterEach(async () => {
@@ -40,106 +32,120 @@ describe('items routes', () => {
     await tmp.cleanup();
   });
 
-  it('creates an item and returns 201', async () => {
+  it("POST /items creates an item and returns 201", async () => {
     const res = await server.inject({
-      method: 'POST',
-      url: `/boards/${boardId}/items`,
-      headers: { 'content-type': 'application/json' },
-      payload: itemPayload(boardId),
+      method: "POST",
+      url: "/items",
+      headers: { "content-type": "application/json" },
+      payload: { ...BASE_POST, body: "Hello world" },
     });
     expect(res.statusCode).toBe(201);
-    const body = res.json<{ id: string; title: string; boardId: string }>();
-    expect(body.title).toBe('Test Item');
-    expect(body.boardId).toBe(boardId);
-    expect(body.id).toBeTruthy();
+    const item = res.json<Item>();
+    expect(item.entityType).toBe("item");
+    expect(item.slug).toBe("my-item");
+    expect(item.title).toBe("My Item");
+    expect(item.body).toBe("Hello world");
+    expect(item.createdAt).toBeTruthy();
   });
 
-  it('lists items for a board', async () => {
+  it("POST /items — single-file-write invariant", async () => {
+    const before = await Array.fromAsync(glob(tmp.contentRoot + "/**/*.md"));
     await server.inject({
-      method: 'POST',
-      url: `/boards/${boardId}/items`,
-      headers: { 'content-type': 'application/json' },
-      payload: itemPayload(boardId),
+      method: "POST",
+      url: "/items",
+      headers: { "content-type": "application/json" },
+      payload: BASE_POST,
     });
-    await server.inject({
-      method: 'POST',
-      url: `/boards/${boardId}/items`,
-      headers: { 'content-type': 'application/json' },
-      payload: { ...itemPayload(boardId), title: 'Second Item' },
-    });
-
-    const res = await server.inject({
-      method: 'GET',
-      url: `/boards/${boardId}/items`,
-    });
-    expect(res.statusCode).toBe(200);
-    expect(res.json<{ items: unknown[] }>().items).toHaveLength(2);
+    const after = await Array.fromAsync(glob(tmp.contentRoot + "/**/*.md"));
+    expect(after.length - before.length).toBe(1);
   });
 
-  it('gets an item by id', async () => {
-    const created = await server.inject({
-      method: 'POST',
-      url: `/boards/${boardId}/items`,
-      headers: { 'content-type': 'application/json' },
-      payload: itemPayload(boardId),
-    });
-    const { id } = created.json<{ id: string }>();
+  it("POST /items — slug collision suffix (-2, -3)", async () => {
+    await writeItemFixture(tmp.contentRoot, makeItem({ slug: "clash", title: "Existing" }));
+    await server.close();
+    server = await createServer({ port: 0, host: "127.0.0.1", contentRoot: tmp.contentRoot });
+    await server.ready();
 
-    const res = await server.inject({
-      method: 'GET',
-      url: `/boards/${boardId}/items/${id}`,
+    const r1 = await server.inject({
+      method: "POST",
+      url: "/items",
+      headers: { "content-type": "application/json" },
+      payload: { slug: "clash", title: "Clash 1", mutations: [] },
     });
-    expect(res.statusCode).toBe(200);
-    expect(res.json<{ id: string }>().id).toBe(id);
+    expect(r1.statusCode).toBe(201);
+    expect(r1.json<Item>().slug).toBe("clash-2");
+
+    const r2 = await server.inject({
+      method: "POST",
+      url: "/items",
+      headers: { "content-type": "application/json" },
+      payload: { slug: "clash", title: "Clash 2", mutations: [] },
+    });
+    expect(r2.statusCode).toBe(201);
+    expect(r2.json<Item>().slug).toBe("clash-3");
   });
 
-  it('updates an item', async () => {
-    const created = await server.inject({
-      method: 'POST',
-      url: `/boards/${boardId}/items`,
-      headers: { 'content-type': 'application/json' },
-      payload: itemPayload(boardId),
-    });
-    const { id } = created.json<{ id: string }>();
+  it("GET /items/:slug returns the item", async () => {
+    await writeItemFixture(tmp.contentRoot, makeItem({ slug: "readable", title: "Readable" }));
+    await server.close();
+    server = await createServer({ port: 0, host: "127.0.0.1", contentRoot: tmp.contentRoot });
+    await server.ready();
 
-    const res = await server.inject({
-      method: 'PUT',
-      url: `/boards/${boardId}/items/${id}`,
-      headers: { 'content-type': 'application/json' },
-      payload: { title: 'Updated Item' },
-    });
+    const res = await server.inject({ method: "GET", url: "/items/readable" });
     expect(res.statusCode).toBe(200);
-    expect(res.json<{ title: string }>().title).toBe('Updated Item');
+    expect(res.json<Item>().slug).toBe("readable");
   });
 
-  it('deletes an item', async () => {
-    const created = await server.inject({
-      method: 'POST',
-      url: `/boards/${boardId}/items`,
-      headers: { 'content-type': 'application/json' },
-      payload: itemPayload(boardId),
+  it("PATCH /items/:slug applies mutations and only modifies target file", async () => {
+    const createRes = await server.inject({
+      method: "POST",
+      url: "/items",
+      headers: { "content-type": "application/json" },
+      payload: { slug: "patch-me", title: "Patch Target", mutations: [] },
     });
-    const { id } = created.json<{ id: string }>();
+    expect(createRes.statusCode).toBe(201);
 
-    const del = await server.inject({
-      method: 'DELETE',
-      url: `/boards/${boardId}/items/${id}`,
+    const files = await Array.fromAsync(glob(tmp.contentRoot + "/**/*.md"));
+    const contentsBefore = new Map<string, string>();
+    for (const f of files) {
+      contentsBefore.set(f, await readFile(f, "utf-8"));
+    }
+
+    const patchRes = await server.inject({
+      method: "PATCH",
+      url: "/items/patch-me",
+      headers: { "content-type": "application/json" },
+      payload: { mutations: [{ op: "set", path: "status", value: "done" }] },
     });
+    expect(patchRes.statusCode).toBe(200);
+    expect((patchRes.json<Record<string, unknown>>())["status"]).toBe("done");
+
+    const filesAfter = await Array.fromAsync(glob(tmp.contentRoot + "/**/*.md"));
+    expect(filesAfter).toHaveLength(files.length);
+    let changedCount = 0;
+    for (const f of filesAfter) {
+      const after = await readFile(f, "utf-8");
+      if (contentsBefore.get(f) !== after) changedCount++;
+    }
+    expect(changedCount).toBe(1);
+  });
+
+  it("DELETE /items/:slug removes the item", async () => {
+    await writeItemFixture(tmp.contentRoot, makeItem({ slug: "del-me", title: "Delete Me" }));
+    await server.close();
+    server = await createServer({ port: 0, host: "127.0.0.1", contentRoot: tmp.contentRoot });
+    await server.ready();
+
+    const del = await server.inject({ method: "DELETE", url: "/items/del-me" });
     expect(del.statusCode).toBe(200);
     expect(del.json<{ ok: boolean }>().ok).toBe(true);
 
-    const get = await server.inject({
-      method: 'GET',
-      url: `/boards/${boardId}/items/${id}`,
-    });
+    const get = await server.inject({ method: "GET", url: "/items/del-me" });
     expect(get.statusCode).toBe(404);
   });
 
-  it('returns 404 for unknown item', async () => {
-    const res = await server.inject({
-      method: 'GET',
-      url: `/boards/${boardId}/items/nonexistent`,
-    });
+  it("GET /items/:slug returns 404 for unknown item", async () => {
+    const res = await server.inject({ method: "GET", url: "/items/nonexistent" });
     expect(res.statusCode).toBe(404);
   });
 });

@@ -1,125 +1,123 @@
+import path from 'node:path';
+import { unlink } from 'node:fs/promises';
 import type { FastifyPluginOptions } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import {
-  ItemsListResponseSchema,
-  ItemResponseSchema,
+  ItemSchema,
   CreateItemRequestSchema,
-  UpdateItemRequestSchema,
+  PatchItemRequestSchema,
   DeleteResponseSchema,
+  SlugSchema,
 } from '@awesome-markdown/contracts';
-import type { ItemsRepo } from '../fs/items-repo.js';
+import type { Item } from '@awesome-markdown/contracts';
+import matter from 'gray-matter';
+import type { IndexStore } from '../fs/index-store.js';
+import { applyMutations } from '../fs/apply-mutations.js';
+import { writeFileAtomic } from '../fs/atomic-write.js';
 import { bus } from '../events/bus.js';
+import { RepoError } from '../errors.js';
 
 interface ItemsPluginOptions extends FastifyPluginOptions {
-  itemsRepo: ItemsRepo;
+  store: IndexStore;
+  contentRoot: string;
 }
 
-const boardParams = z.object({ boardId: z.string() });
-const itemParams = z.object({ boardId: z.string(), itemId: z.string() });
+function serializeItem(item: Item): string {
+  const { body, ...frontmatter } = item;
+  return matter.stringify(body ?? '', frontmatter);
+}
+
+const itemParams = z.object({ slug: SlugSchema });
 
 export const itemsRoutes: FastifyPluginAsyncZod<ItemsPluginOptions> = async (
   fastify,
   opts,
 ) => {
-  const { itemsRepo } = opts;
+  const { store, contentRoot } = opts;
 
-  // List items for a board
+  // GET /items/:slug
   fastify.get(
-    '/boards/:boardId/items',
-    {
-      schema: {
-        params: boardParams,
-        response: { 200: ItemsListResponseSchema },
-      },
-    },
+    '/items/:slug',
+    { schema: { params: itemParams, response: { 200: ItemSchema } } },
     async (req) => {
-      const items = await itemsRepo.list(req.params.boardId);
-      return { items };
-    },
-  );
-
-  // Get a single item
-  fastify.get(
-    '/boards/:boardId/items/:itemId',
-    {
-      schema: {
-        params: itemParams,
-        response: { 200: ItemResponseSchema },
-      },
-    },
-    async (req) => {
-      return itemsRepo.get(req.params.boardId, req.params.itemId);
-    },
-  );
-
-  // Create an item
-  fastify.post(
-    '/boards/:boardId/items',
-    {
-      schema: {
-        params: boardParams,
-        body: CreateItemRequestSchema.strict(),
-        response: { 201: ItemResponseSchema },
-      },
-    },
-    async (req, reply) => {
-      // Override boardId from path to prevent mismatches
-      const item = await itemsRepo.create({
-        ...req.body,
-        boardId: req.params.boardId,
-      });
-      bus.publish({
-        type: 'change',
-        path: `boards/${item.boardId}/items/${item.id}.md`,
-        entityId: item.id,
-      });
-      return reply.status(201).send(item);
-    },
-  );
-
-  // Update an item
-  fastify.put(
-    '/boards/:boardId/items/:itemId',
-    {
-      schema: {
-        params: itemParams,
-        body: UpdateItemRequestSchema.strict(),
-        response: { 200: ItemResponseSchema },
-      },
-    },
-    async (req) => {
-      const item = await itemsRepo.update(
-        req.params.boardId,
-        req.params.itemId,
-        req.body,
-      );
-      bus.publish({
-        type: 'change',
-        path: `boards/${item.boardId}/items/${item.id}.md`,
-        entityId: item.id,
-      });
+      const item = store.getItem(req.params.slug);
+      if (!item) throw new RepoError('not_found', `Item ${req.params.slug} not found`);
       return item;
     },
   );
 
-  // Delete an item
-  fastify.delete(
-    '/boards/:boardId/items/:itemId',
-    {
-      schema: {
-        params: itemParams,
-        response: { 200: DeleteResponseSchema },
-      },
+  // POST /items
+  fastify.post(
+    '/items',
+    { schema: { body: CreateItemRequestSchema.strict(), response: { 201: ItemSchema } } },
+    async (req, reply) => {
+      const { slug: requestedSlug, title, mutations, body } = req.body;
+
+      // Collision handling: append -2, -3, ... until unique
+      let finalSlug = requestedSlug;
+      let suffix = 2;
+      while (store.getItem(finalSlug)) {
+        finalSlug = `${requestedSlug}-${suffix}`;
+        suffix++;
+      }
+
+      const now = new Date().toISOString();
+      const baseItem: Item = {
+        entityType: 'item',
+        slug: finalSlug,
+        title,
+        body,
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const item = mutations.length > 0 ? applyMutations(baseItem, mutations, now) : baseItem;
+      // applyMutations may overwrite updatedAt — restore timestamps
+      const finalItem: Item = { ...item, createdAt: now, updatedAt: now };
+
+      const filePath = path.join(contentRoot, `${finalSlug}.md`);
+      await writeFileAtomic(filePath, serializeItem(finalItem));
+      store.upsertItem(finalSlug, finalItem, filePath);
+      bus.publish({ type: 'change', path: `${finalSlug}.md`, entityId: finalSlug });
+
+      return reply.status(201).send(finalItem);
     },
+  );
+
+  // PATCH /items/:slug
+  fastify.patch(
+    '/items/:slug',
+    { schema: { params: itemParams, body: PatchItemRequestSchema.strict(), response: { 200: ItemSchema } } },
     async (req) => {
-      const { boardId, itemId } = req.params;
-      await itemsRepo.delete(boardId, itemId);
-      bus.publish({
-        type: 'change',
-        path: `boards/${boardId}/items/${itemId}.md`,
-        entityId: itemId,
-      });
+      const { slug } = req.params;
+      const existing = store.getItem(slug);
+      if (!existing) throw new RepoError('not_found', `Item ${slug} not found`);
+      const filePath = store.getItemFilePath(slug);
+      if (!filePath) throw new RepoError('not_found', `Item ${slug} not found`);
+
+      const updated = applyMutations(existing, req.body.mutations);
+      await writeFileAtomic(filePath, serializeItem(updated));
+      store.upsertItem(slug, updated, filePath);
+      bus.publish({ type: 'change', path: path.relative(contentRoot, filePath), entityId: slug });
+
+      return updated;
+    },
+  );
+
+  // DELETE /items/:slug
+  fastify.delete(
+    '/items/:slug',
+    { schema: { params: itemParams, response: { 200: DeleteResponseSchema } } },
+    async (req) => {
+      const { slug } = req.params;
+      const filePath = store.getItemFilePath(slug);
+      if (!filePath) throw new RepoError('not_found', `Item ${slug} not found`);
+
+      await unlink(filePath);
+      store.removeByFilePath(filePath);
+      bus.publish({ type: 'change', path: path.relative(contentRoot, filePath), entityId: slug });
+
       return { ok: true as const };
     },
   );

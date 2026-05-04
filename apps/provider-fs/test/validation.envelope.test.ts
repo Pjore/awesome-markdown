@@ -20,10 +20,10 @@ describe('validation error envelope', () => {
     await tmp.cleanup();
   });
 
-  it('returns 400 for missing required board fields', async () => {
+  it('POST /items returns 400 for missing required fields', async () => {
     const res = await server.inject({
       method: 'POST',
-      url: '/boards',
+      url: '/items',
       headers: { 'content-type': 'application/json' },
       payload: {},
     });
@@ -33,96 +33,60 @@ describe('validation error envelope', () => {
     expect(body.error.length).toBeGreaterThan(0);
   });
 
-  it('returns 400 for wrong type on board field', async () => {
+  it('POST /items returns 400 for invalid slug', async () => {
     const res = await server.inject({
       method: 'POST',
-      url: '/boards',
+      url: '/items',
       headers: { 'content-type': 'application/json' },
-      payload: { slug: 123, title: 'Valid Title' },
+      payload: { slug: '..invalid..', title: 'Bad Slug', mutations: [] },
     });
     expect(res.statusCode).toBe(400);
     const body = res.json<ErrorBody>();
     expect(typeof body.error).toBe('string');
   });
 
-  it('returns 400 for unknown fields on board create (strict)', async () => {
+  it('POST /items returns 400 for unknown extra fields (strict)', async () => {
     const res = await server.inject({
       method: 'POST',
-      url: '/boards',
+      url: '/items',
       headers: { 'content-type': 'application/json' },
-      payload: { slug: 'test', title: 'Test', unknownField: 'oops' },
+      payload: { slug: 'x', title: 'X', mutations: [], unknownField: 'oops' },
     });
     expect(res.statusCode).toBe(400);
   });
 
-  it('returns 400 for invalid item priority', async () => {
-    // Create a board first
-    const boardRes = await server.inject({
+  it('PATCH /items/:slug returns 400 for empty mutations array', async () => {
+    // Create an item first
+    await server.inject({
       method: 'POST',
-      url: '/boards',
+      url: '/items',
       headers: { 'content-type': 'application/json' },
-      payload: { slug: 'val-board', title: 'Val Board' },
+      payload: { slug: 'patch-val', title: 'Patch Val', mutations: [] },
     });
-    const { id: boardId } = boardRes.json<{ id: string }>();
 
     const res = await server.inject({
-      method: 'POST',
-      url: `/boards/${boardId}/items`,
+      method: 'PATCH',
+      url: '/items/patch-val',
       headers: { 'content-type': 'application/json' },
-      payload: {
-        boardId,
-        columnId: 'col',
-        swimlaneId: 'lane',
-        title: 'X',
-        body: '',
-        status: 'todo',
-        priority: 'invalid-priority',
-        tags: [],
-        customFields: {},
-      },
+      payload: { mutations: [] }, // min(1) violation
     });
     expect(res.statusCode).toBe(400);
-    const body = res.json<ErrorBody>();
-    expect(typeof body.error).toBe('string');
   });
 
-  it('returns 404 with error envelope for missing board', async () => {
-    const res = await server.inject({
-      method: 'GET',
-      url: '/boards/does-not-exist',
-    });
+  it('GET /items/:slug returns 404 with error envelope for missing item', async () => {
+    const res = await server.inject({ method: 'GET', url: '/items/does-not-exist' });
     expect(res.statusCode).toBe(404);
     const body = res.json<ErrorBody>();
     expect(typeof body.error).toBe('string');
     expect(body.code).toBe('not_found');
   });
 
-  it('returns 400 for unknown fields on item create (strict)', async () => {
-    const boardRes = await server.inject({
-      method: 'POST',
-      url: '/boards',
-      headers: { 'content-type': 'application/json' },
-      payload: { slug: 'strict-board', title: 'Strict Board' },
-    });
-    const { id: boardId } = boardRes.json<{ id: string }>();
-
-    const res = await server.inject({
-      method: 'POST',
-      url: `/boards/${boardId}/items`,
-      headers: { 'content-type': 'application/json' },
-      payload: {
-        boardId,
-        columnId: 'col',
-        swimlaneId: 'lane',
-        title: 'X',
-        body: '',
-        status: 'todo',
-        priority: 'medium',
-        tags: [],
-        customFields: {},
-        extraField: 'not-allowed',
-      },
-    });
-    expect(res.statusCode).toBe(400);
+  it('GET /boards/:slug/render returns 404 for missing board', async () => {
+    const res = await server.inject({ method: 'GET', url: '/boards/does-not-exist/render' });
+    expect(res.statusCode).toBe(404);
+    const body = res.json<ErrorBody>();
+    expect(typeof body.error).toBe('string');
+    expect(body.code).toBe('not_found');
   });
 });
+
