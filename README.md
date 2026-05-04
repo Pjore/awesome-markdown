@@ -2,10 +2,27 @@
 
 Lightweight, git-backed kanban system. Pure client-side React UI with pluggable persistence providers and an independent sync-engine for git and external-change notifications.
 
+## Domain Model
+
+**Flat pool, boards-as-queries.** All domain objects live as `.md` files in `content/` with a YAML frontmatter `entityType` field. There is no directory nesting per board.
+
+| entityType | Description |
+|------------|-------------|
+| `item` | A kanban card. Has a `boards[]` list of board slugs it belongs to. |
+| `board` | Defines an optional base filter and references column + swimlane axis slugs. |
+| `axis` | A named dimension (column or swimlane). Holds an ordered list of cells, each with a filter rule and optional `writeOnDrop` override. |
+
+Boards don't own items — they **project** the item pool through filter rules. A board's cells are formed by the cross-product of column × swimlane axes.
+
+**Drop semantics.** When the user drops an item into a cell, the filter engine derives the minimal field mutations from the cell's combined filter (board ∧ column ∧ swimlane). Each drop results in exactly one markdown file write. Cells whose combined filter uses non-invertible operators (e.g., `or`/`any`) are read-only.
+
+**Homeless view.** Items whose `boards[]` list references a board but match no column cell appear in that board's `/homeless` view instead of the main grid.
+
 ## Overview
 
 - **No central API.** The UI talks directly to whichever persistence provider is selected at runtime.
-- **Two providers.** `provider-localstorage` runs entirely in-browser — zero server required. `provider-fs` is a local Fastify sidecar that stores kanban items as markdown files with YAML frontmatter.
+- **Two providers.** `provider-localstorage` runs entirely in-browser — zero server required. `provider-fs` is a local Fastify sidecar that serves the flat content pool via REST.
+- **Isomorphic filter engine.** `packages/filter-engine` evaluates cell filters, analyses invertibility, and derives drop mutations — shared between UI and sidecar.
 - **Independent sync-engine.** A separate process watches `content/`, auto-commits, push/pulls a GitHub remote, and broadcasts SSE events to the UI.
 - **Conflict-aware.** When a git pull cannot fast-forward, the sync-engine emits a `conflict` event and the UI shows a resolution dialog.
 
@@ -14,6 +31,7 @@ Lightweight, git-backed kanban system. Pure client-side React UI with pluggable 
 ```
 packages/
   contracts/            Zod v4 schemas + TypeScript types (shared)
+  filter-engine/        Isomorphic filter evaluate, invertibility analysis, mutation derivation
   provider-localstorage/ In-browser localStorage provider
   provider-http/         Fetch-based HTTP client implementing the provider interface
 apps/
@@ -96,27 +114,35 @@ For remote git sync, set `GITHUB_TOKEN` and `SYNC_ENGINE_REMOTE_ENABLED=true` in
 > SYNC_ENGINE_REPO_ROOT=$(pwd) pnpm --filter sync-engine dev  # Sync → http://localhost:7402
 > ```
 
-## Board: Demo Board Items
+## Demo Content
 
-```mermaid
----
-config:
-  kanban:
-    ticketBaseUrl: 'content/boards/board-demo/items/'
----
-kanban
-  todo["To Do"]
-    item-003["SSE reconnect drops pending events"]@{ ticket: item-003, priority: 'High' }
-    item-007["CORS headers missing on SSE endpoint"]@{ ticket: item-007, priority: 'High' }
-  inprogress["In Progress"]
-    item-001["Add dark mode toggle"]@{ ticket: item-001, priority: 'Medium' }
-    item-004["Drag-and-drop swimlane reordering"]@{ ticket: item-004, priority: 'Medium' }
-    local-test-1["Local test item 1"]@{ ticket: local-test-1, priority: 'Low' }
-  done["Done"]
-    item-002["Keyboard shortcut to create new card"]@{ ticket: item-002, priority: 'Low' }
-    item-005["Item editor loses unsaved changes on route change"]@{ ticket: item-005, priority: 'Very High' }
-    item-006["Board list page"]@{ ticket: item-006, priority: 'Medium' }
-```
+The `content/` directory contains hand-authored markdown files that serve as
+**living documentation** for the domain model. Each file has a YAML frontmatter
+block with an `entityType` field (`item`, `board`, or `axis`).
+
+| File | Type | Purpose |
+|------|------|---------|
+| `content/board-dev.md` | board | Scoped board (B.filter: `project = dev`); columns by priority + tag |
+| `content/board-all.md` | board | Unfiltered board; columns by status, swimlane by priority |
+| `content/priority-high.md` | axis | **Reused axis** — column on `board-dev`, swimlane on `board-all` |
+| `content/status-todo.md` | axis | Status bucket; invertible `equals` filter |
+| `content/status-doing.md` | axis | Status bucket; invertible `equals` filter |
+| `content/status-done.md` | axis | **Non-invertible** `any` OR filter → read-only cells |
+| `content/tag-urgent.md` | axis | Explicit `writeOnDrop` override (appends tag + sets priority) |
+| `content/item-fix-auth-bug.md` | item | Has `boards[]` entries for both boards; tagged urgent |
+| `content/item-refactor-db.md` | item | `status: done` → lands in read-only cell on `board-dev` |
+| `content/item-onboard-ml.md` | item | **No `boards[]` entry** — floats in the item pool |
+
+Key patterns demonstrated:
+
+- **Axis reuse across boards** (`priority-high`): the same axis slug drives a
+  column on one board and a swimlane on another.
+- **Non-invertible (read-only) cell** (`status-done`): an `any` OR filter can
+  never be uniquely inverted, so every cell at that axis is read-only.
+- **`writeOnDrop` override** (`tag-urgent`): explicit mutation list overrides
+  the filter-derived mutations, setting both the tag and priority on drop.
+- **Floating item** (`item-onboard-ml`): an item with no `boards[]` entry
+  exercises the homeless view.
 
 ## Testing
 
