@@ -6,7 +6,7 @@ boards:
   - board: board-all
     order: F
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-11T08:40:16.943Z'
+updatedAt: '2026-05-11T08:40:22.231Z'
 project: marketing
 status: doing
 priority: low
