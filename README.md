@@ -47,7 +47,7 @@ apps/
 | UI | React 19, Vite 8 (Rolldown + Oxc), Tailwind v4, @dnd-kit |
 | API / sidecar | Fastify v5 + `fastify-type-provider-zod` |
 | Validation | Zod v4 — import from `"zod"` |
-| Git | simple-git + GitHub Fine-Grained PAT (`GITHUB_TOKEN`) |
+| Git | simple-git + GitHub App tokens (`@octokit/auth-app`) |
 | File watching | chokidar |
 | Markdown frontmatter | gray-matter |
 | Live channel | Native SSE (no WebSocket) |
@@ -105,7 +105,7 @@ VS Code tasks are also available (Ctrl+Shift+P → "Tasks: Run Task"):
 - **Services: Start All** / **Services: Stop All** / **Services: Status**
 - **Services: Tail UI Log** / **Services: Tail FS Log** / **Services: Tail Sync Log**
 
-For remote git sync, set `GITHUB_TOKEN` and `SYNC_ENGINE_REMOTE_ENABLED=true` in your `.env` file before starting. When working on a feature branch, also set `SYNC_ENGINE_TARGET_BRANCH=<branch>` in `apps/sync-engine/.env` so the engine syncs the right branch.
+For remote git sync, set `SYNC_ENGINE_REMOTE_ENABLED=true` and the GitHub App credentials (`GITHUB_APP_ID`, `GITHUB_APP_INSTALLATION_ID`, `GITHUB_APP_PRIVATE_KEY_PATH`) in `apps/sync-engine/.env` before starting. See `apps/sync-engine/.env.example` for the full reference. When working on a feature branch, also set `SYNC_ENGINE_TARGET_BRANCH=<branch>` so the engine syncs the right branch.
 
 > **Underlying commands** (used by the services wrapper internally):
 > ```bash
