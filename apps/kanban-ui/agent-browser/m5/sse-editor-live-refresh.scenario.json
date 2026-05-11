@@ -1,0 +1,110 @@
+{
+  "id": "sse-editor-live-refresh",
+  "version": "1",
+  "description": "Open item editor via HTTP/SSE provider; harness PATCHes the item externally; assert title input updates without page reload (SSE-driven live refresh). Verify dirty-guard: editing the title first must suppress the auto-refresh.",
+  "services": ["kanban-ui:dev", "provider-fs:sidecar"],
+  "url": "http://localhost:5173/",
+  "prerequisites": {
+    "sidecar": "http://localhost:7701",
+    "notes": [
+      "provider-fs must be running on port 7701 (default via ./scripts/services start).",
+      "The harness PATCHes item-fix-auth-bug via the sidecar REST API on the 'patch-item' exec step.",
+      "The PATCH triggers an SSE change event on the provider-http subscription, which",
+      "propagates through useProviderSubscribe → ItemEditorPage refetch (~100 ms debounce).",
+      "A restore PATCH is issued at the end to reset the title to its original value."
+    ]
+  },
+  "actions": [
+    { "type": "navigate", "url": "http://localhost:5173/" },
+    { "type": "wait", "selector": "[data-testid='app-header']" },
+    { "type": "click", "selector": "[data-testid='settings-btn']" },
+    { "type": "wait", "selector": "[data-testid='settings-panel']" },
+    { "type": "click", "selector": "[data-testid='provider-radio-http']" },
+    { "type": "fill", "selector": "[data-testid='sidecar-url-input']", "value": "http://localhost:7701" },
+    { "type": "click", "selector": "[data-testid='settings-save']" },
+    { "type": "wait-for-gone", "selector": "[data-testid='settings-panel']" },
+    { "type": "navigate", "url": "http://localhost:5173/items/item-fix-auth-bug" },
+    { "type": "wait", "selector": "[data-testid='item-editor']" },
+    {
+      "type": "assert-attribute",
+      "selector": "[data-testid='item-editor-title']",
+      "attribute": "value",
+      "value": "Authentication bug in login flow!",
+      "description": "Baseline: confirm item loads with its original title"
+    },
+    {
+      "type": "exec",
+      "description": "Harness PATCHes item-fix-auth-bug externally via provider-fs REST API",
+      "command": "patch-item",
+      "args": {
+        "url": "http://localhost:7701/items/item-fix-auth-bug",
+        "mutations": [{ "op": "set", "path": "title", "value": "SSE live-refreshed title" }]
+      }
+    },
+    {
+      "type": "wait-for-input-value",
+      "selector": "[data-testid='item-editor-title']",
+      "value": "SSE live-refreshed title",
+      "timeout": 3000,
+      "description": "Wait for the SSE-triggered refetch to propagate the new title into the input"
+    },
+    {
+      "type": "exec",
+      "description": "Harness restores original title so subsequent runs start from a clean state",
+      "command": "patch-item",
+      "args": {
+        "url": "http://localhost:7701/items/item-fix-auth-bug",
+        "mutations": [{ "op": "set", "path": "title", "value": "Authentication bug in login flow!" }]
+      }
+    },
+    {
+      "type": "navigate",
+      "url": "http://localhost:5173/items/item-fix-auth-bug",
+      "description": "Reopen editor to test dirty-guard: edits made before SSE fires must not be overwritten"
+    },
+    { "type": "wait", "selector": "[data-testid='item-editor']" },
+    {
+      "type": "clear-and-fill",
+      "selector": "[data-testid='item-editor-title']",
+      "value": "User is editing this title"
+    },
+    {
+      "type": "exec",
+      "description": "Fire another PATCH while the user has unsaved edits (dirty=true)",
+      "command": "patch-item",
+      "args": {
+        "url": "http://localhost:7701/items/item-fix-auth-bug",
+        "mutations": [{ "op": "set", "path": "body", "value": "Body updated externally while title is dirty" }]
+      }
+    },
+    {
+      "type": "assert-input-value",
+      "selector": "[data-testid='item-editor-title']",
+      "value": "User is editing this title",
+      "description": "Dirty-guard: SSE event must NOT overwrite the user's in-progress title edit"
+    }
+  ],
+  "assertions": [
+    {
+      "id": "editor-live-refresh",
+      "description": "Title input reflects the externally patched value without page reload (SSE-driven refetch via useProviderSubscribe)",
+      "selector": "[data-testid='item-editor-title']",
+      "check": "attribute-equals",
+      "attribute": "value",
+      "value": "SSE live-refreshed title"
+    },
+    {
+      "id": "dirty-guard",
+      "description": "When dirty=true, SSE-triggered refetches do not overwrite the user's in-progress edits",
+      "selector": "[data-testid='item-editor-title']",
+      "check": "attribute-equals",
+      "attribute": "value",
+      "value": "User is editing this title"
+    },
+    {
+      "id": "no-console-errors",
+      "description": "No uncaught errors during SSE-triggered live refresh or dirty-guard suppression",
+      "check": "no-console-errors"
+    }
+  ]
+}
