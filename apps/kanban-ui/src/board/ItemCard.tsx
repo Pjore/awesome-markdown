@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -40,6 +40,8 @@ export function ItemCard({
     swimlaneSlug,
   };
 
+  const [isHovered, setIsHovered] = useState(false);
+
   const {
     attributes,
     listeners,
@@ -53,14 +55,18 @@ export function ItemCard({
     disabled: isConflicted,
   });
 
+  const borderStyle = isConflicted
+    ? '1px dashed var(--ink-muted)'
+    : isHovered && !isDragging
+      ? '1px solid var(--accent)'
+      : '1px solid var(--border)';
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
-    transition,
+    transition: transition ?? undefined,
     opacity: isDragging ? 0.4 : 1,
     padding: '10px 12px',
-    border: isConflicted
-      ? '1px dashed var(--ink-muted)'
-      : '1px solid var(--border)',
+    border: borderStyle,
     borderRadius: 0,
     boxShadow: 'none',
     background: 'transparent',
@@ -86,6 +92,8 @@ export function ItemCard({
       ref={setNodeRef}
       style={style}
       onClick={isConflicted ? undefined : handleClick}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
       data-testid={`item-card-${item.slug}`}
       data-item-slug={item.slug}
       data-conflict={isConflicted ? 'true' : undefined}
