@@ -11,11 +11,14 @@ import {
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
 import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import type { BoardRender, Cell as CellType, Homeless } from '@awesome-markdown/contracts';
+import { deriveMutations } from '@awesome-markdown/filter-engine';
 import { ColumnHeader } from './ColumnHeader.js';
 import { SwimlaneRow } from './SwimlaneRow.js';
 import { HomelessPanel } from './HomelessPanel.js';
 import { onDragEnd } from './dnd/onDragEnd.js';
-import { computeDropMutations, applyOptimisticMove } from './dnd/mutateDragDrop.js';
+import { computeDropMutations, applyOptimisticMove, buildCellFilter } from './dnd/mutateDragDrop.js';
+import { decodeCellId } from './dnd/dragTypes.js';
+import type { HomelessItemDragData } from './dnd/dragTypes.js';
 import { useProvider } from '../provider/ProviderContext.js';
 
 interface BoardProps {
@@ -59,6 +62,87 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
   const handleDragEnd = useCallback(
     (event: DragEndEvent): void => {
       setActiveItemSlug(null);
+
+      // --- Homeless item drop branch ---
+      const activeData = event.active.data.current as { type?: string } | undefined;
+      if (activeData?.type === 'homeless-item') {
+        if (!event.over || !homeless) return;
+        const homelessData = activeData as HomelessItemDragData;
+        const { itemSlug } = homelessData;
+        const overId = String(event.over.id);
+
+        let dstColumnSlug: string;
+        let dstSwimlaneSlug: string;
+        let insertBeforeSlug: string | null;
+
+        const cellDecoded = decodeCellId(overId);
+        if (cellDecoded) {
+          dstColumnSlug = cellDecoded.columnSlug;
+          dstSwimlaneSlug = cellDecoded.swimlaneSlug;
+          insertBeforeSlug = null;
+        } else {
+          const dstCell = cells.find((c) => c.items.some((i) => i.slug === overId));
+          if (!dstCell) return;
+          dstColumnSlug = dstCell.columnSlug;
+          dstSwimlaneSlug = dstCell.swimlaneSlug;
+          insertBeforeSlug = overId;
+        }
+
+        const dstCell = cells.find(
+          (c) => c.columnSlug === dstColumnSlug && c.swimlaneSlug === dstSwimlaneSlug,
+        );
+        if (!dstCell) return;
+        if (dstCell.readOnly) return;
+
+        const colAxis = render.axes.columns.find((a) => a.slug === dstColumnSlug);
+        const slAxis = render.axes.swimlanes.find((a) => a.slug === dstSwimlaneSlug);
+        if (!colAxis || !slAxis) return;
+
+        const filter = buildCellFilter(render.board, colAxis, slAxis);
+        const writeOnDrop = colAxis.writeOnDrop ?? slAxis.writeOnDrop;
+        const mutations = deriveMutations(filter, { board: render.board.slug }, writeOnDrop);
+        if (!Array.isArray(mutations)) return; // read-only guard
+
+        const movingItem = homeless.items.find((i) => i.slug === itemSlug);
+        if (!movingItem) return;
+
+        // Insert item into destination cell (no source-cell removal needed)
+        const newCells = cells.map((cell) => {
+          if (cell.columnSlug !== dstColumnSlug || cell.swimlaneSlug !== dstSwimlaneSlug) {
+            return cell;
+          }
+          const withoutItem = cell.items.filter((i) => i.slug !== itemSlug);
+          if (insertBeforeSlug === null) {
+            return { ...cell, items: [...withoutItem, movingItem] };
+          }
+          const idx = withoutItem.findIndex((i) => i.slug === insertBeforeSlug);
+          const insertAt = idx >= 0 ? idx : withoutItem.length;
+          return {
+            ...cell,
+            items: [
+              ...withoutItem.slice(0, insertAt),
+              movingItem,
+              ...withoutItem.slice(insertAt),
+            ],
+          };
+        });
+        setOptimisticCells(newCells);
+
+        void (async () => {
+          try {
+            await provider.patchItem(itemSlug, { mutations });
+            setOptimisticCells(null);
+          } catch (err) {
+            setOptimisticCells(null);
+            setError(
+              `Failed to move item: ${err instanceof Error ? err.message : 'Unknown error'}`,
+            );
+          }
+        })();
+        return;
+      }
+
+      // --- Regular cell-to-cell drop branch ---
       const action = onDragEnd(event, cells);
       if (action.type === 'noop') return;
 
@@ -125,13 +209,23 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
         }
       })();
     },
-    [cells, render, provider],
+    [cells, render, provider, homeless],
   );
 
   const activeItem =
     activeItemSlug !== null
-      ? cells.flatMap((c) => c.items).find((i) => i.slug === activeItemSlug) ?? null
+      ? (cells.flatMap((c) => c.items).find((i) => i.slug === activeItemSlug) ??
+          homeless?.items.find((i) => i.slug === activeItemSlug) ??
+          null)
       : null;
+
+  const visibleHomelessItems = homeless
+    ? homeless.items.filter(
+        (i) =>
+          !optimisticCells ||
+          !optimisticCells.some((c) => c.items.some((it) => it.slug === i.slug)),
+      )
+    : [];
 
   return (
     <div
@@ -186,14 +280,14 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
         </div>
       )}
 
-      <div className="flex-1 overflow-auto">
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCenter}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
-          onDragCancel={handleDragCancel}
-        >
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={handleDragCancel}
+      >
+        <div className="flex-1 overflow-auto">
           {/* Column header row */}
           <div className="flex sticky top-0 z-10" style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
             {/* Spacer aligned with swimlane label width */}
@@ -220,34 +314,34 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
               />
             ))}
           </div>
+        </div>
 
-          {/* Drag overlay — ghost card following cursor while dragging */}
-          <DragOverlay>
-            {activeItem !== null && (
-              <div
-                style={{
-                  background: 'var(--bg)',
-                  border: '1px solid var(--border)',
-                  padding: '10px 12px',
-                  fontSize: '14px',
-                  fontWeight: 500,
-                  color: 'var(--ink)',
-                  fontFamily: 'var(--font-sans)',
-                  opacity: 0.9,
-                  boxShadow: 'none',
-                }}
-              >
-                {activeItem.title}
-              </div>
-            )}
-          </DragOverlay>
-        </DndContext>
-      </div>
+        {/* Homeless panel — inside DndContext so homeless items are valid drag sources */}
+        {homeless !== null && visibleHomelessItems.length > 0 && (
+          <HomelessPanel homeless={homeless} items={visibleHomelessItems} />
+        )}
 
-      {/* Homeless panel */}
-      {homeless !== null && homeless.items.length > 0 && (
-        <HomelessPanel homeless={homeless} />
-      )}
+        {/* Drag overlay — ghost card following cursor while dragging */}
+        <DragOverlay>
+          {activeItem !== null && (
+            <div
+              style={{
+                background: 'var(--bg)',
+                border: '1px solid var(--border)',
+                padding: '10px 12px',
+                fontSize: '14px',
+                fontWeight: 500,
+                color: 'var(--ink)',
+                fontFamily: 'var(--font-sans)',
+                opacity: 0.9,
+                boxShadow: 'none',
+              }}
+            >
+              {activeItem.title}
+            </div>
+          )}
+        </DragOverlay>
+      </DndContext>
     </div>
   );
 }
