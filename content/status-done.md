@@ -7,7 +7,7 @@ description: >-
   cells at this axis are always read-only — dropping here is disabled because
   the filter cannot be uniquely inverted.
 filter:
-  and:
+  or:
     - property: status
       equals: done
     - property: status
