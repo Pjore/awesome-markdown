@@ -6,9 +6,9 @@ boards:
   - board: board-dev
     order: VV
   - board: board-all
-    order: 'N'
+    order: VVV
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-11T08:40:38.514Z'
+updatedAt: '2026-05-11T08:40:41.780Z'
 project: dev
 status: doing
 priority: high
