@@ -13,6 +13,9 @@ writeOnDrop:
   - op: append
     path: tags
     value: urgent
+  - op: set
+    path: priority
+    value: high
 order:
   by: boards.$board.order
   direction: asc
