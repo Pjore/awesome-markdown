@@ -18,3 +18,7 @@ This item intentionally has **no `boards[]` entry** — it floats in the item
 pool. It matches `board-all` (no candidate-set filter) but carries no
 board-specific order or placement metadata. Use it to verify the homeless
 view behaviour.
+
+## Sub header
+
+With some additional description text to make the item taller and more visible on
