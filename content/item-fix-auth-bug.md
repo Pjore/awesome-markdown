@@ -8,7 +8,7 @@ boards:
   - board: board-all
     order: V
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-11T07:05:50.589Z'
+updatedAt: '2026-05-11T07:06:27.710Z'
 project: dev
 status: doing
 priority: high
@@ -25,3 +25,5 @@ it in the `tag-urgent` column on `board-dev`.
 
 - On `board-dev`: column = `tag-urgent` (priority high + urgent tag), swimlane = `status-doing`
 - On `board-all`: column = `status-doing`, swimlane = `priority-high`
+
+/Per
