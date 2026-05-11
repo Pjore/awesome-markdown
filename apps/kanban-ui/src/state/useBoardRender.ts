@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import type { BoardRender, Homeless } from '@awesome-markdown/contracts';
 import { useProvider } from '../provider/ProviderContext.js';
+import { useProviderSubscribe } from './useProviderSubscribe.js';
 
 export type BoardRenderStatus = 'loading' | 'ready' | 'error';
 
@@ -14,8 +15,8 @@ export interface BoardRenderState {
 /**
  * Fetches the render envelope and homeless list for a board by slug.
  *
- * Coalesces rapid SSE `content-changed` events into a single re-fetch
- * per board (debounce ~100 ms).
+ * Coalesces rapid SSE change events into a single re-fetch per board
+ * via `useProviderSubscribe` (debounce ~100 ms).
  */
 export function useBoardRender(slug: string): BoardRenderState {
   const provider = useProvider();
@@ -25,7 +26,6 @@ export function useBoardRender(slug: string): BoardRenderState {
 
   const slugRef = useRef(slug);
   slugRef.current = slug;
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const fetchAll = useCallback(async (): Promise<void> => {
     const currentSlug = slugRef.current;
@@ -47,34 +47,14 @@ export function useBoardRender(slug: string): BoardRenderState {
     }
   }, [provider]);
 
-  const scheduleFetch = useCallback((): void => {
-    if (debounceRef.current !== null) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      void fetchAll();
-    }, 100);
-  }, [fetchAll]);
-
   useEffect(() => {
     setRender(null);
     setHomeless(null);
     setStatus('loading');
     void fetchAll();
+  }, [provider, slug, fetchAll]);
 
-    const unsubscribe = provider.subscribe((_event) => {
-      scheduleFetch();
-    });
-
-    const handleRemoteChange = (): void => {
-      scheduleFetch();
-    };
-    window.addEventListener('sync-engine:change', handleRemoteChange);
-
-    return () => {
-      unsubscribe();
-      window.removeEventListener('sync-engine:change', handleRemoteChange);
-      if (debounceRef.current !== null) clearTimeout(debounceRef.current);
-    };
-  }, [provider, slug, fetchAll, scheduleFetch]);
+  useProviderSubscribe(() => void fetchAll());
 
   return { status, render, homeless, refetch: fetchAll };
 }
