@@ -3,6 +3,7 @@ import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import type { Item } from '@awesome-markdown/contracts';
 import { useProvider } from '../provider/ProviderContext.js';
 import { useBreadcrumb } from '../App.js';
+import { useProviderSubscribe } from '../state/useProviderSubscribe.js';
 
 interface EditorLocationState {
   boardSlug?: string;
@@ -62,6 +63,26 @@ export function ItemEditorPage(): React.ReactElement {
       })
       .finally(() => setLoading(false));
   }, [slug, provider]);
+
+  // Silently refetch when the file changes externally.
+  // Skipped when dirty (user has unsaved edits) to avoid overwriting in-progress work.
+  // Filtered by entitySlug when available; window events (git pull) always trigger.
+  useProviderSubscribe((event) => {
+    if (!slug) return;
+    if (dirty) return;
+    if (event !== null && event.type === 'change' && event.entitySlug !== slug) return;
+    provider
+      .getItem(slug)
+      .then((fetched) => {
+        if (!fetched) return;
+        setItem(fetched);
+        setTitle(fetched.title);
+        setBody(fetched.body ?? '');
+      })
+      .catch(() => {
+        // Silently ignore SSE-triggered fetch failures
+      });
+  });
 
   // Push breadcrumb segments
   useEffect(() => {

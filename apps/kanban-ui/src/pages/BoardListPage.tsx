@@ -1,7 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import type { Board } from '@awesome-markdown/contracts';
 import { useProvider } from '../provider/ProviderContext.js';
+import { useProviderSubscribe } from '../state/useProviderSubscribe.js';
 
 /**
  * Board list page — rendered at route `/`.
@@ -13,37 +14,30 @@ export function BoardListPage(): React.ReactElement {
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
-  useEffect(() => {
-    let cancelled = false;
+  const cancelledRef = useRef(false);
 
-    const load = async (): Promise<void> => {
-      try {
-        const result = await provider.listBoards();
-        if (!cancelled) {
-          setBoards(result);
-          setStatus('ready');
-        }
-      } catch (err) {
-        console.error('Failed to list boards', err);
-        if (!cancelled) setStatus('error');
+  const load = useCallback(async (): Promise<void> => {
+    try {
+      const result = await provider.listBoards();
+      if (!cancelledRef.current) {
+        setBoards(result);
+        setStatus('ready');
       }
-    };
-
-    void load();
-
-    const unsubscribe = provider.subscribe((_event) => {
-      void load();
-    });
-
-    const handleRemoteChange = (): void => { void load(); };
-    window.addEventListener('sync-engine:change', handleRemoteChange);
-
-    return () => {
-      cancelled = true;
-      unsubscribe();
-      window.removeEventListener('sync-engine:change', handleRemoteChange);
-    };
+    } catch (err) {
+      console.error('Failed to list boards', err);
+      if (!cancelledRef.current) setStatus('error');
+    }
   }, [provider]);
+
+  useEffect(() => {
+    cancelledRef.current = false;
+    void load();
+    return () => {
+      cancelledRef.current = true;
+    };
+  }, [load]);
+
+  useProviderSubscribe(() => void load());
 
   if (status === 'loading') {
     return (

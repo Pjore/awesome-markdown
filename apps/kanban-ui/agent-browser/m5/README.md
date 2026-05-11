@@ -11,6 +11,7 @@ This directory contains the UC-6 acceptance scenarios for Milestone 5:
 | `sse-online-indicator.scenario.json` | `sse-online-indicator` | Assert connection indicator reaches `online` within 5 s after switching to HTTP |
 | `sidecar-restart-reconnect.scenario.json` | `sidecar-restart-reconnect` | Restart sidecar out-of-band; assert indicator goes `reconnecting` then `online` |
 | `switch-back-isolation.scenario.json` | `switch-back-isolation` | Switch to HTTP, then back to localStorage; assert state isolation |
+| `sse-editor-live-refresh.scenario.json` | `sse-editor-live-refresh` | PATCH item externally; assert editor title refreshes via SSE without reload; dirty-guard suppresses overwrite |
 
 ## Prerequisites
 
@@ -28,6 +29,25 @@ The harness must:
    - `kill <sidecar-pid>` to stop the current instance
    - Start a new instance: `pnpm --filter provider-fs start &`
    - Wait until `http://localhost:3001/health` returns 200 before continuing.
+
+### Scenario: `sse-editor-live-refresh`
+
+This scenario verifies two behaviours introduced by `useProviderSubscribe`:
+
+1. **Live-refresh**: when the file is written externally (via PATCH), the item editor
+   updates its title input within ~200 ms (100 ms debounce + network round-trip).
+2. **Dirty-guard**: when the user has unsaved edits (`dirty=true`), incoming SSE events
+   are silently ignored so in-progress work is never overwritten.
+
+The harness must issue `PATCH /items/item-fix-auth-bug` requests on `"command": "patch-item"` steps:
+
+```bash
+curl -X PATCH http://localhost:7701/items/item-fix-auth-bug \
+  -H "Content-Type: application/json" \
+  -d '{"mutations":[{"op":"set","path":"title","value":"SSE live-refreshed title"}]}'
+```
+
+The scenario restores the original title via a second PATCH at the end.
 
 ## Running Scenarios
 
