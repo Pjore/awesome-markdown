@@ -8,7 +8,7 @@ boards:
 createdAt: '2026-05-04T00:00:00.000Z'
 updatedAt: '2026-05-11T09:14:07.986Z'
 project: marketing
-status: todo
+status: done
 priority: low
 tags: []
 ---
