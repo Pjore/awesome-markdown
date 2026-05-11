@@ -69,7 +69,7 @@ export function ItemEditorPage(): React.ReactElement {
       ? [
           { label: 'boards', to: '/' },
           { label: boardSlug, to: `/boards/${boardSlug}` },
-          { label: 'items' },
+          { label: 'items', arrow: true },
           { label: slug ?? '' },
         ]
       : [{ label: 'items' }, { label: slug ?? '' }];

@@ -35,9 +35,8 @@ export function BoardPage(): React.ReactElement {
         className="flex flex-col items-center justify-center h-full text-center p-8"
         data-testid="board-not-found"
       >
-        <div className="text-5xl mb-4">🔍</div>
         <h2
-          style={{ fontWeight: 500, color: 'var(--ink)', fontSize: '20px', marginBottom: '8px' }}
+          style={{ fontWeight: 500, color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontSize: '16px', marginBottom: '8px' }}
         >
           Board &quot;{slug}&quot; not found
         </h2>
@@ -64,44 +63,6 @@ export function BoardPage(): React.ReactElement {
 
   return (
     <div className="flex flex-col h-full" data-testid="board-page">
-      {/* Breadcrumb bar */}
-      <div
-        className="px-4 py-2 flex items-center gap-1"
-        style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}
-      >
-        <Link
-          to="/"
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '12px',
-            color: 'var(--ink-muted)',
-            textDecoration: 'none',
-          }}
-          data-testid="breadcrumb-boards"
-        >
-          boards
-        </Link>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '12px',
-            color: 'var(--ink-muted)',
-            margin: '0 2px',
-          }}
-        >
-          /
-        </span>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '12px',
-            color: 'var(--ink)',
-          }}
-        >
-          {slug}
-        </span>
-      </div>
-
       <div className="flex-1 overflow-hidden">
         <Board render={render} homeless={homeless} onRefetch={refetch} />
       </div>

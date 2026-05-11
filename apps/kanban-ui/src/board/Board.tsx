@@ -142,7 +142,7 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
       {/* Board title */}
       <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
         <h1
-          style={{ fontFamily: 'var(--font-sans)', fontSize: '1.125rem', fontWeight: 500, color: 'var(--ink)' }}
+          style={{ fontFamily: 'var(--font-mono)', fontSize: '1.125rem', fontWeight: 500, color: 'var(--ink)' }}
           data-testid="board-title"
         >
           {render.board.title}

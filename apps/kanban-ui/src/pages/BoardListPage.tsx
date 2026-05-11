@@ -69,7 +69,7 @@ export function BoardListPage(): React.ReactElement {
     <div className="p-8 max-w-2xl mx-auto" data-testid="board-list">
       <h2
         style={{
-          fontFamily: 'var(--font-sans)',
+          fontFamily: 'var(--font-mono)',
           fontSize: '20px',
           fontWeight: 500,
           color: 'var(--ink)',
@@ -81,11 +81,10 @@ export function BoardListPage(): React.ReactElement {
 
       {boards.length === 0 ? (
         <div className="text-center py-16" data-testid="board-list-empty">
-          <div className="text-5xl mb-4">📋</div>
-          <p style={{ color: 'var(--ink-muted)' }}>No boards yet. Create one via settings.</p>
+          <p style={{ color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)', fontSize: '13px' }}>No boards yet. Create one via settings.</p>
         </div>
       ) : (
-        <ul className="space-y-3" data-testid="board-list-items">
+        <ul className="space-y-3" style={{ listStyle: 'none', padding: 0, margin: 0 }} data-testid="board-list-items">
           {boards.map((board) => (
             <li key={board.slug}>
               <Link

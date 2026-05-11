@@ -30,7 +30,7 @@ export function Breadcrumb(): React.ReactElement {
         <React.Fragment key={`${seg.label}-${i}`}>
           {i > 0 && (
             <span style={{ color: 'var(--ink-muted)' }} aria-hidden="true">
-              {' / '}
+              {seg.arrow ? ' → ' : ' / '}
             </span>
           )}
           {seg.to !== undefined ? (

@@ -1,11 +1,11 @@
-import React, { useState, createContext, useContext } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
 import { TopBar } from './app-shell/TopBar.js';
-import { SettingsPanel } from './settings/SettingsPanel.js';
 import { useActiveProvider } from './providers/active-provider.js';
 import { BoardListPage } from './pages/BoardListPage.js';
 import { BoardPage } from './pages/BoardPage.js';
 import { ItemEditorPage } from './pages/ItemEditorPage.js';
+import { SettingsPage } from './pages/SettingsPage.js';
 import { ConflictProvider } from './sync/conflict-store.js';
 import { ConflictBanner } from './components/ConflictBanner.js';
 
@@ -16,6 +16,8 @@ import { ConflictBanner } from './components/ConflictBanner.js';
 export interface BreadcrumbSegment {
   label: string;
   to?: string;
+  /** When true, render `→` before this segment instead of `/` */
+  arrow?: boolean;
 }
 
 export const BreadcrumbContext = createContext<{
@@ -42,7 +44,6 @@ export function useBreadcrumb(): { setSegments: (s: BreadcrumbSegment[]) => void
  */
 export function App(): React.ReactElement {
   const { isSwitching } = useActiveProvider();
-  const [settingsOpen, setSettingsOpen] = useState(false);
   const [breadcrumbSegments, setBreadcrumbSegments] = useState<BreadcrumbSegment[]>([]);
 
   const content = isSwitching ? (
@@ -57,6 +58,7 @@ export function App(): React.ReactElement {
       <Route path="/" element={<BoardListPage />} />
       <Route path="/boards/:slug" element={<BoardPage />} />
       <Route path="/items/:slug" element={<ItemEditorPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
       <Route
         path="*"
         element={
@@ -97,14 +99,11 @@ export function App(): React.ReactElement {
       value={{ segments: breadcrumbSegments, setSegments: setBreadcrumbSegments }}
     >
       <ConflictProvider>
-        <TopBar onSettingsToggle={() => setSettingsOpen((o) => !o)} />
+        <TopBar />
         <ConflictBanner />
         <div className="flex-1 overflow-hidden">
           {content}
         </div>
-        {settingsOpen && (
-          <SettingsPanel onClose={() => setSettingsOpen(false)} />
-        )}
       </ConflictProvider>
     </BreadcrumbContext.Provider>
   );
