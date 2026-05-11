@@ -6,11 +6,11 @@ boards:
   - board: board-dev
     order: VV
   - board: board-all
-    order: FV
+    order: VVV
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-11T08:40:45.466Z'
+updatedAt: '2026-05-11T08:40:48.101Z'
 project: dev
-status: todo
+status: doing
 priority: high
 tags:
   - urgent
