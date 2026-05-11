@@ -9,7 +9,7 @@ status: doing
 priority: low
 tags: []
 boards:
-  board-all:
+  - board: board-all
     order: VV
 ---
 Walk the marketing team through the kanban workflow and new tooling.
