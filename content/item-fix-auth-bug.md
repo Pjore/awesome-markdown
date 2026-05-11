@@ -4,13 +4,13 @@ slug: item-fix-auth-bug
 title: Authentication bug in login flow!
 boards:
   - board: board-dev
-    order: F
+    order: c0V
   - board: board-all
     order: '7'
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-11T11:35:25.902Z'
+updatedAt: '2026-05-11T11:35:38.769Z'
 project: dev
-status: todo
+status: doing
 priority: high
 tags:
   - urgent
