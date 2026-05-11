@@ -7,9 +7,10 @@ description: >-
   cells at this axis are always read-only — dropping here is disabled because
   the filter cannot be uniquely inverted.
 filter:
-  - property: status
-    equals: done
-  - property: status
+  any:
+    - property: status
+      equals: done
+    - property: status
       equals: complete
 createdAt: '2026-05-04T00:00:00.000Z'
 updatedAt: '2026-05-04T00:00:00.000Z'
