@@ -8,7 +8,7 @@ boards:
   - board: board-all
     order: '7'
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-11T08:41:03.849Z'
+updatedAt: '2026-05-11T08:41:05.904Z'
 project: dev
 status: doing
 priority: high
