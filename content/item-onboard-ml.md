@@ -6,9 +6,9 @@ boards:
   - board: board-all
     order: FV
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-11T09:14:07.986Z'
+updatedAt: '2026-05-11T09:15:27.780Z'
 project: marketing
-status: done
+status: todo
 priority: low
 tags: []
 ---
