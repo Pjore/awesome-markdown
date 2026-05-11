@@ -1,50 +1,92 @@
-import React, { useState } from 'react';
+import React, { createContext, useContext, useState } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
-import { ConnectionIndicator } from './app-shell/ConnectionIndicator.js';
-import { SettingsPanel } from './settings/SettingsPanel.js';
+import { TopBar } from './app-shell/TopBar.js';
 import { useActiveProvider } from './providers/active-provider.js';
 import { BoardListPage } from './pages/BoardListPage.js';
 import { BoardPage } from './pages/BoardPage.js';
+import { ItemEditorPage } from './pages/ItemEditorPage.js';
+import { SettingsPage } from './pages/SettingsPage.js';
 import { ConflictProvider } from './sync/conflict-store.js';
 import { ConflictBanner } from './components/ConflictBanner.js';
 
 /**
+ * Context for breadcrumb segments. Pages can push their segment via this context.
+ * Each segment: { label: string; to?: string }
+ */
+export interface BreadcrumbSegment {
+  label: string;
+  to?: string;
+  /** When true, render `→` before this segment instead of `/` */
+  arrow?: boolean;
+}
+
+export const BreadcrumbContext = createContext<{
+  segments: BreadcrumbSegment[];
+  setSegments: (s: BreadcrumbSegment[]) => void;
+}>({
+  segments: [],
+  setSegments: () => undefined,
+});
+
+/**
+ * Route-aware breadcrumb hook — used by pages to push their path segment.
+ */
+export function useBreadcrumb(): { setSegments: (s: BreadcrumbSegment[]) => void } {
+  return useContext(BreadcrumbContext);
+}
+
+/**
  * Top-level application component.
- * Renders the app chrome (header with connection indicator + settings button)
+ * Renders the app chrome (header with connection indicator + theme toggle)
  * and the routed content area:
  *   /              → BoardListPage (lists all boards)
  *   /boards/:slug  → BoardPage (single board by slug)
  */
 export function App(): React.ReactElement {
   const { isSwitching } = useActiveProvider();
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [breadcrumbSegments, setBreadcrumbSegments] = useState<BreadcrumbSegment[]>([]);
 
   const content = isSwitching ? (
     <div
       className="flex items-center justify-center h-full"
       data-testid="switching-provider"
     >
-      <span className="text-gray-400 text-lg">Switching provider…</span>
+      <span style={{ color: 'var(--ink-muted)', fontSize: '1.125rem' }}>Switching provider…</span>
     </div>
   ) : (
     <Routes>
       <Route path="/" element={<BoardListPage />} />
       <Route path="/boards/:slug" element={<BoardPage />} />
+      <Route path="/items/:slug" element={<ItemEditorPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
       <Route
         path="*"
         element={
           <div
-            className="flex flex-col items-center justify-center h-full text-center p-8"
+            style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              fontFamily: 'var(--font-mono)',
+              color: 'var(--ink-muted)',
+              gap: '12px',
+            }}
             data-testid="not-found"
           >
-            <div className="text-5xl mb-4">🤷</div>
-            <h2 className="text-xl font-bold text-gray-700 mb-4">Page not found</h2>
+            <span style={{ fontSize: '13px' }}>page not found</span>
             <Link
               to="/"
-              className="text-blue-600 hover:underline"
+              style={{
+                fontFamily: 'var(--font-mono)',
+                fontSize: '13px',
+                color: 'var(--ink-muted)',
+                textDecoration: 'underline',
+              }}
               data-testid="go-home"
             >
-              ← Back to boards
+              ← boards
             </Link>
           </div>
         }
@@ -53,39 +95,17 @@ export function App(): React.ReactElement {
   );
 
   return (
-    <ConflictProvider>
-      <header
-        className="flex items-center justify-between px-4 py-2 bg-white border-b border-gray-200 flex-shrink-0 gap-3"
-        data-testid="app-header"
-      >
-        <Link
-          to="/"
-          className="text-sm font-semibold text-gray-700 truncate hover:text-blue-600 transition-colors"
-          data-testid="home-link"
-        >
-          awesome-markdown
-        </Link>
-        <div className="flex items-center gap-2">
-          <ConnectionIndicator />
-          <button
-            type="button"
-            onClick={() => setSettingsOpen(true)}
-            aria-label="Open provider settings"
-            title="Provider settings"
-            className="p-1.5 rounded hover:bg-gray-100 text-gray-500 hover:text-gray-700 transition-colors"
-            data-testid="settings-btn"
-          >
-            ⚙
-          </button>
+    <BreadcrumbContext.Provider
+      value={{ segments: breadcrumbSegments, setSegments: setBreadcrumbSegments }}
+    >
+      <ConflictProvider>
+        <TopBar />
+        <ConflictBanner />
+        <div className="flex-1 overflow-hidden">
+          {content}
         </div>
-      </header>
-      <ConflictBanner />
-      <div className="flex-1 overflow-hidden">
-        {content}
-      </div>
-      {settingsOpen && (
-        <SettingsPanel onClose={() => setSettingsOpen(false)} />
-      )}
-    </ConflictProvider>
+      </ConflictProvider>
+    </BreadcrumbContext.Provider>
   );
 }
+

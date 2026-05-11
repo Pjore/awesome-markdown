@@ -123,13 +123,17 @@ export function Cell({
   return (
     <div
       ref={setNodeRef}
-      className={[
-        'min-w-[240px] w-[240px] flex-shrink-0 border border-gray-200 min-h-[120px] p-2 flex flex-col gap-1 transition-colors',
-        dropHighlight ? 'bg-blue-50 border-blue-300' : 'bg-white',
-        cell.readOnly ? 'cursor-not-allowed' : '',
-      ]
-        .filter(Boolean)
-        .join(' ')}
+      className="min-w-[240px] w-[240px] flex-shrink-0 min-h-[120px] p-2 flex flex-col gap-1"
+      style={{
+        border: dropHighlight
+          ? '1.5px solid var(--accent)'
+          : cell.readOnly
+            ? '1px dashed var(--ink-muted)'
+            : '1px solid var(--border)',
+        background: 'transparent',
+        cursor: cell.readOnly ? 'not-allowed' : 'default',
+        borderRadius: 0,
+      }}
       data-testid={`cell-${columnAxis.slug}-${swimlaneAxis.slug}`}
       data-column-slug={columnAxis.slug}
       data-swimlane-slug={swimlaneAxis.slug}
@@ -143,6 +147,7 @@ export function Cell({
             item={item}
             columnSlug={columnAxis.slug}
             swimlaneSlug={swimlaneAxis.slug}
+            boardSlug={board.slug}
           />
         ))}
       </SortableContext>
@@ -153,10 +158,20 @@ export function Cell({
             <button
               type="button"
               onClick={handleAddClick}
-              className="mt-1 text-xs text-gray-400 hover:text-blue-500 hover:bg-blue-50 rounded px-2 py-1 text-left transition-colors"
+              style={{
+                marginTop: '4px',
+                fontFamily: 'var(--font-mono)',
+                fontSize: '11px',
+                color: 'var(--ink-muted)',
+                background: 'none',
+                border: 'none',
+                padding: '4px 8px',
+                cursor: 'pointer',
+                textAlign: 'left',
+              }}
               data-testid={`add-item-${columnAxis.slug}-${swimlaneAxis.slug}`}
             >
-              + Add item
+              + add item
             </button>
           )}
 
@@ -170,7 +185,19 @@ export function Cell({
                 onKeyDown={handleKeyDown}
                 placeholder="Item title…"
                 disabled={saving}
-                className="text-xs border border-blue-300 rounded px-2 py-1 w-full focus:outline-none focus:ring-1 focus:ring-blue-400"
+                style={{
+                  fontFamily: 'var(--font-sans)',
+                  fontSize: '12px',
+                  border: '1px solid var(--border)',
+                  borderRadius: 0,
+                  padding: '4px 8px',
+                  width: '100%',
+                  background: 'var(--bg)',
+                  color: 'var(--ink)',
+                  outline: 'none',
+                }}
+                onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent)'; }}
+                onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
                 data-testid={`new-item-input-${columnAxis.slug}-${swimlaneAxis.slug}`}
               />
               <div className="flex gap-1">
@@ -178,19 +205,38 @@ export function Cell({
                   type="button"
                   onClick={() => void handleCreate()}
                   disabled={saving || !newTitle.trim()}
-                  className="text-xs bg-blue-500 text-white rounded px-2 py-0.5 hover:bg-blue-600 disabled:opacity-50"
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '11px',
+                    background: 'var(--accent)',
+                    color: 'var(--on-accent)',
+                    border: 'none',
+                    borderRadius: 0,
+                    padding: '2px 8px',
+                    cursor: saving || !newTitle.trim() ? 'not-allowed' : 'pointer',
+                    opacity: saving || !newTitle.trim() ? 0.5 : 1,
+                  }}
                   data-testid={`confirm-add-${columnAxis.slug}-${swimlaneAxis.slug}`}
                 >
-                  {saving ? '…' : 'Add'}
+                  {saving ? '…' : 'add'}
                 </button>
                 <button
                   type="button"
                   onClick={() => { setCreating(false); setNewTitle(''); }}
                   disabled={saving}
-                  className="text-xs text-gray-400 hover:text-gray-600 rounded px-2 py-0.5"
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: '11px',
+                    color: 'var(--ink-muted)',
+                    background: 'none',
+                    border: 'none',
+                    borderRadius: 0,
+                    padding: '2px 8px',
+                    cursor: saving ? 'not-allowed' : 'pointer',
+                  }}
                   data-testid={`cancel-add-${columnAxis.slug}-${swimlaneAxis.slug}`}
                 >
-                  Cancel
+                  cancel
                 </button>
               </div>
             </div>

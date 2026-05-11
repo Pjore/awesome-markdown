@@ -29,9 +29,9 @@
       "check": "not-exists"
     },
     {
-      "id": "connection-indicator-present",
-      "description": "Connection indicator is visible in app header",
-      "selector": "[data-testid='connection-indicator']",
+      "id": "sync-status-dot-present",
+      "description": "Sync status dot is visible in app header",
+      "selector": "[data-testid='sync-status-dot']",
       "check": "exists"
     },
     {

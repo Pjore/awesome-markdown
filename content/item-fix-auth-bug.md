@@ -1,14 +1,14 @@
 ---
 entityType: item
 slug: item-fix-auth-bug
-title: Authentication bug in login flow
+title: Authentication bug in login flow!
 boards:
   - board: board-dev
-    order: V
+    order: VV
   - board: board-all
-    order: V
+    order: '7'
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-04T16:57:02.606Z'
+updatedAt: '2026-05-11T08:41:15.071Z'
 project: dev
 status: doing
 priority: high
@@ -25,3 +25,5 @@ it in the `tag-urgent` column on `board-dev`.
 
 - On `board-dev`: column = `tag-urgent` (priority high + urgent tag), swimlane = `status-doing`
 - On `board-all`: column = `status-doing`, swimlane = `priority-high`
+
+/Per

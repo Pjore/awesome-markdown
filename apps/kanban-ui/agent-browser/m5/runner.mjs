@@ -59,7 +59,8 @@ function validateScenario(file, data) {
   }
   // M5-specific: all scenarios must reference connection-state UI elements
   const hasConnectionCheck = data.assertions.some(
-    (a) => a.selector?.includes('connection-indicator') ||
+    (a) => a.selector?.includes('sync-status-dot') ||
+           a.selector?.includes('connection-indicator') ||
            a.check === 'attribute-equals' ||
            a.check === 'no-console-errors' ||
            a.check === 'not-exists' ||

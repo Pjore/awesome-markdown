@@ -1,7 +1,7 @@
 {
   "id": "sidecar-restart-reconnect",
   "version": "1",
-  "description": "Trigger a sidecar restart; assert indicator goes 'reconnecting' then returns to 'online' without manual refresh.",
+  "description": "Trigger a sidecar restart; assert sync dot goes 'pulling' then returns to 'clean' without manual refresh.",
   "services": ["kanban-ui:dev", "provider-fs:sidecar"],
   "seed": "none",
   "url": "http://localhost:5173/",
@@ -25,9 +25,9 @@
     { "type": "wait-for-gone", "selector": "[data-testid='settings-panel']" },
     {
       "type": "wait-for-attribute",
-      "selector": "[data-testid='connection-indicator']",
-      "attribute": "data-connection-state",
-      "value": "online",
+      "selector": "[data-testid='sync-status-dot']",
+      "attribute": "data-sync-state",
+      "value": "clean",
       "timeout": 5000
     },
     {
@@ -37,27 +37,27 @@
     },
     {
       "type": "wait-for-attribute",
-      "selector": "[data-testid='connection-indicator']",
-      "attribute": "data-connection-state",
-      "value": "reconnecting",
+      "selector": "[data-testid='sync-status-dot']",
+      "attribute": "data-sync-state",
+      "value": "pulling",
       "timeout": 5000
     },
     {
       "type": "wait-for-attribute",
-      "selector": "[data-testid='connection-indicator']",
-      "attribute": "data-connection-state",
-      "value": "online",
+      "selector": "[data-testid='sync-status-dot']",
+      "attribute": "data-sync-state",
+      "value": "clean",
       "timeout": 60000
     }
   ],
   "assertions": [
     {
       "id": "indicator-back-online",
-      "description": "Indicator returns to 'online' after sidecar restarts — no manual refresh",
-      "selector": "[data-testid='connection-indicator']",
+      "description": "Sync dot returns to 'clean' after sidecar restarts — no manual refresh",
+      "selector": "[data-testid='sync-status-dot']",
       "check": "attribute-equals",
-      "attribute": "data-connection-state",
-      "value": "online"
+      "attribute": "data-sync-state",
+      "value": "clean"
     },
     {
       "id": "no-console-errors",

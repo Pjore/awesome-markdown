@@ -27,6 +27,16 @@ async function init(): Promise<void> {
   const rootEl = document.getElementById('root');
   if (rootEl === null) throw new Error('No #root element found in document');
 
+  // Initialise theme before first render to avoid flash
+  const storedTheme = localStorage.getItem('theme');
+  const theme =
+    storedTheme === 'dark' || storedTheme === 'light'
+      ? storedTheme
+      : window.matchMedia('(prefers-color-scheme: dark)').matches
+        ? 'dark'
+        : 'light';
+  document.documentElement.setAttribute('data-theme', theme);
+
   ReactDOM.createRoot(rootEl).render(
     <React.StrictMode>
       <BrowserRouter>
@@ -34,7 +44,7 @@ async function init(): Promise<void> {
           initialProvider={initialProvider}
           initialSettings={initialSettings}
         >
-          <div className="h-screen flex flex-col overflow-hidden bg-gray-50">
+          <div className="h-screen flex flex-col overflow-hidden">
             <App />
           </div>
         </ActiveProviderProvider>

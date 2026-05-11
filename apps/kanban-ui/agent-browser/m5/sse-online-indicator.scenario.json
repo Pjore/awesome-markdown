@@ -1,7 +1,7 @@
 {
   "id": "sse-online-indicator",
   "version": "1",
-  "description": "Assert connection indicator transitions to 'online' within 5 seconds after switching to HTTP provider.",
+  "description": "Assert sync status dot transitions to 'clean' (online) within 5 seconds after switching to HTTP provider.",
   "services": ["kanban-ui:dev", "provider-fs:sidecar"],
   "seed": "none",
   "url": "http://localhost:5173/",
@@ -20,25 +20,25 @@
     { "type": "wait-for-gone", "selector": "[data-testid='settings-panel']" },
     {
       "type": "wait-for-attribute",
-      "selector": "[data-testid='connection-indicator']",
-      "attribute": "data-connection-state",
-      "value": "online",
+      "selector": "[data-testid='sync-status-dot']",
+      "attribute": "data-sync-state",
+      "value": "clean",
       "timeout": 5000
     }
   ],
   "assertions": [
     {
       "id": "indicator-online",
-      "description": "Connection indicator shows 'online' state after SSE connects",
-      "selector": "[data-testid='connection-indicator']",
+      "description": "Sync status dot shows 'clean' state after SSE connects",
+      "selector": "[data-testid='sync-status-dot']",
       "check": "attribute-equals",
-      "attribute": "data-connection-state",
-      "value": "online"
+      "attribute": "data-sync-state",
+      "value": "clean"
     },
     {
       "id": "indicator-aria-label",
-      "description": "Connection indicator has accessible aria-label",
-      "selector": "[data-testid='connection-indicator']",
+      "description": "Sync status dot has accessible aria-label",
+      "selector": "[data-testid='sync-status-dot']",
       "check": "has-attribute",
       "attribute": "aria-label"
     }

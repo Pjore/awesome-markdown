@@ -2,17 +2,23 @@
 entityType: item
 slug: item-onboard-ml
 title: Onboard marketing team to new workflow
+boards:
+  - board: board-all
+    order: F
+createdAt: '2026-05-04T00:00:00.000Z'
+updatedAt: '2026-05-11T08:40:22.231Z'
 project: marketing
-status: todo
+status: doing
 priority: low
 tags: []
-createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-04T00:00:00.000Z'
 ---
-
 Walk the marketing team through the kanban workflow and new tooling.
 
 This item intentionally has **no `boards[]` entry** — it floats in the item
 pool. It matches `board-all` (no candidate-set filter) but carries no
 board-specific order or placement metadata. Use it to verify the homeless
 view behaviour.
+
+## Sub header
+
+With some additional description text to make the item taller and more visible.
