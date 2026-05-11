@@ -4,14 +4,14 @@ slug: test
 title: test
 boards:
   - board: board-dev
-    order: V
+    order: F
   - board: board-all
     order: F
 createdAt: '2026-05-04T13:09:42.680Z'
-updatedAt: '2026-05-11T06:59:22.714Z'
+updatedAt: '2026-05-11T07:00:32.965Z'
 project: dev
 priority: high
-status: todo
+status: doing
 tags:
   - urgent
 ---
