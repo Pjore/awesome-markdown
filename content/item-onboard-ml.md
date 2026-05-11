@@ -21,4 +21,4 @@ view behaviour.
 
 ## Sub header
 
-With some additional description text to make the item taller and more visible on
+With some additional description text to make the item taller and more visible.
