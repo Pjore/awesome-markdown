@@ -34,3 +34,4 @@ Thumbs.db
 *.swo
 *.private-key.pem
 apps/sync-engine/core
+apps/kanban-ui/test_output.txt
