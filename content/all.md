@@ -4,7 +4,6 @@ slug: all
 title: Show all
 description: >-
   Default catch-all axis with no filter. Every item appears in exactly one cell at
-filter:
 order:
   by: boards.$board.order
   direction: asc

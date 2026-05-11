@@ -10,7 +10,7 @@ status: todo
 tags:
   - urgent
 boards:
-  board-dev:
+  - board: board-dev
     order: V
 ---
 
