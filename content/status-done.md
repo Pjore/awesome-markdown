@@ -10,8 +10,6 @@ filter:
   any:
     - property: status
       equals: done
-    - property: status
-      equals: complete
 createdAt: '2026-05-04T00:00:00.000Z'
 updatedAt: '2026-05-04T00:00:00.000Z'
 ---
