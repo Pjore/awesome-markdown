@@ -1,17 +1,23 @@
 import React, { useState } from 'react';
-import type { Homeless } from '@awesome-markdown/contracts';
+import type { Homeless, Item } from '@awesome-markdown/contracts';
+import { HomelessItemCard } from './HomelessItemCard.js';
 
 interface HomelessPanelProps {
   homeless: Homeless;
+  /**
+   * When provided, overrides `homeless.items` for rendering (e.g. to hide
+   * items that have been optimistically moved into a cell).
+   */
+  items?: Item[];
 }
 
 /**
  * Collapsible panel listing items that belong to this board but no longer
  * match any column filter. Populated from GET /boards/:slug/homeless.
  */
-export function HomelessPanel({ homeless }: HomelessPanelProps): React.ReactElement {
+export function HomelessPanel({ homeless, items: itemsProp }: HomelessPanelProps): React.ReactElement {
   const [open, setOpen] = useState(true);
-  const { items } = homeless;
+  const items = itemsProp ?? homeless.items;
 
   if (items.length === 0) return <></>;
 
@@ -53,21 +59,7 @@ export function HomelessPanel({ homeless }: HomelessPanelProps): React.ReactElem
           data-testid="homeless-item-list"
         >
           {items.map((item) => (
-            <li
-              key={item.slug}
-              style={{
-                fontFamily: 'var(--font-sans)',
-                fontSize: '13px',
-                color: 'var(--ink)',
-                border: '1px solid var(--border)',
-                padding: '2px 10px',
-                background: 'var(--bg)',
-              }}
-              data-testid={`homeless-item-${item.slug}`}
-              data-item-slug={item.slug}
-            >
-              {item.title}
-            </li>
+            <HomelessItemCard key={item.slug} item={item} />
           ))}
         </ul>
       )}

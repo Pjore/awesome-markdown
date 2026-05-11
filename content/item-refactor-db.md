@@ -8,10 +8,10 @@ boards:
   - board: board-all
     order: VV
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-11T08:15:36.747Z'
+updatedAt: '2026-05-11T11:35:15.572Z'
 project: dev
 status: doing
-priority: medium
+priority: high
 tags:
   - backend
 dueDate: '2026-06-01'

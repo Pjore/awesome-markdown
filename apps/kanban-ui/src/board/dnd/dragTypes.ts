@@ -9,6 +9,15 @@ export interface ItemDragData {
   swimlaneSlug: string;
 }
 
+/** Drag payload for items dragged from the HomelessPanel. */
+export interface HomelessItemDragData {
+  type: 'homeless-item';
+  itemSlug: string;
+}
+
+/** Discriminated union of all drag data shapes in this app. */
+export type DragData = ItemDragData | HomelessItemDragData;
+
 /**
  * Cell drop-target IDs are encoded as `${columnSlug}::${swimlaneSlug}`.
  * This format must not appear in item slugs.
