@@ -2,15 +2,15 @@
 entityType: item
 slug: item-onboard-ml
 title: Onboard marketing team to new workflow
-createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-11T06:55:02.839Z'
-project: marketing
-status: doing
-priority: low
-tags: []
 boards:
   - board: board-all
-    order: VV
+    order: V
+createdAt: '2026-05-04T00:00:00.000Z'
+updatedAt: '2026-05-11T06:58:45.012Z'
+project: marketing
+status: todo
+priority: low
+tags: []
 ---
 Walk the marketing team through the kanban workflow and new tooling.
 
