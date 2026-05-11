@@ -13,7 +13,7 @@ project: dev
 status: todo
 tags:
   - urgent
-  - hej
+  - just-a-tag
 priority: high
 ---
 Some text
