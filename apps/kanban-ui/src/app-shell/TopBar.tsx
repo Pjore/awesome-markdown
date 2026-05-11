@@ -1,20 +1,17 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { Breadcrumb } from './Breadcrumb.js';
 import { SyncStatusDot } from './SyncStatusDot.js';
 import { ThemeToggle } from './ThemeToggle.js';
 
-interface TopBarProps {
-  onSettingsToggle: () => void;
-}
-
 /**
  * Persistent hairline top bar (~36px).
- * Left:   product mark (button — opens settings)
+ * Left:   product mark (links to boards home)
  * Center: breadcrumb path
- * Right:  sync status dot + theme toggle
+ * Right:  sync status dot (links to settings) + theme toggle
  * Bottom: 1px solid var(--border) hairline separator
  */
-export function TopBar({ onSettingsToggle }: TopBarProps): React.ReactElement {
+export function TopBar(): React.ReactElement {
   return (
     <header
       className="flex items-center justify-between px-4 flex-shrink-0"
@@ -27,33 +24,36 @@ export function TopBar({ onSettingsToggle }: TopBarProps): React.ReactElement {
       data-testid="app-header"
     >
       {/* Left: product mark */}
-      <button
-        type="button"
-        onClick={onSettingsToggle}
+      <Link
+        to="/"
         style={{
           fontFamily: 'var(--font-mono)',
           fontWeight: 400,
           fontSize: '13px',
           color: 'var(--ink)',
-          background: 'none',
-          border: 'none',
-          padding: 0,
-          cursor: 'pointer',
+          textDecoration: 'none',
           flexShrink: 0,
         }}
-        aria-label="awesome-markdown — click to open settings"
-        title="Provider settings"
-        data-testid="settings-btn"
+        aria-label="awesome-markdown — go to boards"
+        data-testid="home-link"
       >
         awesome-markdown
-      </button>
+      </Link>
 
       {/* Center: breadcrumb */}
       <Breadcrumb />
 
-      {/* Right: sync dot + theme toggle */}
+      {/* Right: sync dot (→ settings) + theme toggle */}
       <div className="flex items-center gap-2" style={{ flexShrink: 0 }}>
-        <SyncStatusDot />
+        <Link
+          to="/settings"
+          aria-label="Open settings"
+          title="Provider settings"
+          style={{ display: 'flex', alignItems: 'center', textDecoration: 'none' }}
+          data-testid="settings-btn"
+        >
+          <SyncStatusDot />
+        </Link>
         <ThemeToggle />
       </div>
     </header>

@@ -1,24 +1,19 @@
-import React, { useState, useCallback } from 'react';
-import { urlValidationMessage } from './url-validation.js';
-import type { ProviderSettings } from './provider-settings.js';
+import React, { useState, useCallback, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { urlValidationMessage } from '../settings/url-validation.js';
+import type { ProviderSettings } from '../settings/provider-settings.js';
 import { useActiveProvider } from '../providers/active-provider.js';
-
-interface SettingsPanelProps {
-  onClose: () => void;
-}
+import { useBreadcrumb } from '../App.js';
 
 /**
- * Settings panel modal for runtime provider selection.
- *
- * Lets the user choose:
- *   - Local browser storage (localStorage)
- *   - Local FS sidecar (HTTP/SSE) with a base URL input
- *
- * Validates URL format and performs a lightweight health check before saving.
- * Persists selection and triggers provider rebind on save.
+ * Full-page settings — route /settings.
+ * Provider selection: localStorage or HTTP/SSE sidecar.
+ * Save rebinds the active provider and returns to the boards list.
  */
-export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactElement {
+export function SettingsPage(): React.ReactElement {
   const { activeSettings, rebind, isSwitching } = useActiveProvider();
+  const navigate = useNavigate();
+  const { setSegments } = useBreadcrumb();
 
   const [kind, setKind] = useState<ProviderSettings['kind']>(activeSettings.kind);
   const [baseUrl, setBaseUrl] = useState(
@@ -33,12 +28,19 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
   const urlError = kind === 'http' ? urlValidationMessage(baseUrl) : null;
   const canSave = !saving && !isSwitching && urlError === null;
 
+  useEffect(() => {
+    setSegments([{ label: 'boards', to: '/' }, { label: 'settings' }]);
+    return () => setSegments([]);
+  }, [setSegments]);
+
   const handleTestConnection = useCallback(async () => {
     if (kind !== 'http' || urlValidationMessage(baseUrl) !== null) return;
     setTestStatus('testing');
     setTestError(null);
     try {
-      const resp = await fetch(`${baseUrl.replace(/\/$/, '')}/health`, { signal: AbortSignal.timeout(5000) });
+      const resp = await fetch(`${baseUrl.replace(/\/$/, '')}/health`, {
+        signal: AbortSignal.timeout(5000),
+      });
       if (resp.ok) {
         setTestStatus('ok');
       } else {
@@ -57,43 +59,29 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
       const settings: ProviderSettings =
         kind === 'http' ? { kind: 'http', baseUrl: baseUrl.trim() } : { kind: 'localStorage' };
       await rebind(settings);
-      onClose();
+      navigate('/');
     } finally {
       setSaving(false);
     }
-  }, [kind, baseUrl, rebind, onClose]);
+  }, [kind, baseUrl, rebind, navigate]);
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Provider settings"
-      className="fixed inset-0 z-50 flex items-center justify-center"
-      style={{ background: 'rgba(0,0,0,0.5)' }}
-      data-testid="settings-panel"
-    >
-      <div
-        className="w-full max-w-md p-6 space-y-5 mx-4"
+    <div className="p-8 max-w-2xl mx-auto" data-testid="settings-page">
+      <h2
         style={{
-          background: 'var(--bg)',
-          border: '1px solid var(--border)',
-          boxShadow: 'none',
+          fontFamily: 'var(--font-mono)',
+          fontSize: '13px',
+          fontWeight: 500,
+          color: 'var(--ink)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.06em',
+          marginBottom: '32px',
         }}
       >
-        <h2
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '13px',
-            fontWeight: 500,
-            color: 'var(--ink)',
-            textTransform: 'uppercase',
-            letterSpacing: '0.06em',
-            margin: 0,
-          }}
-        >
-          Provider Settings
-        </h2>
+        Provider Settings
+      </h2>
 
+      <div className="space-y-6">
         {/* Provider selection */}
         <fieldset className="space-y-3" style={{ border: 'none', padding: 0, margin: 0 }}>
           <legend
@@ -186,7 +174,6 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
               </p>
             )}
 
-            {/* Test connection */}
             <div className="flex items-center gap-3">
               <button
                 type="button"
@@ -244,10 +231,10 @@ export function SettingsPanel({ onClose }: SettingsPanelProps): React.ReactEleme
         </p>
 
         {/* Actions */}
-        <div className="flex justify-end gap-3">
+        <div className="flex gap-3">
           <button
             type="button"
-            onClick={onClose}
+            onClick={() => navigate('/')}
             style={{
               fontFamily: 'var(--font-mono)',
               fontSize: '12px',

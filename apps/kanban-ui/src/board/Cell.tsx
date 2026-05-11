@@ -209,7 +209,7 @@ export function Cell({
                     fontFamily: 'var(--font-mono)',
                     fontSize: '11px',
                     background: 'var(--accent)',
-                    color: 'var(--ink)',
+                    color: 'var(--on-accent)',
                     border: 'none',
                     borderRadius: 0,
                     padding: '2px 8px',

@@ -38,6 +38,7 @@
   --ink-muted: #6B6760;
   --border:    #E6E4DD;
   --accent:    #FFE94A;
+  --on-accent: #111111;
   --font-mono: 'JetBrains Mono', monospace;
   --font-sans: 'Inter Tight', sans-serif;
 }
@@ -49,6 +50,7 @@
   --ink-muted: #8A867E;
   --border:    #262626;
   --accent:    #F5E663;
+  --on-accent: #111111;
 }
 
 *, *::before, *::after { box-sizing: border-box; }
