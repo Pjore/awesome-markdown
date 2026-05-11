@@ -10,7 +10,6 @@ boards:
 createdAt: '2026-05-04T13:09:42.680Z'
 updatedAt: '2026-05-11T07:00:32.965Z'
 project: dev
-priority: high
 status: doing
 tags:
   - urgent
