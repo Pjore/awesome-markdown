@@ -1,14 +1,14 @@
 ---
 entityType: item
 slug: item-fix-auth-bug
-title: Authentication bug in login flow
+title: Authentication bug in login flow!
 boards:
   - board: board-dev
     order: VV
   - board: board-all
     order: V
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-11T07:00:26.875Z'
+updatedAt: '2026-05-11T07:05:50.589Z'
 project: dev
 status: doing
 priority: high
