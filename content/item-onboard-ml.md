@@ -4,11 +4,11 @@ slug: item-onboard-ml
 title: Onboard marketing team to new workflow
 boards:
   - board: board-all
-    order: F
+    order: FV
 createdAt: '2026-05-04T00:00:00.000Z'
-updatedAt: '2026-05-11T08:40:22.231Z'
+updatedAt: '2026-05-11T09:14:07.986Z'
 project: marketing
-status: doing
+status: todo
 priority: low
 tags: []
 ---
