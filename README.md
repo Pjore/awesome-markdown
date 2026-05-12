@@ -70,19 +70,19 @@ For remote git sync, set `SYNC_ENGINE_REMOTE_ENABLED=true` and supply GitHub App
 
 ---
 
-## Domain Model
+## Why this project exists
 
 **Flat pool, boards-as-queries.** All domain objects live as `.md` files in `content/` with a YAML frontmatter `entityType` field.
 
 | entityType | Description |
-|------------|-------------|
-| `item` | A kanban card. Has a `boards[]` list of board slugs it belongs to. |
-| `board` | Defines an optional base filter and references column + swimlane axis slugs. |
-| `axis` | A named dimension (column or swimlane). Holds an ordered list of cells, each with a filter rule and optional `writeOnDrop` override. |
+|---|---|
+| `item` | A kanban card with fields such as title, status, tags, and `boards[]` |
+| `board` | A board definition with an optional base filter plus axis references |
+| `axis` | A reusable column or swimlane definition made of ordered filter cells |
 
-Boards don't own items — they **project** the item pool through filter rules. A board's cells are formed by the cross-product of column × swimlane axes.
+Boards do not own items. A board projects the shared item pool through filter rules, and drag-and-drop writes the minimal field changes needed for the target cell. Non-invertible filters such as `or`/`any` remain read-only.
 
-**Drop semantics.** When the user drops an item into a cell, the filter engine derives the minimal field mutations from the cell's combined filter (board ∧ column ∧ swimlane). Each drop results in exactly one markdown file write. Cells whose combined filter uses non-invertible operators (e.g., `or`/`any`) are read-only.
+## Monorepo layout
 
 **Homeless view.** Items whose `boards[]` list references a board but match no column cell appear in that board's `/homeless` view instead of the main grid.
 
