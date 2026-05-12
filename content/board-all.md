@@ -10,6 +10,7 @@ description: >-
 columns:
   - status-todo
   - status-doing
+  - bajs
   - status-done
 swimlanes:
   - all
