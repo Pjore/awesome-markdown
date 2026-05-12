@@ -8,6 +8,8 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
       NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
     steps:
@@ -31,3 +33,7 @@ jobs:
       - run: pnpm publish --filter @awesome-markdown/provider-http --access public --no-git-checks
       - run: pnpm --filter @awesome-markdown/provider-localstorage build
       - run: pnpm publish --filter @awesome-markdown/provider-localstorage --access public --no-git-checks
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" --generate-notes
