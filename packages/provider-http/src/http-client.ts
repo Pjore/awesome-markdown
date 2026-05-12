@@ -45,6 +45,7 @@ export type FetchFn = typeof fetch;
 export interface HttpClientConfig {
   baseUrl: string;
   fetchFn?: FetchFn;
+  getToken?: () => Promise<string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -75,10 +76,12 @@ const JSON_HEADERS = {
 export class SidecarHttpClient {
   private readonly base: string;
   private readonly fetchFn: FetchFn;
+  private readonly getToken: (() => Promise<string>) | undefined;
 
   constructor(config: HttpClientConfig) {
     this.base = config.baseUrl.replace(/\/$/, '');
     this.fetchFn = config.fetchFn ?? globalThis.fetch.bind(globalThis);
+    this.getToken = config.getToken;
   }
 
   private async req<T>(
@@ -86,9 +89,14 @@ export class SidecarHttpClient {
     init: RequestInit,
     parse: (raw: unknown) => T,
   ): Promise<T> {
+    const headers: Record<string, string> = { ...JSON_HEADERS, ...(init.headers as Record<string, string> | undefined) };
+    if (this.getToken) {
+      const token = await this.getToken();
+      headers['Authorization'] = `Bearer ${token}`;
+    }
     const res = await this.fetchFn(url, {
       ...init,
-      headers: { ...JSON_HEADERS, ...init.headers },
+      headers,
     });
     if (!res.ok) throw await parseErrorBody(res);
     return parse(await res.json() as unknown);
