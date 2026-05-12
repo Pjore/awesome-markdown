@@ -89,14 +89,6 @@ export function createHttpProvider(config: HttpProviderConfig): HttpPersistenceP
     });
   }
 
-  function stopSseIfIdle(): void {
-    if (subscribers.size === 0 && sseEventUnsub !== null) {
-      sseEventUnsub();
-      sseEventUnsub = null;
-      sse.idle();
-    }
-  }
-
   const capabilities: ProviderCapabilities = { type: 'http', baseUrl: base };
 
   const provider: HttpPersistenceProvider = {
@@ -125,7 +117,8 @@ export function createHttpProvider(config: HttpProviderConfig): HttpPersistenceP
       startSse();
       return () => {
         subscribers.delete(handler);
-        stopSseIfIdle();
+        // SSE stays connected until stop() — keeps the connection alive across
+        // route transitions and React StrictMode unmount/remount cycles.
       };
     },
 

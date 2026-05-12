@@ -105,36 +105,47 @@ export function ConflictProvider({ children }: ConflictProviderProps): React.Rea
 
   // Subscribe to SSE events
   useEffect(() => {
+    let cancelled = false;
     const base = getSyncEngineUrl();
 
-    const es = new EventSource(`${base}/events`);
-    esRef.current = es;
+    // Defer EventSource creation past React StrictMode's synchronous
+    // cleanup pass so the connection isn't opened then immediately aborted.
+    const timer = setTimeout(() => {
+      if (cancelled) return;
 
-    es.addEventListener('conflict', (e: MessageEvent) => {
-      try {
-        const data = JSON.parse(e.data) as { mergeId?: string; paths?: string[] };
-        // If same mergeId, coalesce (don't re-render unnecessarily)
-        // Fetch fresh state so we have the full ConflictState shape
-        fetchConflictState().then((conflict) => {
-          dispatch({ type: 'SET_CONFLICT', conflict });
-        }).catch(() => {});
-      } catch {
-        // Malformed event — ignore
-      }
-    });
+      const es = new EventSource(`${base}/events`);
+      esRef.current = es;
 
-    es.addEventListener('synced', () => {
-      dispatch({ type: 'CLEAR_CONFLICT' });
-    });
+      es.addEventListener('conflict', (e: MessageEvent) => {
+        try {
+          const data = JSON.parse(e.data) as { mergeId?: string; paths?: string[] };
+          // If same mergeId, coalesce (don't re-render unnecessarily)
+          // Fetch fresh state so we have the full ConflictState shape
+          fetchConflictState().then((conflict) => {
+            dispatch({ type: 'SET_CONFLICT', conflict });
+          }).catch(() => {});
+        } catch {
+          // Malformed event — ignore
+        }
+      });
 
-    es.addEventListener('change', () => {
-      window.dispatchEvent(new CustomEvent('sync-engine:change'));
-    });
+      es.addEventListener('synced', () => {
+        dispatch({ type: 'CLEAR_CONFLICT' });
+      });
+
+      es.addEventListener('change', () => {
+        window.dispatchEvent(new CustomEvent('sync-engine:change'));
+      });
+    }, 0);
 
     // Clean up on unmount
     return () => {
-      es.close();
-      esRef.current = null;
+      cancelled = true;
+      clearTimeout(timer);
+      if (esRef.current) {
+        esRef.current.close();
+        esRef.current = null;
+      }
     };
   }, []);
 
