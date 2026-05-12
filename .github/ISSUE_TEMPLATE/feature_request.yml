@@ -1,0 +1,44 @@
+name: Feature request
+description: Suggest an enhancement for awesome-markdown
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What problem are you trying to solve?
+      placeholder: Describe the workflow gap or pain point.
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      placeholder: Describe the behavior or API you would like to see.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      placeholder: List any workarounds or alternative approaches you considered.
+    validations:
+      required: false
+  - type: dropdown
+    id: area
+    attributes:
+      label: Provider or package affected
+      options:
+        - kanban-ui
+        - provider-localstorage
+        - provider-http
+        - provider-fs
+        - sync-engine
+        - filter-engine
+        - contracts
+        - docs
+        - not sure
+    validations:
+      required: true
