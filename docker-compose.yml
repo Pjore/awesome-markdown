@@ -1,0 +1,54 @@
+services:
+
+  # ── kanban-ui ─────────────────────────────────────────────────────────────
+  # React SPA served by nginx. VITE_* variables are baked into the bundle at
+  # build time — see apps/kanban-ui/Dockerfile for details.
+  kanban-ui:
+    build:
+      context: .
+      dockerfile: apps/kanban-ui/Dockerfile
+    ports:
+      - "5173:80"
+    env_file:
+      - apps/kanban-ui/.env
+    depends_on:
+      provider-fs:
+        condition: service_started
+
+  # ── provider-fs ───────────────────────────────────────────────────────────
+  # Fastify sidecar that reads/writes the content/ directory.
+  # PROVIDER_FS_HOST must be 0.0.0.0 in apps/provider-fs/.env so the server
+  # accepts connections from outside its container.
+  # PROVIDER_FS_CONTENT_ROOT must be /content (the container-internal path).
+  provider-fs:
+    build:
+      context: .
+      dockerfile: apps/provider-fs/Dockerfile
+    ports:
+      - "7701:7701"
+    env_file:
+      - apps/provider-fs/.env
+    volumes:
+      - ./content:/content
+
+  # ── sync-engine ───────────────────────────────────────────────────────────
+  # File-watcher, auto-commit, and SSE broadcast service.
+  # Requires one bind mount:
+  #   . → /repo  (full repo root so simple-git can read/write .git/;
+  #               content/ is accessible at /repo/content — same host
+  #               directory that provider-fs mounts at /content)
+  # SYNC_ENGINE_HOST must be 0.0.0.0 in apps/sync-engine/.env.
+  # SYNC_ENGINE_REPO_ROOT must be /repo in apps/sync-engine/.env.
+  sync-engine:
+    build:
+      context: .
+      dockerfile: apps/sync-engine/Dockerfile
+    ports:
+      - "7402:7402"
+    env_file:
+      - apps/sync-engine/.env
+    volumes:
+      - .:/repo
+    depends_on:
+      provider-fs:
+        condition: service_started
