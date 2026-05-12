@@ -13,6 +13,7 @@ export type EventSourceCtor = new (url: string) => EventSource;
 export interface SseClientConfig {
   url: string;
   EventSourceCtor?: EventSourceCtor;
+  getToken?: () => Promise<string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -46,10 +47,12 @@ export class SseClient {
   private readonly eventHandlers = new Set<SyncEventHandler>();
   private readonly EsCtor: EventSourceCtor;
   private readonly url: string;
+  private readonly getToken: (() => Promise<string>) | undefined;
 
   constructor(config: SseClientConfig) {
     this.url = config.url;
     this.EsCtor = config.EventSourceCtor ?? EventSource;
+    this.getToken = config.getToken;
   }
 
   // -- Public API ------------------------------------------------------------
@@ -85,7 +88,7 @@ export class SseClient {
     ) {
       return;
     }
-    this.connect();
+    void this.connect();
   }
 
   /**
@@ -114,9 +117,14 @@ export class SseClient {
 
   // -- Private ---------------------------------------------------------------
 
-  private connect(): void {
+  private async connect(): Promise<void> {
     this.setState('connecting');
-    const es = new this.EsCtor(this.url);
+    let sseUrl = this.url;
+    if (this.getToken) {
+      const token = await this.getToken();
+      sseUrl = `${sseUrl}?token=${token}`;
+    }
+    const es = new this.EsCtor(sseUrl);
     this.es = es;
 
     es.addEventListener('open', () => {
@@ -158,7 +166,7 @@ export class SseClient {
     this.retryCount += 1;
     this.reconnectTimer = setTimeout(() => {
       this.reconnectTimer = null;
-      if (!this.stopped) this.connect();
+      if (!this.stopped) void this.connect();
     }, delay);
   }
 

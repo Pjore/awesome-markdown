@@ -50,6 +50,7 @@ export interface HttpProviderConfig {
   baseUrl: string;
   fetchFn?: FetchFn;
   EventSourceCtor?: EventSourceCtor;
+  getToken?: () => Promise<string>;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,10 +59,11 @@ export interface HttpProviderConfig {
 
 export function createHttpProvider(config: HttpProviderConfig): HttpPersistenceProvider {
   const base = config.baseUrl.replace(/\/$/, '');
-  const client = new SidecarHttpClient({ baseUrl: base, fetchFn: config.fetchFn });
+  const client = new SidecarHttpClient({ baseUrl: base, fetchFn: config.fetchFn, getToken: config.getToken });
   const sse = new SseClient({
     url: endpoints.subscribe(base),
     EventSourceCtor: config.EventSourceCtor,
+    getToken: config.getToken,
   });
 
   const subscribers = new Set<ProviderEventHandler>();
