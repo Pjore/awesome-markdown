@@ -33,7 +33,27 @@ pnpm --filter kanban-ui dev
 # Select "localStorage" in the Settings panel
 ```
 
-### Option B — Git-backed (provider-fs + sync-engine)
+### Option B — Git-backed via Docker (no Node.js required)
+
+```bash
+# Clone just to get the docker-compose.yml (or download it directly):
+git clone --depth=1 https://github.com/Pjore/awesome-markdown.git
+cd awesome-markdown
+
+docker compose up -d
+# → open http://localhost:5173
+# Select "FS (local)" in the Settings panel
+```
+
+By default `content/` inside the repo directory is used for storage. To point at an existing notes directory, set `PROVIDER_FS_CONTENT_ROOT` and mount it:
+
+```bash
+PROVIDER_FS_CONTENT_ROOT=/absolute/path/to/notes docker compose up -d
+```
+
+Pre-built images are published to the GitHub Container Registry on every push to `main` and on version tags — no local build needed.
+
+### Option C — Git-backed for developers (pm2, hot-reload)
 
 ```bash
 git clone https://github.com/Pjore/awesome-markdown.git
