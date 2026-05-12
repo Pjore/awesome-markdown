@@ -10,11 +10,9 @@ description: >-
 columns:
   - status-todo
   - status-doing
-  - bajs
   - status-done
 swimlanes:
   - all
-  - kiss
 createdAt: '2026-05-04T00:00:00.000Z'
 updatedAt: '2026-05-04T00:00:00.000Z'
 ---
