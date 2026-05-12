@@ -1,0 +1,33 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    env:
+      NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 9
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          registry-url: 'https://registry.npmjs.org'
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm typecheck
+      - run: pnpm lint
+      - run: pnpm test
+      - run: pnpm --filter @awesome-markdown/contracts build
+      - run: pnpm publish --filter @awesome-markdown/contracts --access public --no-git-checks
+      - run: pnpm --filter @awesome-markdown/filter-engine build
+      - run: pnpm publish --filter @awesome-markdown/filter-engine --access public --no-git-checks
+      - run: pnpm --filter @awesome-markdown/provider-http build
+      - run: pnpm publish --filter @awesome-markdown/provider-http --access public --no-git-checks
+      - run: pnpm --filter @awesome-markdown/provider-localstorage build
+      - run: pnpm publish --filter @awesome-markdown/provider-localstorage --access public --no-git-checks

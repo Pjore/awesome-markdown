@@ -1,7 +1,8 @@
 {
   "name": "@awesome-markdown/provider-http",
-  "version": "0.1.0",
-  "private": true,
+  "version": "1.0.0",
+  "license": "MIT",
+  "publishConfig": { "access": "public" },
   "type": "module",
   "exports": {
     ".": {
