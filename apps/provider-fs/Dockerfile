@@ -6,7 +6,7 @@ RUN npm install -g pnpm@10
 WORKDIR /build
 
 # Copy workspace definition files first to leverage Docker layer caching.
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY tsconfig.base.json tsconfig.json ./
 COPY packages/ packages/
 COPY apps/provider-fs/ apps/provider-fs/
@@ -23,8 +23,8 @@ RUN pnpm --filter @awesome-markdown/filter-engine build
 RUN pnpm --filter provider-fs build
 
 # Create a standalone production deployment directory.
-# pnpm deploy copies workspace dependencies (resolved from their dist/) into
-# the deployed package's node_modules so the runtime image needs no pnpm.
+# inject-workspace-packages=true (in .npmrc) makes pnpm deploy work correctly
+# in pnpm v10 and ensures built dist/ files are included.
 RUN pnpm --filter provider-fs deploy --prod /deploy
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────

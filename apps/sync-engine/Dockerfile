@@ -6,7 +6,7 @@ RUN npm install -g pnpm@10
 WORKDIR /build
 
 # Copy workspace definition files first to leverage Docker layer caching.
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY tsconfig.base.json tsconfig.json ./
 COPY packages/ packages/
 COPY apps/sync-engine/ apps/sync-engine/
@@ -21,6 +21,8 @@ RUN pnpm --filter @awesome-markdown/contracts build
 RUN pnpm --filter sync-engine build
 
 # Create a standalone production deployment directory.
+# inject-workspace-packages=true (in .npmrc) makes pnpm deploy work correctly
+# in pnpm v10 and ensures built dist/ files are included.
 RUN pnpm --filter sync-engine deploy --prod /deploy
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────

@@ -8,13 +8,19 @@ RUN npm install -g pnpm@10
 WORKDIR /build
 
 # Copy workspace definition files first to leverage Docker layer caching.
-COPY package.json pnpm-workspace.yaml pnpm-lock.yaml ./
+COPY package.json pnpm-workspace.yaml pnpm-lock.yaml .npmrc ./
 COPY tsconfig.base.json ./
 COPY packages/ packages/
 COPY apps/kanban-ui/ apps/kanban-ui/
 
 # Install all workspace dependencies (including dev deps for the build).
 RUN pnpm install --frozen-lockfile
+
+# Build shared workspace packages in dependency order.
+RUN pnpm --filter @awesome-markdown/contracts build
+RUN pnpm --filter @awesome-markdown/filter-engine build
+RUN pnpm --filter @awesome-markdown/provider-localstorage build
+RUN pnpm --filter @awesome-markdown/provider-http build
 
 # Ensure an .env file exists for VITE_* variable baking at build time.
 # If the user has not created apps/kanban-ui/.env before building, fall back to
