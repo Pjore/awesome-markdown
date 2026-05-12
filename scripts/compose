@@ -1,0 +1,116 @@
+#!/usr/bin/env sh
+# compose — Docker Compose wrapper for awesome-markdown
+# Usage: ./scripts/compose <command> [args]
+#
+# Mirrors the UX of ./scripts/services (PM2 path) for the Docker Compose path.
+# Accepts short service aliases (ui, fs, sync) and maps them to Compose service
+# names (kanban-ui, provider-fs, sync-engine).
+set -eu
+
+# ---------------------------------------------------------------------------
+# Resolve repo root (works inside worktrees too)
+# ---------------------------------------------------------------------------
+REPO_ROOT="$(git -C "$(dirname "$0")" rev-parse --show-toplevel)"
+COMPOSE_FILE="$REPO_ROOT/docker-compose.yml"
+
+# ---------------------------------------------------------------------------
+# Verify Docker / Compose plugin are available
+# ---------------------------------------------------------------------------
+if ! command -v docker >/dev/null 2>&1; then
+  echo "error: 'docker' not found. Install Docker Desktop or Docker Engine first." >&2
+  exit 1
+fi
+
+if ! docker compose version >/dev/null 2>&1; then
+  echo "error: Docker Compose plugin not found. Install it with: docker install docker-compose-plugin" >&2
+  exit 1
+fi
+
+DOCKER_COMPOSE="docker compose -f $COMPOSE_FILE"
+
+# ---------------------------------------------------------------------------
+# Service alias resolution
+# ---------------------------------------------------------------------------
+_resolve_service() {
+  case "$1" in
+    ui)   echo "kanban-ui" ;;
+    fs)   echo "provider-fs" ;;
+    sync) echo "sync-engine" ;;
+    kanban-ui|provider-fs|sync-engine) echo "$1" ;;
+    *) echo "error: unknown service '$1'. Valid aliases: ui, fs, sync" >&2; exit 1 ;;
+  esac
+}
+
+# ---------------------------------------------------------------------------
+# Subcommands
+# ---------------------------------------------------------------------------
+cmd_start() {
+  cd "$REPO_ROOT"
+  $DOCKER_COMPOSE up -d "$@"
+  echo ""
+  $DOCKER_COMPOSE ps
+}
+
+cmd_stop() {
+  cd "$REPO_ROOT"
+  $DOCKER_COMPOSE down "$@"
+  echo "Services stopped."
+}
+
+cmd_status() {
+  cd "$REPO_ROOT"
+  $DOCKER_COMPOSE ps
+}
+
+cmd_logs() {
+  NAME="${1:-}"
+  if [ -z "$NAME" ]; then
+    echo "Usage: compose logs <name> [opts]" >&2
+    echo "  Valid aliases: ui, fs, sync" >&2
+    exit 1
+  fi
+  SERVICE="$(_resolve_service "$NAME")"
+  shift
+  cd "$REPO_ROOT"
+  $DOCKER_COMPOSE logs -f "$SERVICE" "$@"
+}
+
+cmd_help() {
+  cat <<'HELP'
+Usage: ./scripts/compose <command> [args]
+
+Commands:
+  start          Build (if needed) and start all containers in detached mode
+  stop           Stop and remove all containers
+  status         Show container status (docker compose ps)
+  logs <name>    Stream logs for a service (Ctrl-C to stop)
+  help           Print this message
+
+Service aliases:
+  ui    → kanban-ui   (Vite/React SPA, nginx, port 5173)
+  fs    → provider-fs (Fastify sidecar, port 7701)
+  sync  → sync-engine (watcher + SSE, port 7402)
+
+Examples:
+  ./scripts/compose start
+  ./scripts/compose status
+  ./scripts/compose logs fs
+  ./scripts/compose logs ui
+  ./scripts/compose stop
+HELP
+}
+
+# ---------------------------------------------------------------------------
+# Dispatch
+# ---------------------------------------------------------------------------
+COMMAND="${1:-help}"
+shift 2>/dev/null || true
+
+case "$COMMAND" in
+  start)        cmd_start "$@" ;;
+  stop)         cmd_stop "$@" ;;
+  status)       cmd_status "$@" ;;
+  logs)         cmd_logs "$@" ;;
+  help|--help|-h) cmd_help ;;
+  *) echo "error: unknown command '$COMMAND'. Run './scripts/compose help'." >&2; exit 1 ;;
+esac
