@@ -1,7 +1,7 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
 # Build the Vite/React SPA using the full monorepo context so workspace
 # packages (@awesome-markdown/contracts, filter-engine, etc.) resolve correctly.
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 RUN npm install -g pnpm@10
 
