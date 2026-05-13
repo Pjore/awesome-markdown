@@ -32,7 +32,11 @@ services:
       PROVIDER_FS_HOST: "0.0.0.0"
       PROVIDER_FS_CONTENT_ROOT: "/content"
     volumes:
-      - ./content:/content
+      - type: bind
+        source: ./content
+        target: /content
+        bind:
+          create_host_path: true
 
   # ── sync-engine ───────────────────────────────────────────────────────────
   # File-watcher, auto-commit, and SSE broadcast service.
