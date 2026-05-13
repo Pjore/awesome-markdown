@@ -58,9 +58,38 @@ This starts:
 - `provider-fs` on port `7701`
 - `sync-engine` on port `7402`
 
-If you enable remote sync, set `SYNC_ENGINE_REMOTE_ENABLED=true` and configure the GitHub App variables in `apps/sync-engine/.env`.
+If you enable remote sync, set `SYNC_ENGINE_REMOTE_ENABLED=true` and configure the GitHub App variables in `apps/sync-engine/.env`. Set `SYNC_ENGINE_TARGET_BRANCH=<branch>` when working on a feature branch.
 
 > **Remote HTTP provider warning:** the SSE `/events` endpoint can accept a `?token=` query parameter. Do not log raw request URLs in production, or the bearer token may be exposed in access logs.
+
+## Monorepo layout
+
+```
+packages/
+  contracts/             Zod v4 schemas + TypeScript types (shared)
+  filter-engine/         Isomorphic filter evaluate, invertibility analysis, mutation derivation
+  provider-localstorage/ In-browser localStorage provider
+  provider-http/         Fetch-based HTTP client implementing the provider interface
+apps/
+  kanban-ui/             React 19 + Vite 8 + Tailwind v4 SPA
+  provider-fs/           Fastify v5 sidecar (port 7701 default)
+  sync-engine/           Watcher + auto-commit + SSE server (port 7402 default)
+```
+
+## Tech stack
+
+| Layer | Tech |
+|-------|------|
+| UI | React 19, Vite 8 (Rolldown + Oxc), Tailwind v4, @dnd-kit |
+| API / sidecar | Fastify v5 + `fastify-type-provider-zod` |
+| Validation | Zod v4 — import from `"zod"` |
+| Git | simple-git + GitHub App tokens (`@octokit/auth-app`) |
+| File watching | chokidar |
+| Markdown frontmatter | gray-matter |
+| Live channel | Native SSE (no WebSocket) |
+| Monorepo | pnpm workspaces (no Turborepo) |
+| Tests | Vitest (unit/integration), browser automation (UI) |
+| Lint / format | oxlint + Prettier |
 
 ## Branching and pull requests
 
