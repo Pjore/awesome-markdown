@@ -7,6 +7,43 @@
 
 ---
 
+<table>
+<tr>
+<td width="50%">
+
+**Pick up where you left off** — your boards list is the first thing you see.
+
+[![Boards list](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/boards.png)](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/boards.png)
+
+</td>
+<td width="50%">
+
+**Drag cards across columns** — a single file write behind the scenes.
+
+[![Kanban board](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/kanban-simple.png)](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/kanban-simple.png)
+
+</td>
+</tr>
+<tr>
+<td width="50%">
+
+**Swimlanes for a second dimension** — slice by priority, team, or anything you like.
+
+[![Swimlane board](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/kanban-swimlanes.png)](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/kanban-swimlanes.png)
+
+</td>
+<td width="50%">
+
+**Edit items in plain markdown** — no forms, no friction.
+
+[![Item editor](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/item.png)](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/item.png)
+
+</td>
+</tr>
+</table>
+
+---
+
 ## Features
 
 - **Plain markdown storage.** Every kanban card, board, and axis definition is a `.md` file with YAML frontmatter — human-readable, diff-friendly, and git-native.
