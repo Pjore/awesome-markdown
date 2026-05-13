@@ -1,0 +1,20 @@
+# Local build overrides — apply explicitly when building from source:
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml build
+#
+# Developers who have cloned the full repo can build images from source instead
+# of pulling from GHCR. The base docker-compose.yml always pulls pre-built images.
+services:
+  kanban-ui:
+    build:
+      context: .
+      dockerfile: apps/kanban-ui/Dockerfile
+
+  provider-fs:
+    build:
+      context: .
+      dockerfile: apps/provider-fs/Dockerfile
+
+  sync-engine:
+    build:
+      context: .
+      dockerfile: apps/sync-engine/Dockerfile

@@ -27,6 +27,7 @@ if ! docker compose version >/dev/null 2>&1; then
 fi
 
 DOCKER_COMPOSE="docker compose -f $COMPOSE_FILE"
+DOCKER_COMPOSE_DEV="docker compose -f $COMPOSE_FILE -f $REPO_ROOT/docker-compose.dev.yml"
 
 # ---------------------------------------------------------------------------
 # Service alias resolution
@@ -44,6 +45,11 @@ _resolve_service() {
 # ---------------------------------------------------------------------------
 # Subcommands
 # ---------------------------------------------------------------------------
+cmd_build() {
+  cd "$REPO_ROOT"
+  $DOCKER_COMPOSE_DEV build "$@"
+}
+
 cmd_start() {
   cd "$REPO_ROOT"
   $DOCKER_COMPOSE up -d "$@"
@@ -80,7 +86,8 @@ cmd_help() {
 Usage: ./scripts/compose <command> [args]
 
 Commands:
-  start          Build (if needed) and start all containers in detached mode
+  build          Build images from source (requires full cloned repo)
+  start          Start all containers in detached mode (pulls GHCR images)
   stop           Stop and remove all containers
   status         Show container status (docker compose ps)
   logs <name>    Stream logs for a service (Ctrl-C to stop)
@@ -92,6 +99,7 @@ Service aliases:
   sync  → sync-engine (watcher + SSE, port 7402)
 
 Examples:
+  ./scripts/compose build
   ./scripts/compose start
   ./scripts/compose status
   ./scripts/compose logs fs
@@ -107,6 +115,7 @@ COMMAND="${1:-help}"
 shift 2>/dev/null || true
 
 case "$COMMAND" in
+  build)          cmd_build "$@" ;;
   start)        cmd_start "$@" ;;
   stop)         cmd_stop "$@" ;;
   status)       cmd_status "$@" ;;
