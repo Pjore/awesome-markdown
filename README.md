@@ -36,9 +36,9 @@ pnpm --filter kanban-ui dev
 ### Option B — Git-backed via Docker (no Node.js required)
 
 ```bash
-# Clone just to get the docker-compose.yml (or download it directly):
-git clone --depth=1 https://github.com/Pjore/awesome-markdown.git
-cd awesome-markdown
+# Download docker-compose.yml (or clone the repo):
+curl -fsSL https://raw.githubusercontent.com/Pjore/awesome-markdown/main/docker-compose.yml -o docker-compose.yml
+mkdir -p content
 
 docker compose up -d
 # → open http://localhost:5173
@@ -221,20 +221,29 @@ mkdir -p content
 
 #### 3. Build and start
 
+Pull pre-built images from GHCR and start (recommended):
+
 ```bash
-docker compose build
+docker compose up -d
+```
+
+Or build images locally from source (requires the full cloned repo):
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.dev.yml build
 docker compose up -d
 ```
 
 Or use the `scripts/compose` wrapper (mirrors `scripts/services` UX):
 
 ```bash
-./scripts/compose start   # builds if needed, then starts detached
-./scripts/compose status  # docker compose ps
-./scripts/compose logs fs # stream provider-fs logs (Ctrl-C to stop)
+./scripts/compose start         # pulls GHCR images and starts detached
+./scripts/compose build         # build images from source (full repo required)
+./scripts/compose status        # docker compose ps
+./scripts/compose logs fs       # stream provider-fs logs (Ctrl-C to stop)
 ./scripts/compose logs ui
 ./scripts/compose logs sync
-./scripts/compose stop    # stop and remove containers
+./scripts/compose stop          # stop and remove containers
 ```
 
 #### 4. Access the stack
