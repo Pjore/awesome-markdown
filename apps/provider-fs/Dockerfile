@@ -27,6 +27,10 @@ RUN pnpm --filter provider-fs build
 # in pnpm v10 and ensures built dist/ files are included.
 RUN pnpm --filter provider-fs deploy --prod /deploy
 
+# pnpm deploy copies source files and node_modules but not the compiled dist/.
+# Copy it explicitly from the build stage.
+RUN cp -r apps/provider-fs/dist /deploy/dist
+
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM node:20-alpine AS runtime
 
