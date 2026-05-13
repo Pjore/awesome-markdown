@@ -1,5 +1,5 @@
 # ── Stage 1: Build ────────────────────────────────────────────────────────────
-FROM node:20-alpine AS builder
+FROM node:22-alpine AS builder
 
 RUN npm install -g pnpm@10
 
@@ -30,7 +30,7 @@ RUN pnpm --filter sync-engine deploy --prod /deploy
 RUN cp -r apps/sync-engine/dist /deploy/dist
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
-FROM node:20-alpine AS runtime
+FROM node:22-alpine AS runtime
 
 # simple-git shells out to the git binary — install it in the runtime image.
 RUN apk add --no-cache git

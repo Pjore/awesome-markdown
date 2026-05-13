@@ -5,7 +5,6 @@ services:
   # build time — see apps/kanban-ui/Dockerfile for details.
   kanban-ui:
     image: ghcr.io/pjore/awesome-markdown-kanban-ui:latest
-    platform: linux/amd64
     ports:
       - "5173:80"
     env_file:
@@ -22,7 +21,6 @@ services:
   # PROVIDER_FS_CONTENT_ROOT must be /content (the container-internal path).
   provider-fs:
     image: ghcr.io/pjore/awesome-markdown-provider-fs:latest
-    platform: linux/amd64
     ports:
       - "7701:7701"
     env_file:
@@ -48,7 +46,6 @@ services:
   # SYNC_ENGINE_REPO_ROOT must be /repo in apps/sync-engine/.env.
   sync-engine:
     image: ghcr.io/pjore/awesome-markdown-sync-engine:latest
-    platform: linux/amd64
     ports:
       - "7402:7402"
     env_file:
