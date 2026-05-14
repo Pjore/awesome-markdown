@@ -19,6 +19,7 @@ jobs:
   build-push:
     name: Build and push ${{ matrix.service }}
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
@@ -63,6 +64,7 @@ jobs:
 
       - name: Build and push
         uses: docker/build-push-action@v7
+        timeout-minutes: 40
         with:
           context: .
           file: ${{ matrix.dockerfile }}
