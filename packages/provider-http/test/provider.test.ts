@@ -264,12 +264,16 @@ describe('provider.subscribe — SSE events', () => {
     expect(events[0]!.entitySlug).toBe('task-1');
   });
 
-  it('stops SSE when all subscribers unsubscribe', () => {
+  it('keeps SSE alive after all subscribers unsubscribe (closes only on stop)', () => {
     const p = makeProvider(vi.fn());
     const unsub = p.subscribe(() => undefined as unknown as void);
     const es = FakeEventSource.instances.at(-1)!;
     expect(es.closed).toBe(false);
     unsub();
+    // SSE intentionally stays open across unsubscribes to survive React
+    // StrictMode unmount/remount cycles and route transitions.
+    expect(es.closed).toBe(false);
+    p.stop();
     expect(es.closed).toBe(true);
   });
 
