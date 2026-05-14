@@ -1,0 +1,22 @@
+{
+  "name": "awesome-markdown",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:24",
+  "features": {
+    "ghcr.io/devcontainers/features/github-cli:1": {},
+    "ghcr.io/devcontainers/features/docker-in-docker:2.17.0": {}
+  },
+  "postCreateCommand": "bash .devcontainer/post-create.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "GitHub.copilot",
+        "GitHub.copilot-chat",
+        "GitHub.vscode-pull-request-github",
+        "eamodio.gitlens",
+        "yzhang.markdown-all-in-one",
+        "streetsidesoftware.code-spell-checker",
+        "streetsidesoftware.code-spell-checker-swedish"
+      ]
+    }
+  }
+}
