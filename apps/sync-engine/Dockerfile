@@ -38,6 +38,10 @@ RUN apk add --no-cache git
 WORKDIR /app
 COPY --from=builder /deploy ./
 
+# Run as the built-in non-root user so bind-mounted directories owned by
+# uid=1000 (the common default on Linux hosts) are accepted by git.
+USER node
+
 EXPOSE 7402
 
 CMD ["node", "dist/index.js"]
