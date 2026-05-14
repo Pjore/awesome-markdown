@@ -35,3 +35,4 @@ Thumbs.db
 *.private-key.pem
 apps/sync-engine/core
 apps/kanban-ui/test_output.txt
+test-docker-local/*
