@@ -111,7 +111,12 @@ describe('conflict detection', () => {
   });
 
   it('engine emits exactly one conflict event per detected conflict', async () => {
+    // Stop the engine while seeding to avoid a race between the file watcher
+    // (debounce 120 ms) and the manual git operations in seedConflict.
+    await harness.stop();
     await seedConflict(remote);
+    harness = await createRemoteEngineHarness(remote);
+    harness.clearEvents();
 
     // Trigger pull — should detect conflict
     await harness.triggerPull();
@@ -130,7 +135,12 @@ describe('conflict detection', () => {
   });
 
   it('pull loop is suspended after conflict detected via engine', async () => {
+    // Stop the engine while seeding to avoid a race between the file watcher
+    // (debounce 120 ms) and the manual git operations in seedConflict.
+    await harness.stop();
     await seedConflict(remote);
+    harness = await createRemoteEngineHarness(remote);
+    harness.clearEvents();
 
     await harness.triggerPull();
     await new Promise((r) => setTimeout(r, 300));
@@ -152,7 +162,12 @@ describe('conflict detection', () => {
   });
 
   it('clearConflictState resumes pull scheduling', async () => {
+    // Stop the engine while seeding to avoid a race between the file watcher
+    // (debounce 120 ms) and the manual git operations in seedConflict.
+    await harness.stop();
     await seedConflict(remote);
+    harness = await createRemoteEngineHarness(remote);
+    harness.clearEvents();
     await harness.triggerPull();
     await new Promise((r) => setTimeout(r, 300));
 
