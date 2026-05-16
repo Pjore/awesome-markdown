@@ -21,6 +21,8 @@ services:
   # PROVIDER_FS_CONTENT_ROOT must be /content (the container-internal path).
   provider-fs:
     image: ghcr.io/pjore/awesome-markdown-provider-fs:latest
+    # Override the image's default user (node/1000). Example: PROVIDER_FS_UID=1001:1001
+    user: "${PROVIDER_FS_UID:-}"
     ports:
       - "7701:7701"
     env_file:
@@ -46,6 +48,8 @@ services:
   # SYNC_ENGINE_REPO_ROOT must be /repo in apps/sync-engine/.env.
   sync-engine:
     image: ghcr.io/pjore/awesome-markdown-sync-engine:latest
+    # Override the image's default user (node/1000). Example: SYNC_ENGINE_UID=1001:1001
+    user: "${SYNC_ENGINE_UID:-}"
     ports:
       - "7402:7402"
     env_file:

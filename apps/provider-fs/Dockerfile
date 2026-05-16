@@ -37,6 +37,10 @@ FROM node:22-alpine AS runtime
 WORKDIR /app
 COPY --from=builder /deploy ./
 
+# Run as the built-in non-root user so bind-mounted directories owned by
+# uid=1000 (the common default on Linux hosts) are written with the correct owner.
+USER node
+
 EXPOSE 7701
 
 CMD ["node", "dist/index.js"]
