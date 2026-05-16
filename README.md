@@ -49,6 +49,8 @@ docker compose up -d
 # open http://localhost:5173 → Settings → FS (local)
 ```
 
+> **macOS / Windows limitation:** files edited directly on the host are not picked up by the sync-engine when running in Docker. Changes made through the UI work correctly. See [#19](https://github.com/Pjore/awesome-markdown/issues/19) for details and planned fixes.
+
 Point at an existing notes directory:
 
 ```bash
