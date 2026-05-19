@@ -81,6 +81,51 @@ cp apps/kanban-ui/.env.example   apps/kanban-ui/.env
 
 For remote git sync, set `SYNC_ENGINE_REMOTE_ENABLED=true` and supply GitHub App credentials in `apps/sync-engine/.env`.
 
+### Running kanban-ui with OIDC authentication
+
+kanban-ui supports optional PKCE authentication via any OIDC provider (Zitadel,
+Keycloak, Auth0, …). Auth is **disabled by default** — the app works without
+credentials when both variables below are absent.
+
+**1. Set environment variables in `apps/kanban-ui/.env`:**
+
+```bash
+VITE_ZITADEL_ISSUER=https://your-oidc-provider.example.com
+VITE_CLIENT_ID=<client-id-from-your-oidc-provider>
+```
+
+`VITE_ZITADEL_ISSUER` must match the `issuer` field in the provider's discovery
+document (`/.well-known/openid-configuration`).
+
+**2. Register the redirect URI in your OIDC provider:**
+
+```
+http://localhost:5173/auth/callback   # dev
+https://<your-domain>/auth/callback   # production
+```
+
+**3. Start the dev server:**
+
+```bash
+pnpm --filter kanban-ui dev
+# open http://localhost:5173
+```
+
+The app shows a **sign in** gate when auth is enabled. After completing the OIDC
+flow the user is redirected back to `/auth/callback`, tokens are exchanged, and
+the boards page renders. A **sign out** button appears in the top bar.
+
+| Screenshot | |
+|---|---|
+| Sign-in gate | [![Sign-in gate](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/auth-kanban-signin.png)](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/auth-kanban-signin.png) |
+| Authenticated | [![Authenticated boards](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/auth-kanban-authenticated.png)](https://github.com/Pjore/awesome-markdown/releases/download/pr-screenshots/auth-kanban-authenticated.png) |
+
+> **Zitadel-specific note:** if you are running Zitadel locally and testing from
+> a browser on a different machine, ensure your OIDC app is configured as type
+> **Web** with **Development Mode** enabled so that HTTP redirect URIs are
+> accepted. See `docs/local-dev/debug-kanban-ui.md` in the cloud repo for a
+> detailed walkthrough.
+
 ---
 
 ## How it works

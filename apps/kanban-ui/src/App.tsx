@@ -6,6 +6,8 @@ import { BoardListPage } from './pages/BoardListPage.js';
 import { BoardPage } from './pages/BoardPage.js';
 import { ItemEditorPage } from './pages/ItemEditorPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
+import { AuthCallbackPage } from './pages/AuthCallbackPage.js';
+import { AuthGate } from './components/AuthGate.js';
 import { ConflictProvider } from './sync/conflict-store.js';
 import { ConflictBanner } from './components/ConflictBanner.js';
 
@@ -55,10 +57,11 @@ export function App(): React.ReactElement {
     </div>
   ) : (
     <Routes>
-      <Route path="/" element={<BoardListPage />} />
-      <Route path="/boards/:slug" element={<BoardPage />} />
-      <Route path="/items/:slug" element={<ItemEditorPage />} />
-      <Route path="/settings" element={<SettingsPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      <Route path="/" element={<AuthGate><BoardListPage /></AuthGate>} />
+      <Route path="/boards/:slug" element={<AuthGate><BoardPage /></AuthGate>} />
+      <Route path="/items/:slug" element={<AuthGate><ItemEditorPage /></AuthGate>} />
+      <Route path="/settings" element={<AuthGate><SettingsPage /></AuthGate>} />
       <Route
         path="*"
         element={
