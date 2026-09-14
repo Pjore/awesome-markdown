@@ -2,9 +2,6 @@
 # post-create.sh — runs once after devcontainer is created
 set -euo pipefail
 
-# Make scripts executable
-chmod +x scripts/load-credentials.sh
-
 # Install agent-browser (arch-aware)
 # arm64: no Chrome for Testing builds — use Playwright Chromium instead
 # amd64: use agent-browser's bundled Chromium

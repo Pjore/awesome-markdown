@@ -3,8 +3,8 @@ set -e
 
 # Load credentials from .env
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-if [ -f "${SCRIPT_DIR}/scripts/load-credentials.sh" ]; then
-    source "${SCRIPT_DIR}/scripts/load-credentials.sh"
+if [ -f "${SCRIPT_DIR}/.agents/skills/credential-security/scripts/load-credentials.sh" ]; then
+    source "${SCRIPT_DIR}/.agents/skills/credential-security/scripts/load-credentials.sh"
     echo ""
 fi
 
