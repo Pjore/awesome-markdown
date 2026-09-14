@@ -1,0 +1,34 @@
+version = 1
+agents = ["copilot", "pi"]
+
+[[skills]]
+name = "credential-security"
+source = "Pjore/awesome-os"
+
+[[hooks]]
+event = "PostToolUse"
+command = ".agents/skills/credential-security/scripts/redact-filter.sh"
+
+[[skills]]
+name = "branch-and-pr"
+source = "Pjore/awesome-os"
+
+[[skills]]
+name = "agent-browser"
+source = "path:.agents/skills/agent-browser"
+
+[[skills]]
+name = "commit-work"
+source = "path:.agents/skills/commit-work"
+
+[[skills]]
+name = "dev-environment-coder"
+source = "path:.agents/skills/dev-environment-coder"
+
+[[skills]]
+name = "frontend-design"
+source = "anthropics/skills"
+
+[[skills]]
+name = "grill-me"
+source = "mattpocock/skills"
