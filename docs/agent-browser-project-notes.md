@@ -1,6 +1,6 @@
-# agent-browser — awesome-markdown Project Notes
+# agent-browser — Project Notes
 
-Project-specific findings for using `agent-browser` against this repo's UI.
+Project-specific findings for using `agent-browser` against this repo's UI. For general CLI usage, see the `agent-browser` skill (sourced from `Pjore/awesome-os`).
 
 ## Default URLs
 
@@ -76,8 +76,8 @@ agent-browser find testid "settings-btn" click
 `@dnd-kit` uses pointer events, not native HTML5 drag. To simulate a card
 move you need real mouse-down → mouse-move → mouse-up at pixel
 coordinates. Use `eval` to fetch source/target rects, then drive Playwright
-mouse via the `--stdin` script form (see
-[references/commands.md](commands.md)).
+mouse via the CLI's `--stdin` script form (see the `agent-browser` skill's
+`references/commands.md`).
 
 Tip: take an `--annotate` screenshot first so you can verify the visual
 result against `[N]` labels after the drop.
@@ -125,7 +125,7 @@ to PR comments demonstrating UI behaviour.
 
 ## When the Built-in Browser Tool Wins
 
-See [/docs/agent-browser-vs-browser-tool.md](../../../../docs/agent-browser-vs-browser-tool.md)
+See [agent-browser-vs-browser-tool.md](agent-browser-vs-browser-tool.md)
 for the full comparison. Short version: built-in is fine for "does the
 URL load?" checks during chat. For everything else (layout, DnD,
 network, scraping, regression), use `agent-browser`.

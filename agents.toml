@@ -15,15 +15,12 @@ source = "Pjore/awesome-os"
 
 [[skills]]
 name = "agent-browser"
-source = "path:.agents/skills/agent-browser"
+source = "Pjore/awesome-os"
+path = ".github/skills/agent-browser"
 
 [[skills]]
 name = "commit-work"
 source = "path:.agents/skills/commit-work"
-
-[[skills]]
-name = "dev-environment-coder"
-source = "path:.agents/skills/dev-environment-coder"
 
 [[skills]]
 name = "frontend-design"

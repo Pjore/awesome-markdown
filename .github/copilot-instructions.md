@@ -77,4 +77,4 @@ Copy `.env.example` files to `.env` as needed. Important variables:
 
 ## Browser tooling
 
-Use browser automation for end-to-end UI verification when a task requires interacting with the running application.
+Use browser automation for end-to-end UI verification when a task requires interacting with the running application. See [docs/agent-browser-project-notes.md](../docs/agent-browser-project-notes.md) for project-specific URLs, seeding, and testid patterns.
