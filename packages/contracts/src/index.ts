@@ -32,8 +32,8 @@ export type {
 export { ItemSchema } from './schemas/item.js';
 export type { Item } from './schemas/item.js';
 
-export { BoardSchema } from './schemas/board.js';
-export type { Board } from './schemas/board.js';
+export { BoardSchema, PropertyDisplaySchema } from './schemas/board.js';
+export type { Board, PropertyDisplay } from './schemas/board.js';
 
 export { AxisOrderSchema, AxisSchema } from './schemas/axis.js';
 export type { AxisOrder, Axis } from './schemas/axis.js';
