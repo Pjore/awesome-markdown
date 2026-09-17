@@ -1,5 +1,3 @@
-<!-- Canonical version: Pjore/awesome-os .agents/skills/branch-and-pr/templates/pull_request_template.md -->
-
 ## Summary
 
 - 
