@@ -148,6 +148,7 @@ export function Cell({
             columnSlug={columnAxis.slug}
             swimlaneSlug={swimlaneAxis.slug}
             boardSlug={board.slug}
+            board={board}
           />
         ))}
       </SortableContext>

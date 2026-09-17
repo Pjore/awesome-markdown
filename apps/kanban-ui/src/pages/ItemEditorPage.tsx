@@ -4,6 +4,8 @@ import type { Item } from '@awesome-markdown/contracts';
 import { useProvider } from '../provider/ProviderContext.js';
 import { useBreadcrumb } from '../App.js';
 import { useProviderSubscribe } from '../state/useProviderSubscribe.js';
+import { useBoardRender } from '../state/useBoardRender.js';
+import { PropertyValueDisplay } from '../lib/property-display.js';
 
 interface EditorLocationState {
   boardSlug?: string;
@@ -34,6 +36,8 @@ export function ItemEditorPage(): React.ReactElement {
   const state = (location.state ?? {}) as EditorLocationState;
   const boardSlug = state.boardSlug;
   const backPath = state.from ?? (boardSlug ? `/boards/${boardSlug}` : '/');
+  const { render: boardRender } = useBoardRender(boardSlug ?? '');
+  const detailLayout = boardRender?.board.detailLayout ?? [];
 
   const [item, setItem] = useState<Item | null>(null);
   const [title, setTitle] = useState('');
@@ -290,6 +294,24 @@ export function ItemEditorPage(): React.ReactElement {
         onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
         data-testid="item-editor-body"
       />
+
+      {/* Configured properties (board.detailLayout) */}
+      {item && detailLayout.length > 0 && (
+        <div
+          className="flex flex-col gap-2"
+          style={{ borderTop: '1px solid var(--border)', paddingTop: '16px' }}
+          data-testid="item-editor-properties"
+        >
+          {detailLayout.map((layout) => (
+            <PropertyValueDisplay
+              key={layout.property}
+              item={item}
+              boardSlug={boardSlug ?? ''}
+              layout={layout}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Error message */}
       {error && (

@@ -29,6 +29,12 @@ export function useBoardRender(slug: string): BoardRenderState {
 
   const fetchAll = useCallback(async (): Promise<void> => {
     const currentSlug = slugRef.current;
+    if (currentSlug === '') {
+      setRender(null);
+      setHomeless(null);
+      setStatus('ready');
+      return;
+    }
     try {
       const [renderResult, homelessResult] = await Promise.all([
         provider.getBoardRender(currentSlug),
