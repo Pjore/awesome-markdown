@@ -116,7 +116,19 @@ UI verification is available with:
 pnpm verify:ui
 ```
 
+Per-milestone UI verification suites live under `apps/kanban-ui/agent-browser/mN/` and can be run individually with `pnpm --filter kanban-ui verify:mN`. Extend an existing suite rather than writing a new one from scratch.
+
 Add or update tests when you change behavior, fix bugs, or introduce new interfaces.
+
+### Seeding demo data for UI verification
+
+In localStorage mode, the `?seed=mN` query parameter seeds demo boards into `localStorage["awesome-markdown:v1"]`. It only runs on the **home page** — loading `/boards/<slug>` directly on a fresh browser context will not seed data and the UI will show "Failed to load board". Load `/?seed=m3`, wait for the page to settle, then navigate into the board.
+
+In provider-fs mode (sidecar running on port 7701), no seeding is needed — boards come directly from `content/`, so `/boards/<slug>` can be opened directly.
+
+### UI element conventions
+
+The UI exposes stable `data-testid` attributes (e.g. `board`, `column-header-<id>`, `swimlane-row-<id>`, `item-card-<id>`, `settings-btn`). Prefer testid-based selectors over CSS selectors in any UI automation — they're stable across styling and layout changes.
 
 ## Reporting bugs and requesting features
 

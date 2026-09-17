@@ -75,6 +75,10 @@ Copy `.env.example` files to `.env` as needed. Important variables:
 - Work on a feature branch and open a pull request instead of committing to `main`
 - Keep commits focused and logically grouped
 
+## Agent Skills
+
+Declared in `agents.toml`, installed via [dotagents](https://github.com/getsentry/dotagents). Run `npx @sentry/dotagents --project install` after cloning or pulling. `credential-security`, `branch-and-pr`, `agent-browser`, and `commit-work` are sourced from `Pjore/awesome-os`; `frontend-design` from `anthropics/skills`; `grill-me` from `mattpocock/skills`.
+
 ## Browser tooling
 
-Use browser automation for end-to-end UI verification when a task requires interacting with the running application. See [docs/agent-browser-project-notes.md](../docs/agent-browser-project-notes.md) for project-specific URLs, seeding, and testid patterns.
+Use browser automation for end-to-end UI verification when a task requires interacting with the running application. Load the `agent-browser` skill for CLI usage and the built-in-vs-CLI comparison (`references/browser-tool-comparison.md`, `references/testing-patterns.md`). See [CONTRIBUTING.md](CONTRIBUTING.md#seeding-demo-data-for-ui-verification) for this project's seeding flow and testid conventions.

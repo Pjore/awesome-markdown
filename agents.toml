@@ -20,7 +20,8 @@ path = ".github/skills/agent-browser"
 
 [[skills]]
 name = "commit-work"
-source = "path:.agents/skills/commit-work"
+source = "Pjore/awesome-os"
+path = ".github/skills/commit-work"
 
 [[skills]]
 name = "frontend-design"
