@@ -81,8 +81,8 @@ function navigateToParent(
       const obj = cur as Rec;
       if (obj[seg] === undefined || obj[seg] === null) {
         if (!upsert) return null;
-        // `boards` is always Item.boards[] — initialize as an array so the next
-        // segment resolves through the board-entry lookup branch above, not as a map key.
+        // `boards` is always an array of `{ board, ... }` entries (see Item schema) —
+        // the next segment is matched against each entry's `board` property.
         obj[seg] = seg === 'boards' ? [] : {};
       }
       cur = obj[seg];

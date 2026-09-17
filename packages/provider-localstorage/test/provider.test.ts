@@ -72,6 +72,14 @@ describe('createItem', () => {
     expect((item as Record<string, unknown>)['status']).toBe('open');
   });
 
+  it('set mutation on boards.<slug>.<field> creates a proper boards[] array entry', async () => {
+    const item = await provider.createItem({
+      slug: 'task-1', title: 'Task 1',
+      mutations: [{ op: 'set', path: 'boards.demo.order', value: 'a0' }],
+    });
+    expect(item.boards).toEqual([{ board: 'demo', order: 'a0' }]);
+  });
+
   it('stores body field', async () => {
     const item = await provider.createItem({
       slug: 'task-1', title: 'Task', mutations: [], body: 'hello',
