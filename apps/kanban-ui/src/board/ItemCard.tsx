@@ -2,16 +2,18 @@ import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import type { Item } from '@awesome-markdown/contracts';
+import type { Board, Item } from '@awesome-markdown/contracts';
 import type { ItemDragData } from './dnd/dragTypes.js';
 import { useOptionalConflict } from '../sync/conflict-store.js';
 import { deriveSummary } from '../lib/derive-summary.js';
+import { PropertyValueDisplay } from '../lib/property-display.js';
 
 interface ItemCardProps {
   item: Item;
   columnSlug: string;
   swimlaneSlug: string;
   boardSlug: string;
+  board: Board;
 }
 
 /**
@@ -28,6 +30,7 @@ export function ItemCard({
   columnSlug,
   swimlaneSlug,
   boardSlug,
+  board,
 }: ItemCardProps): React.ReactElement {
   const navigate = useNavigate();
   const conflict = useOptionalConflict();
@@ -166,6 +169,20 @@ export function ItemCard({
         >
           {tags.join(' · ')}
         </p>
+      )}
+
+      {/* Layer 4: Configured properties (board.cardLayout) */}
+      {board.cardLayout && board.cardLayout.length > 0 && (
+        <div className="flex items-center flex-wrap gap-1" style={{ marginTop: '6px' }}>
+          {board.cardLayout.map((layout) => (
+            <PropertyValueDisplay
+              key={layout.property}
+              item={item}
+              boardSlug={boardSlug}
+              layout={layout}
+            />
+          ))}
+        </div>
       )}
     </div>
   );
