@@ -14,10 +14,6 @@ COPY packages/ packages/
 COPY apps/kanban-ui/ apps/kanban-ui/
 
 # Install all workspace dependencies (including dev deps for the build).
-# inject-workspace-packages=false matches the settings pnpm-lock.yaml was
-# generated with; newer pnpm 10.x releases default this to true, which trips
-# ERR_PNPM_LOCKFILE_CONFIG_MISMATCH on a frozen install.
-RUN pnpm config set inject-workspace-packages false
 RUN pnpm install --frozen-lockfile
 
 # Build shared workspace packages in dependency order.
