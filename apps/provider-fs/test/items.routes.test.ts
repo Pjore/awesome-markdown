@@ -148,4 +148,21 @@ describe("items routes", () => {
     const res = await server.inject({ method: "GET", url: "/items/nonexistent" });
     expect(res.statusCode).toBe(404);
   });
+
+  it("POST /items — `boards.<slug>.*` mutation on a fresh item creates boards as an array", async () => {
+    const res = await server.inject({
+      method: "POST",
+      url: "/items",
+      headers: { "content-type": "application/json" },
+      payload: {
+        slug: "board-placed",
+        title: "Board Placed",
+        mutations: [{ op: "set", path: "boards.board-main.order", value: "a0" }],
+      },
+    });
+    expect(res.statusCode).toBe(201);
+    const item = res.json<Item>();
+    expect(Array.isArray(item.boards)).toBe(true);
+    expect(item.boards).toEqual([{ board: "board-main", order: "a0" }]);
+  });
 });

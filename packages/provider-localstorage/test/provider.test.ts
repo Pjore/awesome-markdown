@@ -78,6 +78,15 @@ describe('createItem', () => {
     });
     expect(item.body).toBe('hello');
   });
+
+  it('`boards.<slug>.*` mutation on a fresh item creates boards as an array', async () => {
+    const item = await provider.createItem({
+      slug: 'task-1', title: 'Task 1',
+      mutations: [{ op: 'set', path: 'boards.my-board.order', value: 'a0' }],
+    });
+    expect(Array.isArray(item.boards)).toBe(true);
+    expect(item.boards).toEqual([{ board: 'my-board', order: 'a0' }]);
+  });
 });
 
 describe('patchItem', () => {
