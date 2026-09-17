@@ -29,6 +29,14 @@ RUN pnpm --filter @awesome-markdown/provider-http build
 # machine Docker Compose deployments).
 RUN test -f apps/kanban-ui/.env || cp apps/kanban-ui/.env.example apps/kanban-ui/.env
 
+# Optional build-time overrides for deployments where provider-fs/sync-engine
+# live on their own public domains (e.g. Dokploy). Appended after the fallback
+# .env so they take precedence over any commented-out defaults.
+ARG VITE_PROVIDER_FS_URL=""
+ARG VITE_SYNC_ENGINE_URL=""
+RUN if [ -n "$VITE_PROVIDER_FS_URL" ]; then echo "VITE_PROVIDER_FS_URL=$VITE_PROVIDER_FS_URL" >> apps/kanban-ui/.env; fi
+RUN if [ -n "$VITE_SYNC_ENGINE_URL" ]; then echo "VITE_SYNC_ENGINE_URL=$VITE_SYNC_ENGINE_URL" >> apps/kanban-ui/.env; fi
+
 # Build the SPA — VITE_* env vars are baked into the bundle here.
 RUN pnpm --filter kanban-ui build
 
