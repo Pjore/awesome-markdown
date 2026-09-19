@@ -1,5 +1,6 @@
 import React from 'react';
 import type { Item, PropertyDisplay } from '@awesome-markdown/contracts';
+import { getBoardEntry } from './item-board.js';
 
 /**
  * Resolves a property's value for an item on a given board.
@@ -8,9 +9,7 @@ import type { Item, PropertyDisplay } from '@awesome-markdown/contracts';
  * item's top-level property of the same name.
  */
 export function resolveItemProperty(item: Item, boardSlug: string, property: string): unknown {
-  const boardEntry = item.boards?.find((b) => b.board === boardSlug) as
-    | Record<string, unknown>
-    | undefined;
+  const boardEntry = getBoardEntry(item, boardSlug);
   if (boardEntry && property in boardEntry) return boardEntry[property];
   return (item as unknown as Record<string, unknown>)[property];
 }

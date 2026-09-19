@@ -6,6 +6,7 @@ import type { Board, Item } from '@awesome-markdown/contracts';
 import type { ItemDragData } from './dnd/dragTypes.js';
 import { useOptionalConflict } from '../sync/conflict-store.js';
 import { deriveSummary } from '../lib/derive-summary.js';
+import { buildItemEditorHref, getBoardScopedString } from '../lib/item-board.js';
 import { PropertyValueDisplay } from '../lib/property-display.js';
 
 interface ItemCardProps {
@@ -82,12 +83,16 @@ export function ItemCard({
   const summary = item.body !== undefined && item.body.trim() !== ''
     ? deriveSummary(item.body)
     : '';
+  const assignee = getBoardScopedString(item, boardSlug, 'assignee').trim();
+  const showsAssigneeInLayout = board.cardLayout?.some((layout) => layout.property === 'assignee') ?? false;
 
   const handleClick = (e: React.MouseEvent): void => {
     // Don't navigate if the user is dragging
     if (isDragging) return;
     e.stopPropagation();
-    navigate(`/items/${item.slug}`, { state: { boardSlug, from: `/boards/${boardSlug}` } });
+    navigate(buildItemEditorHref(item.slug, boardSlug), {
+      state: { boardSlug, from: `/boards/${boardSlug}` },
+    });
   };
 
   return (
@@ -171,7 +176,21 @@ export function ItemCard({
         </p>
       )}
 
-      {/* Layer 4: Configured properties (board.cardLayout) */}
+      {assignee !== '' && !showsAssigneeInLayout && (
+        <div
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '10.5px',
+            fontWeight: 400,
+            color: 'var(--ink-muted)',
+            marginTop: '6px',
+          }}
+          data-testid={`item-assignee-${item.slug}`}
+        >
+          assigned → {assignee}
+        </div>
+      )}
+
       {board.cardLayout && board.cardLayout.length > 0 && (
         <div className="flex items-center flex-wrap gap-1" style={{ marginTop: '6px' }}>
           {board.cardLayout.map((layout) => (
