@@ -1,0 +1,7 @@
+# Known gotchas (verified upstream fixes)
+
+- **`boards[]` must stay an array.** A mutation path like `boards.<slug>.<field>` applied to a fresh item (no `boards` field yet) used to initialize `boards` as a plain object keyed by slug instead of `[]` — corrupting the item against `ItemSchema`. Fixed in `apps/provider-fs/src/fs/apply-mutations.ts` and `packages/provider-localstorage/src/index.ts` (the parent-navigation step now inits a missing `boards` segment as `[]`, never `{}`). See PR Pjore/awesome-markdown#24.
+- **No generic "list/search all items" endpoint.** `provider-fs` only exposes `GET /items/:slug` and per-board enumeration via `GET /boards/:slug/render` (items nested in cells) plus `GET /boards/:slug/homeless` (shape `{ board, items: [] }` — not a bare array).
+- **Mutation value types are restricted by op.** `set` accepts `string | number | boolean | null`; `append`/`remove` only accept `string | number` (never objects) — you can't append a `{ board: ... }` object to `boards[]` directly. Use `set` on `boards.<slug>.<field>` instead (auto-upserts the entry; see [mutations-and-dnd.md](./mutations-and-dnd.md)).
+- **`status`/`project` are not fixed enums** — freeform passthrough item properties. Valid values/order are defined implicitly by which axis files exist and a board's `columns[]`/`swimlanes[]` array order. Don't hardcode a state vocabulary against this system.
+- **Node v24 in this devcontainer runs `.ts` files natively** (no `tsx`/`ts-node`/build step needed) — a fine default for small zero-dependency scripts that touch this content.
