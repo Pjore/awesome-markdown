@@ -51,6 +51,17 @@ Copy `.env.example` files to `.env` as needed. Important variables:
 - `PROVIDER_FS_CONTENT_ROOT`
 - `VITE_PROVIDER_FS_URL`
 
+## Deployment
+
+`docker-compose.dokploy.yml` (repo root) is the live Dokploy deployment source for the "board"
+instance (provider-fs + sync-engine + kanban-ui), managed from `awesome-infra/board/deploy.sh`.
+Dokploy's GitHub App fetches this file directly from `main` and auto-redeploys on every push
+(`autoDeploy: true`) — **merging to `main` ships to production**, there is no separate promote
+step. Traefik router labels in this file are pinned to Dokploy's existing domain records
+(fixed `appName` + `uniqueConfigKey`s) and must stay in sync if those domains are ever
+recreated; see the comment at the top of the file and `awesome-infra/board/deploy.sh` for the
+full pattern.
+
 ## Sync-engine notes
 
 - For feature work, set `SYNC_ENGINE_TARGET_BRANCH=<branch>` or check out the target branch before starting the engine.
