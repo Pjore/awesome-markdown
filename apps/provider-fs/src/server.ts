@@ -50,8 +50,8 @@ export async function createServer(config: Config, externalStore?: IndexStore) {
 
   await fastify.register(healthRoute, { contentRoot: config.contentRoot });
   await fastify.register(subscribeRoute);
-  await fastify.register(boardsRoutes, { store });
-  await fastify.register(axesRoutes, { store });
+  await fastify.register(boardsRoutes, { store, contentRoot: config.contentRoot });
+  await fastify.register(axesRoutes, { store, contentRoot: config.contentRoot });
   await fastify.register(itemsRoutes, { store, contentRoot: config.contentRoot });
 
   return fastify;
