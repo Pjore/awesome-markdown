@@ -88,7 +88,7 @@ full pattern.
 
 ## Agent Skills
 
-Declared in `agents.toml`, installed via [dotagents](https://github.com/getsentry/dotagents). Run `npx @sentry/dotagents --project install` after cloning or pulling. `credential-security`, `branch-and-pr`, `agent-browser`, and `commit-work` are sourced from `Pjore/awesome-os`; `frontend-design` from `anthropics/skills`; `grill-me` from `mattpocock/skills`.
+Declared in `agents.toml`, installed via [dotagents](https://github.com/getsentry/dotagents). Before starting work, refresh managed skills: run `dotagents --project install` if installed globally, otherwise `npx @sentry/dotagents@latest --project install` — the npm package is `@sentry/dotagents`; an unrelated package literally named `dotagents` also exists on npm, don't use it. `credential-security`, `branch-and-pr`, `agent-browser`, and `commit-work` are sourced from `Pjore/awesome-os`; `frontend-design` from `anthropics/skills`; `grill-me` from `mattpocock/skills`.
 
 ## Browser tooling
 
