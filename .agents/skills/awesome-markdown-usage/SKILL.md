@@ -45,6 +45,13 @@ Per-cell order uses fractional-index string keys (base-62, lexicographically com
 
 [references/gotchas.md](./references/gotchas.md) — notably: `boards[]` must stay an array (never let a mutation path create it as a keyed object), and `append`/`remove` mutation values must be string|number (never an object), so upserting a `boards[]` entry always goes through `set boards.<slug>.<field>`.
 
+Running `provider-fs`/`sync-engine`/`kanban-ui` locally instead of authoring content? See the
+silent-failure config traps first — none of these produce an error, they just make the board
+look empty or wrong: [references/local-dev-config-traps.md](./references/local-dev-config-traps.md)
+(provider defaults, Vite env loading, content-root/port mismatches) and
+[references/coder-proxy-and-stale-processes.md](./references/coder-proxy-and-stale-processes.md)
+(Coder subdomain proxying, orphaned dev processes squatting ports).
+
 ## provider-fs surface
 
 Endpoint reference (list/render/homeless/CRUD): [references/provider-fs-api.md](./references/provider-fs-api.md).
