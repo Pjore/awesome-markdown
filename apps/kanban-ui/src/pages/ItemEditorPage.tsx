@@ -4,6 +4,8 @@ import type { Item, Mutation } from '@awesome-markdown/contracts';
 import { useProvider } from '../provider/ProviderContext.js';
 import { useBreadcrumb } from '../App.js';
 import { BoardAssigneeField } from '../components/BoardAssigneeField.js';
+import { DeleteItemConfirmDialog } from '../components/DeleteItemConfirmDialog.js';
+import { ItemEditorActions } from '../components/ItemEditorActions.js';
 import { getBoardScopedString } from '../lib/item-board.js';
 import { useProviderSubscribe } from '../state/useProviderSubscribe.js';
 import { useBoardRender } from '../state/useBoardRender.js';
@@ -35,6 +37,8 @@ export function ItemEditorPage(): React.ReactElement {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -135,6 +139,28 @@ export function ItemEditorPage(): React.ReactElement {
     navigate(backPath);
   }, [navigate, backPath]);
 
+  const handleDeleteRequest = useCallback((): void => {
+    setConfirmingDelete(true);
+  }, []);
+
+  const handleDeleteCancel = useCallback((): void => {
+    setConfirmingDelete(false);
+  }, []);
+
+  const handleDeleteConfirm = useCallback(async (): Promise<void> => {
+    if (!slug) return;
+    setDeleting(true);
+    setError(null);
+    try {
+      await provider.deleteItem(slug);
+      navigate(backPath);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete item.');
+      setDeleting(false);
+      setConfirmingDelete(false);
+    }
+  }, [slug, provider, navigate, backPath]);
+
   const handleTitleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
     setTitle(e.target.value);
     setDirty(true);
@@ -156,6 +182,10 @@ export function ItemEditorPage(): React.ReactElement {
       void handleSave();
     }
     if (e.key === 'Escape') {
+      if (confirmingDelete) {
+        handleDeleteCancel();
+        return;
+      }
       handleCancel();
     }
   };
@@ -338,63 +368,23 @@ export function ItemEditorPage(): React.ReactElement {
       )}
 
       {/* Actions */}
-      <div
-        style={{
-          display: 'flex',
-          gap: '12px',
-          alignItems: 'center',
-          borderTop: '1px solid var(--border)',
-          paddingTop: '16px',
-        }}
-      >
-        <button
-          type="button"
-          onClick={() => void handleSave()}
-          disabled={saving || !dirty}
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '12px',
-            background: dirty && !saving ? 'var(--ink)' : 'var(--border)',
-            color: dirty && !saving ? 'var(--bg)' : 'var(--ink-muted)',
-            border: 'none',
-            borderRadius: 0,
-            padding: '6px 16px',
-            cursor: saving || !dirty ? 'not-allowed' : 'pointer',
-            transition: 'opacity 0.1s',
-          }}
-          data-testid="item-editor-save"
-        >
-          {saving ? 'saving…' : 'save'}
-        </button>
-        <button
-          type="button"
-          onClick={handleCancel}
-          disabled={saving}
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '12px',
-            color: 'var(--ink-muted)',
-            background: 'none',
-            border: 'none',
-            borderRadius: 0,
-            padding: '6px 8px',
-            cursor: saving ? 'not-allowed' : 'pointer',
-          }}
-          data-testid="item-editor-cancel"
-        >
-          cancel
-        </button>
-        <span
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '11px',
-            color: 'var(--ink-muted)',
-            marginLeft: 'auto',
-          }}
-        >
-          {saving ? '' : '⌘S to save · Esc to cancel'}
-        </span>
-      </div>
+      <ItemEditorActions
+        saving={saving}
+        deleting={deleting}
+        dirty={dirty}
+        onSave={() => void handleSave()}
+        onCancel={handleCancel}
+        onDeleteRequest={handleDeleteRequest}
+      />
+
+      {confirmingDelete && (
+        <DeleteItemConfirmDialog
+          deleting={deleting}
+          error={error}
+          onCancel={handleDeleteCancel}
+          onConfirm={() => void handleDeleteConfirm()}
+        />
+      )}
     </div>
   );
 }

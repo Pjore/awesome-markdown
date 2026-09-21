@@ -67,7 +67,7 @@ describe('SidecarHttpClient — getToken (authenticated)', () => {
     expect(getToken).toHaveBeenCalledTimes(2);
   });
 
-  it('still sends Content-Type and Accept headers alongside Authorization', async () => {
+  it('sends Accept header (but no Content-Type, no body) alongside Authorization on bodyless GET requests', async () => {
     const [fetch, calls] = makeFetch(200, [board]);
     const client = new SidecarHttpClient({
       baseUrl: 'http://localhost:7701',
@@ -76,7 +76,7 @@ describe('SidecarHttpClient — getToken (authenticated)', () => {
     });
     await client.listBoards();
     const headers = calls[0]![1]?.headers as Record<string, string>;
-    expect(headers['Content-Type']).toBe('application/json');
+    expect(headers['Content-Type']).toBeUndefined();
     expect(headers['Accept']).toBe('application/json');
     expect(headers['Authorization']).toBe('Bearer tok');
   });
@@ -98,7 +98,7 @@ describe('SidecarHttpClient — no getToken (unauthenticated)', () => {
     expect(headers['Authorization']).toBeUndefined();
   });
 
-  it('still sends Content-Type and Accept headers', async () => {
+  it('sends Accept header but omits Content-Type on bodyless GET requests', async () => {
     const [fetch, calls] = makeFetch(200, [board]);
     const client = new SidecarHttpClient({
       baseUrl: 'http://localhost:7701',
@@ -106,7 +106,34 @@ describe('SidecarHttpClient — no getToken (unauthenticated)', () => {
     });
     await client.listBoards();
     const headers = calls[0]![1]?.headers as Record<string, string>;
-    expect(headers['Content-Type']).toBe('application/json');
+    expect(headers['Content-Type']).toBeUndefined();
     expect(headers['Accept']).toBe('application/json');
+  });
+
+  it('sends Content-Type on requests with a JSON body but omits it for bodyless DELETE', async () => {
+    const [deleteFetch, deleteCalls] = makeFetch(200, { ok: true });
+    const deleteClient = new SidecarHttpClient({
+      baseUrl: 'http://localhost:7701',
+      fetchFn: deleteFetch as typeof globalThis.fetch,
+    });
+    await deleteClient.deleteItem('demo');
+    const deleteHeaders = deleteCalls[0]![1]?.headers as Record<string, string>;
+    expect(deleteHeaders['Content-Type']).toBeUndefined();
+
+    const item = {
+      entityType: 'item' as const,
+      slug: 'demo',
+      title: 'Demo',
+      createdAt: NOW,
+      updatedAt: NOW,
+    };
+    const [patchFetch, patchCalls] = makeFetch(200, item);
+    const patchClient = new SidecarHttpClient({
+      baseUrl: 'http://localhost:7701',
+      fetchFn: patchFetch as typeof globalThis.fetch,
+    });
+    await patchClient.patchItem('demo', { mutations: [{ op: 'set', path: 'title', value: 'x' }] });
+    const patchHeaders = patchCalls[0]![1]?.headers as Record<string, string>;
+    expect(patchHeaders['Content-Type']).toBe('application/json');
   });
 });
