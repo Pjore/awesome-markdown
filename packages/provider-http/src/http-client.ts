@@ -65,9 +65,10 @@ async function parseErrorBody(res: Response): Promise<ProviderHttpError> {
 }
 
 const JSON_HEADERS = {
-  'Content-Type': 'application/json',
   Accept: 'application/json',
 } as const;
+
+const JSON_CONTENT_TYPE = { 'Content-Type': 'application/json' } as const;
 
 // ---------------------------------------------------------------------------
 // HTTP client
@@ -89,7 +90,11 @@ export class SidecarHttpClient {
     init: RequestInit,
     parse: (raw: unknown) => T,
   ): Promise<T> {
-    const headers: Record<string, string> = { ...JSON_HEADERS, ...(init.headers as Record<string, string> | undefined) };
+    const headers: Record<string, string> = {
+      ...JSON_HEADERS,
+      ...(init.body !== undefined ? JSON_CONTENT_TYPE : {}),
+      ...(init.headers as Record<string, string> | undefined),
+    };
     if (this.getToken) {
       const token = await this.getToken();
       headers['Authorization'] = `Bearer ${token}`;
