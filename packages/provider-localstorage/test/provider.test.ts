@@ -366,3 +366,70 @@ describe('subscribe', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Board / Axis creation
+// ---------------------------------------------------------------------------
+
+describe('createAxis', () => {
+  it('creates an axis with correct fields and filter', async () => {
+    const axis = await provider.createAxis({
+      slug: 'todo',
+      title: 'Todo',
+      filter: { property: 'status', equals: 'todo' },
+    });
+    expect(axis.entityType).toBe('axis');
+    expect(axis.slug).toBe('todo');
+    expect(axis.filter).toEqual({ property: 'status', equals: 'todo' });
+    expect(await provider.getAxis('todo')).toEqual(axis);
+  });
+
+  it('rejects a duplicate slug', async () => {
+    await provider.createAxis({ slug: 'dup', title: 'Dup' });
+    await expect(provider.createAxis({ slug: 'dup', title: 'Dup 2' })).rejects.toThrow();
+  });
+
+  it('emits a change event', async () => {
+    const events: string[] = [];
+    provider.subscribe((e) => { if (e.type === 'change') events.push(e.entitySlug); });
+    await provider.createAxis({ slug: 'todo', title: 'Todo' });
+    expect(events).toEqual(['todo']);
+  });
+});
+
+describe('createBoard', () => {
+  it('creates a board referencing axis slugs', async () => {
+    await provider.createAxis({ slug: 'todo', title: 'Todo' });
+    const board = await provider.createBoard({
+      slug: 'demo',
+      title: 'Demo',
+      columns: ['todo'],
+    });
+    expect(board.entityType).toBe('board');
+    expect(board.columns).toEqual(['todo']);
+    expect(await provider.getBoard('demo')).toEqual(board);
+  });
+
+  it('rejects a duplicate slug', async () => {
+    await provider.createBoard({ slug: 'demo', title: 'Demo' });
+    await expect(provider.createBoard({ slug: 'demo', title: 'Demo 2' })).rejects.toThrow();
+  });
+
+  it('rejects duplicate axis slugs within columns', async () => {
+    await expect(
+      provider.createBoard({ slug: 'demo', title: 'Demo', columns: ['a', 'a'] }),
+    ).rejects.toThrow();
+  });
+
+  it('rejects duplicate axis slugs within swimlanes', async () => {
+    await expect(
+      provider.createBoard({ slug: 'demo', title: 'Demo', swimlanes: ['a', 'a'] }),
+    ).rejects.toThrow();
+  });
+
+  it('emits a change event', async () => {
+    const events: string[] = [];
+    provider.subscribe((e) => { if (e.type === 'change') events.push(e.entitySlug); });
+    await provider.createBoard({ slug: 'demo', title: 'Demo' });
+    expect(events).toEqual(['demo']);
+  });
+});
