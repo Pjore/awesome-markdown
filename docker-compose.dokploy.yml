@@ -1,0 +1,79 @@
+# Dokploy deployment source for the "board" instance (project: board, compose: board).
+# This file is fetched directly from the `main` branch by Dokploy's GitHub source
+# integration (autoDeploy) — pushes to main trigger an automatic redeploy.
+#
+# Router names below are pinned to Dokploy's existing domain records (appName
+# "compose-input-primary-program-r9pfq2", uniqueConfigKeys 30/31/32) and must
+# stay in sync if those domains are ever recreated. Secrets (BOARD_DEPLOY_KEY_B64)
+# and per-environment values (CONTENT_REPO, BOARD_HOST) are supplied by Dokploy's
+# own environment settings, not this file.
+services:
+  init-content:
+    image: alpine/git:latest
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        set -e
+        if [ ! -d /repo/.git ]; then
+          mkdir -p /root/.ssh
+          echo "$$BOARD_DEPLOY_KEY_B64" | base64 -d > /root/.ssh/id_ed25519
+          chmod 600 /root/.ssh/id_ed25519
+          ssh-keyscan -t ed25519 github.com >> /root/.ssh/known_hosts 2>/dev/null
+          GIT_SSH_COMMAND="ssh -i /root/.ssh/id_ed25519 -o StrictHostKeyChecking=no" \
+            git clone --branch main git@github.com:${CONTENT_REPO}.git /repo
+        else
+          echo "content repo already present, skipping clone"
+        fi
+        chown -R 1000:1000 /repo
+    environment:
+      - BOARD_DEPLOY_KEY_B64=${BOARD_DEPLOY_KEY_B64}
+      - CONTENT_REPO=${CONTENT_REPO}
+    volumes:
+      - board-content:/repo
+
+  provider-fs:
+    image: ghcr.io/pjore/awesome-markdown-provider-fs:latest
+    labels:
+      - traefik.http.routers.compose-input-primary-program-r9pfq2-31-websecure.middlewares=forward-auth-errors@file,forward-auth@file
+      - traefik.http.routers.compose-input-primary-program-r9pfq2-32-websecure.middlewares=forward-auth-errors@file,forward-auth@file,stripprefix-compose-input-primary-program-r9pfq2-32
+    restart: always
+    user: node
+    environment:
+      - PROVIDER_FS_HOST=0.0.0.0
+      - PROVIDER_FS_PORT=7701
+      - PROVIDER_FS_CONTENT_ROOT=/repo/content
+    volumes:
+      - board-content:/repo
+    depends_on:
+      init-content:
+        condition: service_completed_successfully
+
+  sync-engine:
+    image: ghcr.io/pjore/awesome-markdown-sync-engine:latest
+    restart: always
+    user: node
+    environment:
+      - SYNC_ENGINE_HOST=0.0.0.0
+      - SYNC_ENGINE_PORT=7402
+      - SYNC_ENGINE_REPO_ROOT=/repo
+      - SYNC_ENGINE_REMOTE_ENABLED=false
+    volumes:
+      - board-content:/repo
+    depends_on:
+      init-content:
+        condition: service_completed_successfully
+
+  kanban-ui:
+    labels:
+      - traefik.http.routers.compose-input-primary-program-r9pfq2-30-websecure.middlewares=forward-auth-errors@file,forward-auth@file
+    build:
+      context: .
+      dockerfile: apps/kanban-ui/Dockerfile
+      args:
+        VITE_PROVIDER_FS_URL: https://${BOARD_HOST}/api
+    restart: always
+    depends_on:
+      - provider-fs
+
+volumes:
+  board-content:
