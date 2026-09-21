@@ -8,6 +8,8 @@ import type {
   Homeless,
   CreateItemRequest,
   PatchItemRequest,
+  CreateAxisRequest,
+  CreateBoardRequest,
   PersistenceProvider,
   ProviderCapabilities,
   ProviderEventHandler,
@@ -203,6 +205,43 @@ export class LocalStorageProvider implements PersistenceProvider {
     return e?.entityType === 'board' ? e : null;
   }
 
+  async createBoard(req: CreateBoardRequest): Promise<Board> {
+    const store = readStore();
+    if (store.has(storeKey('board', req.slug))) {
+      throw new Error(`Board already exists: ${req.slug}`);
+    }
+    const dup = (arr: string[] | undefined): string | undefined => {
+      if (!arr) return undefined;
+      const seen = new Set<string>();
+      for (const s of arr) {
+        if (seen.has(s)) return s;
+        seen.add(s);
+      }
+      return undefined;
+    };
+    const dupCol = dup(req.columns);
+    if (dupCol) throw new Error(`Duplicate column axis slug: ${dupCol}`);
+    const dupLane = dup(req.swimlanes);
+    if (dupLane) throw new Error(`Duplicate swimlane axis slug: ${dupLane}`);
+
+    const now = new Date().toISOString();
+    const board: Board = {
+      entityType: 'board',
+      slug: req.slug,
+      title: req.title,
+      description: req.description,
+      filter: req.filter,
+      columns: req.columns,
+      swimlanes: req.swimlanes,
+      createdAt: now,
+      updatedAt: now,
+    };
+    store.set(storeKey('board', req.slug), board);
+    writeStore(store);
+    this.emit(req.slug, 'board');
+    return board;
+  }
+
   // -- Axes ------------------------------------------------------------------
 
   async listAxes(): Promise<Axis[]> {
@@ -212,6 +251,27 @@ export class LocalStorageProvider implements PersistenceProvider {
   async getAxis(slug: string): Promise<Axis | null> {
     const e = readStore().get(storeKey('axis', slug));
     return e?.entityType === 'axis' ? e : null;
+  }
+
+  async createAxis(req: CreateAxisRequest): Promise<Axis> {
+    const store = readStore();
+    if (store.has(storeKey('axis', req.slug))) {
+      throw new Error(`Axis already exists: ${req.slug}`);
+    }
+    const now = new Date().toISOString();
+    const axis: Axis = {
+      entityType: 'axis',
+      slug: req.slug,
+      title: req.title,
+      description: req.description,
+      filter: req.filter,
+      createdAt: now,
+      updatedAt: now,
+    };
+    store.set(storeKey('axis', req.slug), axis);
+    writeStore(store);
+    this.emit(req.slug, 'axis');
+    return axis;
   }
 
   // -- Render ----------------------------------------------------------------

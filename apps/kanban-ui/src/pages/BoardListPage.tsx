@@ -1,8 +1,9 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import type { Board } from '@awesome-markdown/contracts';
 import { useProvider } from '../provider/ProviderContext.js';
 import { useProviderSubscribe } from '../state/useProviderSubscribe.js';
+import { CreateBoardDialog } from '../components/CreateBoardDialog.js';
 
 /**
  * Board list page — rendered at route `/`.
@@ -10,9 +11,11 @@ import { useProviderSubscribe } from '../state/useProviderSubscribe.js';
  */
 export function BoardListPage(): React.ReactElement {
   const provider = useProvider();
+  const navigate = useNavigate();
   const [boards, setBoards] = useState<Board[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
 
   const cancelledRef = useRef(false);
 
@@ -61,17 +64,43 @@ export function BoardListPage(): React.ReactElement {
 
   return (
     <div className="p-8 max-w-2xl mx-auto" data-testid="board-list">
-      <h2
+      <div
         style={{
-          fontFamily: 'var(--font-mono)',
-          fontSize: '20px',
-          fontWeight: 500,
-          color: 'var(--ink)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
           marginBottom: '24px',
         }}
       >
-        Your Boards
-      </h2>
+        <h2
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '20px',
+            fontWeight: 500,
+            color: 'var(--ink)',
+            margin: 0,
+          }}
+        >
+          Your Boards
+        </h2>
+        <button
+          type="button"
+          onClick={() => setShowCreateDialog(true)}
+          style={{
+            fontFamily: 'var(--font-mono)',
+            fontSize: '12px',
+            color: 'var(--ink)',
+            background: 'none',
+            border: '1px solid var(--border)',
+            borderRadius: 0,
+            padding: '6px 12px',
+            cursor: 'pointer',
+          }}
+          data-testid="add-board-button"
+        >
+          + add board
+        </button>
+      </div>
 
       {boards.length === 0 ? (
         <div className="text-center py-16" data-testid="board-list-empty">
@@ -136,6 +165,16 @@ export function BoardListPage(): React.ReactElement {
             </li>
           ))}
         </ul>
+      )}
+
+      {showCreateDialog && (
+        <CreateBoardDialog
+          onClose={() => setShowCreateDialog(false)}
+          onCreated={(board) => {
+            setShowCreateDialog(false);
+            navigate(`/boards/${board.slug}`);
+          }}
+        />
       )}
     </div>
   );

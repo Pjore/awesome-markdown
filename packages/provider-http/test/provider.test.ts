@@ -141,6 +141,19 @@ describe('provider.getBoard', () => {
   });
 });
 
+describe('provider.createBoard', () => {
+  it('calls POST /boards with body and returns Board', async () => {
+    const fetch = makeFetch(board, 201);
+    const req = { slug: 'demo', title: 'Demo' };
+    const result = await makeProvider(fetch).createBoard(req);
+    expect(result).toEqual(board);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:7701/boards',
+      expect.objectContaining({ method: 'POST' }),
+    );
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Axes
 // ---------------------------------------------------------------------------
@@ -154,6 +167,19 @@ describe('provider.listAxes', () => {
     expect(fetch).toHaveBeenCalledWith(
       'http://localhost:7701/axes',
       expect.objectContaining({ method: 'GET' }),
+    );
+  });
+});
+
+describe('provider.createAxis', () => {
+  it('calls POST /axes with body and returns Axis', async () => {
+    const fetch = makeFetch(axis, 201);
+    const req = { slug: 'todo', title: 'To Do' };
+    const result = await makeProvider(fetch).createAxis(req);
+    expect(result).toEqual(axis);
+    expect(fetch).toHaveBeenCalledWith(
+      'http://localhost:7701/axes',
+      expect.objectContaining({ method: 'POST' }),
     );
   });
 });

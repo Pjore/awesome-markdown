@@ -1,12 +1,15 @@
 import type { FastifyPluginOptions } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
+import path from 'node:path';
+import matter from 'gray-matter';
 import {
   BoardSchema,
   BoardRenderSchema,
   HomelessSchema,
+  CreateBoardRequestSchema,
 } from '@awesome-markdown/contracts';
-import type { Item, Axis, FilterRule, AxisOrder } from '@awesome-markdown/contracts';
+import type { Item, Axis, Board, FilterRule, AxisOrder } from '@awesome-markdown/contracts';
 import {
   evaluate,
   analyzeInvertibility,
@@ -14,10 +17,26 @@ import {
 } from '@awesome-markdown/filter-engine';
 import type { Ctx } from '@awesome-markdown/filter-engine';
 import type { IndexStore } from '../fs/index-store.js';
+import { writeFileAtomic } from '../fs/atomic-write.js';
+import { bus } from '../events/bus.js';
 import { RepoError } from '../errors.js';
 
 interface BoardsPluginOptions extends FastifyPluginOptions {
   store: IndexStore;
+  contentRoot: string;
+}
+
+function serializeBoard(board: Board): string {
+  return matter.stringify('', board);
+}
+
+function firstDuplicate(slugs: string[]): string | undefined {
+  const seen = new Set<string>();
+  for (const s of slugs) {
+    if (seen.has(s)) return s;
+    seen.add(s);
+  }
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -76,13 +95,55 @@ export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (
   fastify,
   opts,
 ) => {
-  const { store } = opts;
+  const { store, contentRoot } = opts;
 
   // GET /boards
   fastify.get(
     '/boards',
     { schema: { response: { 200: z.array(BoardSchema) } } },
     async () => store.listBoards(),
+  );
+
+  // POST /boards
+  fastify.post(
+    '/boards',
+    { schema: { body: CreateBoardRequestSchema.strict(), response: { 201: BoardSchema } } },
+    async (req, reply) => {
+      const { slug, title, description, filter, columns, swimlanes } = req.body;
+
+      if (store.getBoard(slug)) {
+        throw new RepoError('already_exists', `Board ${slug} already exists`);
+      }
+
+      const dupCol = columns ? firstDuplicate(columns) : undefined;
+      if (dupCol) {
+        throw new RepoError('validation_failed', `Duplicate column axis slug: ${dupCol}`);
+      }
+      const dupLane = swimlanes ? firstDuplicate(swimlanes) : undefined;
+      if (dupLane) {
+        throw new RepoError('validation_failed', `Duplicate swimlane axis slug: ${dupLane}`);
+      }
+
+      const now = new Date().toISOString();
+      const board: Board = {
+        entityType: 'board',
+        slug,
+        title,
+        ...(description !== undefined ? { description } : {}),
+        ...(filter !== undefined ? { filter } : {}),
+        ...(columns !== undefined ? { columns } : {}),
+        ...(swimlanes !== undefined ? { swimlanes } : {}),
+        createdAt: now,
+        updatedAt: now,
+      };
+
+      const filePath = path.join(contentRoot, `${slug}.md`);
+      await writeFileAtomic(filePath, serializeBoard(board));
+      store.upsertBoard(slug, board, filePath);
+      bus.publish({ type: 'change', path: `${slug}.md`, entityId: slug });
+
+      return reply.status(201).send(board);
+    },
   );
 
   // GET /boards/:slug/render
