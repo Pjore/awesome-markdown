@@ -71,6 +71,8 @@ export {
   HomelessSchema,
   CreateItemRequestSchema,
   PatchItemRequestSchema,
+  CreateAxisRequestSchema,
+  CreateBoardRequestSchema,
 } from './dtos.js';
 export type {
   DeleteResponse,
@@ -82,6 +84,8 @@ export type {
   Homeless,
   CreateItemRequest,
   PatchItemRequest,
+  CreateAxisRequest,
+  CreateBoardRequest,
 } from './dtos.js';
 
 // ---------------------------------------------------------------------------

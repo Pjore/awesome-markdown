@@ -1,7 +1,14 @@
 import type { Board } from './schemas/board.js';
 import type { Axis } from './schemas/axis.js';
 import type { Item } from './schemas/item.js';
-import type { BoardRender, Homeless, CreateItemRequest, PatchItemRequest } from './dtos.js';
+import type {
+  BoardRender,
+  Homeless,
+  CreateItemRequest,
+  PatchItemRequest,
+  CreateAxisRequest,
+  CreateBoardRequest,
+} from './dtos.js';
 
 // ---------------------------------------------------------------------------
 // Provider capabilities discriminator
@@ -43,10 +50,12 @@ export interface PersistenceProvider {
   // -- Boards ----------------------------------------------------------------
   listBoards(): Promise<Board[]>;
   getBoard(slug: string): Promise<Board | null>;
+  createBoard(req: CreateBoardRequest): Promise<Board>;
 
   // -- Axes ------------------------------------------------------------------
   listAxes(): Promise<Axis[]>;
   getAxis(slug: string): Promise<Axis | null>;
+  createAxis(req: CreateAxisRequest): Promise<Axis>;
 
   // -- Render / Homeless -----------------------------------------------------
   /** Full render envelope for a board: cells × axes × items. */

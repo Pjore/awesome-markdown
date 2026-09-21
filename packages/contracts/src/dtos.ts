@@ -4,6 +4,7 @@ import { ItemSchema, SlugSchema } from './schemas/item.js';
 import { BoardSchema } from './schemas/board.js';
 import { AxisSchema } from './schemas/axis.js';
 import { MutationSchema } from './schemas/mutation.js';
+import { FilterRuleSchema } from './schemas/filter-rule.js';
 
 // ---------------------------------------------------------------------------
 // Generic response shapes
@@ -126,3 +127,42 @@ export const PatchItemRequestSchema = z.object({
   mutations: z.array(MutationSchema).min(1),
 });
 export type PatchItemRequest = z.infer<typeof PatchItemRequestSchema>;
+
+// ---------------------------------------------------------------------------
+// POST /axes request body
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a new axis (column or swimlane bucket definition).
+ *
+ * `slug` must be unique among existing axes. `filter` is the membership
+ * predicate for this bucket; when omitted, all candidate items land here.
+ */
+export const CreateAxisRequestSchema = z.object({
+  slug: SlugSchema,
+  title: z.string().min(1),
+  description: z.string().optional(),
+  filter: FilterRuleSchema.optional(),
+});
+export type CreateAxisRequest = z.infer<typeof CreateAxisRequestSchema>;
+
+// ---------------------------------------------------------------------------
+// POST /boards request body
+// ---------------------------------------------------------------------------
+
+/**
+ * Create a new board.
+ *
+ * `columns` / `swimlanes` are ordered lists of axis slugs — the referenced
+ * axes should already exist (create them first via `POST /axes`). Each
+ * list must not contain duplicate slugs.
+ */
+export const CreateBoardRequestSchema = z.object({
+  slug: SlugSchema,
+  title: z.string().min(1),
+  description: z.string().optional(),
+  filter: FilterRuleSchema.optional(),
+  columns: z.array(SlugSchema).optional(),
+  swimlanes: z.array(SlugSchema).optional(),
+});
+export type CreateBoardRequest = z.infer<typeof CreateBoardRequestSchema>;
