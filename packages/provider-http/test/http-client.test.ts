@@ -95,6 +95,18 @@ describe('SidecarHttpClient — getBoard', () => {
   });
 });
 
+describe('SidecarHttpClient — createBoard', () => {
+  it('POST /boards with body and returns Board', async () => {
+    const [fetch, calls] = makeFetch(201, board);
+    const req = { slug: 'demo', title: 'Demo' };
+    const result = await makeClient(fetch).createBoard(req);
+    expect(result).toEqual(board);
+    expect(String(calls[0]![0])).toBe('http://localhost:7701/boards');
+    expect(calls[0]![1]?.method).toBe('POST');
+    expect(JSON.parse(calls[0]![1]?.body as string)).toMatchObject({ slug: 'demo' });
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Axes
 // ---------------------------------------------------------------------------
@@ -117,6 +129,18 @@ describe('SidecarHttpClient — getAxis', () => {
   it('returns null on 404', async () => {
     const [fetch] = makeFetch(404, { error: 'not found' });
     expect(await makeClient(fetch).getAxis('missing')).toBeNull();
+  });
+});
+
+describe('SidecarHttpClient — createAxis', () => {
+  it('POST /axes with body and returns Axis', async () => {
+    const [fetch, calls] = makeFetch(201, axis);
+    const req = { slug: 'todo', title: 'To Do' };
+    const result = await makeClient(fetch).createAxis(req);
+    expect(result).toEqual(axis);
+    expect(String(calls[0]![0])).toBe('http://localhost:7701/axes');
+    expect(calls[0]![1]?.method).toBe('POST');
+    expect(JSON.parse(calls[0]![1]?.body as string)).toMatchObject({ slug: 'todo' });
   });
 });
 

@@ -8,6 +8,8 @@ import {
   ErrorResponseSchema,
   CreateItemRequestSchema,
   PatchItemRequestSchema,
+  CreateAxisRequestSchema,
+  CreateBoardRequestSchema,
 } from '@awesome-markdown/contracts';
 import type {
   Board,
@@ -17,6 +19,8 @@ import type {
   Item,
   CreateItemRequest,
   PatchItemRequest,
+  CreateAxisRequest,
+  CreateBoardRequest,
 } from '@awesome-markdown/contracts';
 import { z } from 'zod';
 import { endpoints } from './endpoints.js';
@@ -137,6 +141,14 @@ export class SidecarHttpClient {
     }
   }
 
+  async createBoard(req: CreateBoardRequest, signal?: AbortSignal): Promise<Board> {
+    return this.req(
+      endpoints.boards(this.base),
+      { method: 'POST', body: JSON.stringify(CreateBoardRequestSchema.parse(req)), signal },
+      (d) => BoardSchema.parse(d),
+    );
+  }
+
   // -- Axes ------------------------------------------------------------------
 
   async listAxes(signal?: AbortSignal): Promise<Axis[]> {
@@ -158,6 +170,14 @@ export class SidecarHttpClient {
       if (err instanceof ProviderHttpError && err.status === 404) return null;
       throw err;
     }
+  }
+
+  async createAxis(req: CreateAxisRequest, signal?: AbortSignal): Promise<Axis> {
+    return this.req(
+      endpoints.axes(this.base),
+      { method: 'POST', body: JSON.stringify(CreateAxisRequestSchema.parse(req)), signal },
+      (d) => AxisSchema.parse(d),
+    );
   }
 
   // -- Render / Homeless -----------------------------------------------------

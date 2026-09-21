@@ -10,6 +10,8 @@ import type {
   Item,
   CreateItemRequest,
   PatchItemRequest,
+  CreateAxisRequest,
+  CreateBoardRequest,
 } from '@awesome-markdown/contracts';
 import type { ConnectionState, ConnectionStateHandler } from './connection-state.js';
 import { SidecarHttpClient } from './http-client.js';
@@ -132,6 +134,10 @@ export function createHttpProvider(config: HttpProviderConfig): HttpPersistenceP
       return client.getBoard(slug);
     },
 
+    async createBoard(req: CreateBoardRequest): Promise<Board> {
+      return client.createBoard(req);
+    },
+
     // -- Axes ----------------------------------------------------------------
 
     async listAxes(): Promise<Axis[]> {
@@ -140,6 +146,10 @@ export function createHttpProvider(config: HttpProviderConfig): HttpPersistenceP
 
     async getAxis(slug: string): Promise<Axis | null> {
       return client.getAxis(slug);
+    },
+
+    async createAxis(req: CreateAxisRequest): Promise<Axis> {
+      return client.createAxis(req);
     },
 
     // -- Render / Homeless ---------------------------------------------------
