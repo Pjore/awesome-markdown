@@ -1,8 +1,10 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import type { Item } from '@awesome-markdown/contracts';
+import type { Item, Mutation } from '@awesome-markdown/contracts';
 import { useProvider } from '../provider/ProviderContext.js';
 import { useBreadcrumb } from '../App.js';
+import { BoardAssigneeField } from '../components/BoardAssigneeField.js';
+import { getBoardScopedString } from '../lib/item-board.js';
 import { useProviderSubscribe } from '../state/useProviderSubscribe.js';
 import { useBoardRender } from '../state/useBoardRender.js';
 import { PropertyValueDisplay } from '../lib/property-display.js';
@@ -12,20 +14,6 @@ interface EditorLocationState {
   from?: string;
 }
 
-/**
- * Full-page item editor.
- *
- * Route: /items/:slug
- *
- * Layout:
- * - Mono slug label (top)
- * - Inter Tight title input
- * - Mono body textarea
- * - Save / Cancel action row
- *
- * Breadcrumb: boards / <boardSlug> → items / <slug> (when origin board known)
- * Cancel: returns to originating board or "/" if unknown.
- */
 export function ItemEditorPage(): React.ReactElement {
   const { slug } = useParams<{ slug: string }>();
   const location = useLocation();
@@ -34,7 +22,7 @@ export function ItemEditorPage(): React.ReactElement {
   const { setSegments } = useBreadcrumb();
 
   const state = (location.state ?? {}) as EditorLocationState;
-  const boardSlug = state.boardSlug;
+  const boardSlug = state.boardSlug ?? new URLSearchParams(location.search).get('board') ?? undefined;
   const backPath = state.from ?? (boardSlug ? `/boards/${boardSlug}` : '/');
   const { render: boardRender } = useBoardRender(boardSlug ?? '');
   const detailLayout = boardRender?.board.detailLayout ?? [];
@@ -42,12 +30,12 @@ export function ItemEditorPage(): React.ReactElement {
   const [item, setItem] = useState<Item | null>(null);
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
+  const [assignee, setAssignee] = useState('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [dirty, setDirty] = useState(false);
 
-  // Fetch item on mount
   useEffect(() => {
     if (!slug) return;
     setLoading(true);
@@ -61,16 +49,14 @@ export function ItemEditorPage(): React.ReactElement {
         setItem(fetched);
         setTitle(fetched.title);
         setBody(fetched.body ?? '');
+        setAssignee(boardSlug ? getBoardScopedString(fetched, boardSlug, 'assignee') : '');
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : 'Failed to load item.');
       })
       .finally(() => setLoading(false));
-  }, [slug, provider]);
+  }, [slug, provider, boardSlug]);
 
-  // Silently refetch when the file changes externally.
-  // Skipped when dirty (user has unsaved edits) to avoid overwriting in-progress work.
-  // Filtered by entitySlug when available; window events (git pull) always trigger.
   useProviderSubscribe((event) => {
     if (!slug) return;
     if (dirty) return;
@@ -82,13 +68,11 @@ export function ItemEditorPage(): React.ReactElement {
         setItem(fetched);
         setTitle(fetched.title);
         setBody(fetched.body ?? '');
+        setAssignee(boardSlug ? getBoardScopedString(fetched, boardSlug, 'assignee') : '');
       })
-      .catch(() => {
-        // Silently ignore SSE-triggered fetch failures
-      });
+      .catch(() => {});
   });
 
-  // Push breadcrumb segments
   useEffect(() => {
     const segments = boardSlug
       ? [
@@ -113,12 +97,23 @@ export function ItemEditorPage(): React.ReactElement {
     setSaving(true);
     setError(null);
 
-    const mutations: Array<{ op: 'set'; path: string; value: string }> = [];
+    const mutations: Mutation[] = [];
     if (trimmedTitle !== item.title) {
       mutations.push({ op: 'set', path: 'title', value: trimmedTitle });
     }
     if (body !== (item.body ?? '')) {
       mutations.push({ op: 'set', path: 'body', value: body });
+    }
+    if (boardSlug) {
+      const nextAssignee = assignee.trim();
+      const currentAssignee = getBoardScopedString(item, boardSlug, 'assignee');
+      if (nextAssignee !== currentAssignee) {
+        mutations.push(
+          nextAssignee === ''
+            ? { op: 'delete', path: `boards.${boardSlug}.assignee` }
+            : { op: 'set', path: `boards.${boardSlug}.assignee`, value: nextAssignee },
+        );
+      }
     }
 
     if (mutations.length === 0) {
@@ -134,7 +129,7 @@ export function ItemEditorPage(): React.ReactElement {
     } finally {
       setSaving(false);
     }
-  }, [slug, item, title, body, provider, navigate, backPath]);
+  }, [slug, item, title, body, assignee, boardSlug, provider, navigate, backPath]);
 
   const handleCancel = useCallback((): void => {
     navigate(backPath);
@@ -147,6 +142,11 @@ export function ItemEditorPage(): React.ReactElement {
 
   const handleBodyChange = (e: React.ChangeEvent<HTMLTextAreaElement>): void => {
     setBody(e.target.value);
+    setDirty(true);
+  };
+
+  const handleAssigneeChange = (value: string): void => {
+    setAssignee(value);
     setDirty(true);
   };
 
@@ -295,7 +295,15 @@ export function ItemEditorPage(): React.ReactElement {
         data-testid="item-editor-body"
       />
 
-      {/* Configured properties (board.detailLayout) */}
+      {boardSlug && (
+        <BoardAssigneeField
+          boardSlug={boardSlug}
+          value={assignee}
+          disabled={saving}
+          onChange={handleAssigneeChange}
+        />
+      )}
+
       {item && detailLayout.length > 0 && (
         <div
           className="flex flex-col gap-2"
