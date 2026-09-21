@@ -3,4 +3,4 @@ packages:
   - 'packages/*'
 allowBuilds:
   esbuild: true
-injectWorkspacePackages: false
+injectWorkspacePackages: true
