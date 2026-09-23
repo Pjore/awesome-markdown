@@ -120,10 +120,15 @@ describe('configuration loader', () => {
     const origId = process.env['GITHUB_APP_ID'];
     const origInstId = process.env['GITHUB_APP_INSTALLATION_ID'];
     const origKey = process.env['GITHUB_APP_PRIVATE_KEY'];
+    // Also isolate GITHUB_APP_PRIVATE_KEY_PATH: some environments (e.g. this Home's shells, via
+    // steward/gh tooling) export it globally, and the schema rejects privateKey + privateKeyPath
+    // both being set — without clearing it here this test is flaky depending on ambient env.
+    const origKeyPath = process.env['GITHUB_APP_PRIVATE_KEY_PATH'];
     try {
       process.env['GITHUB_APP_ID'] = '12345';
       process.env['GITHUB_APP_INSTALLATION_ID'] = '67890';
       process.env['GITHUB_APP_PRIVATE_KEY'] = '-----BEGIN RSA PRIVATE KEY-----\nfake\n-----END RSA PRIVATE KEY-----';
+      delete process.env['GITHUB_APP_PRIVATE_KEY_PATH'];
 
       const config = loadConfig({ repoRoot: repo.repoRoot });
       expect(config.githubApp).toBeDefined();
@@ -140,6 +145,8 @@ describe('configuration loader', () => {
       else process.env['GITHUB_APP_INSTALLATION_ID'] = origInstId;
       if (origKey === undefined) delete process.env['GITHUB_APP_PRIVATE_KEY'];
       else process.env['GITHUB_APP_PRIVATE_KEY'] = origKey;
+      if (origKeyPath === undefined) delete process.env['GITHUB_APP_PRIVATE_KEY_PATH'];
+      else process.env['GITHUB_APP_PRIVATE_KEY_PATH'] = origKeyPath;
       await repo.cleanup();
     }
   });
@@ -150,6 +157,29 @@ describe('configuration loader', () => {
     const saved = ['GITHUB_APP_ID', 'GITHUB_APP_INSTALLATION_ID', 'GITHUB_APP_PRIVATE_KEY', 'GITHUB_APP_PRIVATE_KEY_PATH'].map((k) => [k, process.env[k]] as const);
     for (const [k] of saved) delete process.env[k];
     try {
+      const config = loadConfig({ repoRoot: repo.repoRoot });
+      expect(config.githubApp).toBeUndefined();
+    } finally {
+      for (const [k, v] of saved) if (v !== undefined) process.env[k] = v;
+      await repo.cleanup();
+    }
+  });
+
+  it('config.githubApp is absent when only an unrelated GITHUB_APP_PRIVATE_KEY_PATH leaks in (no appId/installationId)', async () => {
+    // Regression test: a shared process environment (e.g. this Home's pm2 daemon, whose
+    // fork-mode apps inherit whatever env the launching shell had) can leak
+    // GITHUB_APP_PRIVATE_KEY_PATH alone — set globally for gh/steward tooling — into a service
+    // that never asked for remote sync. That must not crash loadConfig() with a "githubApp.appId
+    // ... expected string, received undefined" error; it should be treated as noise, not a
+    // partial config to validate.
+    const repo = await createTempRepo();
+    const saved = ['GITHUB_APP_ID', 'GITHUB_APP_INSTALLATION_ID', 'GITHUB_APP_PRIVATE_KEY', 'GITHUB_APP_PRIVATE_KEY_PATH', 'GITHUB_APP_WEBHOOK_SECRET'].map(
+      (k) => [k, process.env[k]] as const,
+    );
+    for (const [k] of saved) delete process.env[k];
+    try {
+      process.env['GITHUB_APP_PRIVATE_KEY_PATH'] = '/home/coder/.agent-workspace/pi.pem';
+      expect(() => loadConfig({ repoRoot: repo.repoRoot })).not.toThrow();
       const config = loadConfig({ repoRoot: repo.repoRoot });
       expect(config.githubApp).toBeUndefined();
     } finally {

@@ -78,13 +78,22 @@ function collectGithubAppEnvVars(): Record<string, unknown> | undefined {
   const privateKeyPath = process.env['GITHUB_APP_PRIVATE_KEY_PATH'] ?? null;
   const webhookSecret = process.env['GITHUB_APP_WEBHOOK_SECRET'] ?? null;
 
-  if (!appId && !installationId && !privateKey && !privateKeyPath && !webhookSecret) {
+  // Only construct a githubApp object once both fields GithubAppSchema actually requires
+  // (appId, installationId) are present. A shared process environment (e.g. this Home's pm2
+  // daemon, whose fork-mode apps inherit whatever env the launching shell had) can easily leak
+  // an unrelated var like GITHUB_APP_PRIVATE_KEY_PATH — set globally for `gh`/steward tooling —
+  // into a service that never asked for remote sync at all. Treating that alone as "the user
+  // wants githubApp configured" turned a harmless leak into a hard crash even though
+  // `remote.enabled` was never set. Only build the object when there's enough here to actually
+  // be a deliberate remote-sync config; anything less is noise to ignore, not a partial config
+  // to validate.
+  if (!appId || !installationId) {
     return undefined;
   }
 
   return {
-    ...(appId !== undefined ? { appId } : {}),
-    ...(installationId !== undefined ? { installationId } : {}),
+    appId,
+    installationId,
     privateKey,
     privateKeyPath,
     webhookSecret,
