@@ -2,12 +2,15 @@ import type { FastifyPluginOptions } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import path from 'node:path';
+import { unlink } from 'node:fs/promises';
 import matter from 'gray-matter';
 import {
   BoardSchema,
   BoardRenderSchema,
   HomelessSchema,
   CreateBoardRequestSchema,
+  PatchBoardRequestSchema,
+  DeleteResponseSchema,
 } from '@awesome-markdown/contracts';
 import type { Item, Axis, Board, FilterRule, AxisOrder } from '@awesome-markdown/contracts';
 import {
@@ -143,6 +146,58 @@ export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (
       bus.publish({ type: 'change', path: `${slug}.md`, entityId: slug });
 
       return reply.status(201).send(board);
+    },
+  );
+
+  // PATCH /boards/:slug
+  fastify.patch(
+    '/boards/:slug',
+    { schema: { params: boardParams, body: PatchBoardRequestSchema.strict(), response: { 200: BoardSchema } } },
+    async (req) => {
+      const { slug } = req.params;
+      const existing = store.getBoard(slug);
+      if (!existing) throw new RepoError('not_found', `Board ${slug} not found`);
+      const filePath = store.getBoardFilePath(slug);
+      if (!filePath) throw new RepoError('not_found', `Board ${slug} not found`);
+
+      const { columns, swimlanes } = req.body;
+      const dupCol = columns ? firstDuplicate(columns) : undefined;
+      if (dupCol) {
+        throw new RepoError('validation_failed', `Duplicate column axis slug: ${dupCol}`);
+      }
+      const dupLane = swimlanes ? firstDuplicate(swimlanes) : undefined;
+      if (dupLane) {
+        throw new RepoError('validation_failed', `Duplicate swimlane axis slug: ${dupLane}`);
+      }
+
+      const updated: Board = {
+        ...existing,
+        ...req.body,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await writeFileAtomic(filePath, serializeBoard(updated));
+      store.upsertBoard(slug, updated, filePath);
+      bus.publish({ type: 'change', path: path.relative(contentRoot, filePath), entityId: slug });
+
+      return updated;
+    },
+  );
+
+  // DELETE /boards/:slug
+  fastify.delete(
+    '/boards/:slug',
+    { schema: { params: boardParams, response: { 200: DeleteResponseSchema } } },
+    async (req) => {
+      const { slug } = req.params;
+      const filePath = store.getBoardFilePath(slug);
+      if (!filePath) throw new RepoError('not_found', `Board ${slug} not found`);
+
+      await unlink(filePath);
+      store.removeByFilePath(filePath);
+      bus.publish({ type: 'change', path: path.relative(contentRoot, filePath), entityId: slug });
+
+      return { ok: true as const };
     },
   );
 
