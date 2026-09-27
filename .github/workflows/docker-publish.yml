@@ -72,3 +72,20 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha,scope=${{ matrix.service }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  trigger-board-deploy:
+    name: Trigger Dokploy board redeploy
+    needs: build-push
+    runs-on: ubuntu-latest
+    # Tag pushes don't hit Dokploy's main-branch autoDeploy webhook, and
+    # provider-fs/sync-engine use pre-built images that a plain redeploy
+    # wouldn't otherwise re-pull — trigger the board compose deploy directly
+    # so it force-pulls the images just published above (see pull_policy:
+    # always in docker-compose.dokploy.yml).
+    steps:
+      - name: Call compose.deploy
+        run: |
+          curl -sf -X POST https://dokploy.pjore.com/api/compose.deploy \
+            -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d "{\"composeId\": \"${{ vars.DOKPLOY_BOARD_COMPOSE_ID }}\", \"title\": \"Release ${{ github.ref_name }}\"}"
