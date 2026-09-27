@@ -125,8 +125,8 @@ export async function injectConflict(params: {
 
     return session.mergeId;
   } finally {
-    // Clean up temp branch (ignore errors if it doesn't exist or can't be deleted)
-    egit.raw(['branch', '-D', tmpBranch]).catch(() => {});
+    // Await so the branch delete can't race a caller's cleanup of repoRoot
+    await egit.raw(['branch', '-D', tmpBranch]).catch(() => {});
   }
 }
 
