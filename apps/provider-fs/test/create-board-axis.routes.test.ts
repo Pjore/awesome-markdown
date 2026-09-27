@@ -124,3 +124,143 @@ describe('POST /axes and POST /boards', () => {
     expect(res.statusCode).toBe(422);
   });
 });
+
+describe('PATCH/DELETE /axes/:slug and /boards/:slug', () => {
+  let tmp: TempContentRoot;
+  let server: Awaited<ReturnType<typeof createServer>>;
+
+  beforeEach(async () => {
+    tmp = await tmpContentRoot();
+  });
+
+  afterEach(async () => {
+    await server.close();
+    await tmp.cleanup();
+  });
+
+  it('PATCH /axes/:slug updates only the given fields and persists to disk', async () => {
+    server = await createServer({ port: 0, host: '127.0.0.1', contentRoot: tmp.contentRoot });
+    await server.ready();
+
+    await server.inject({
+      method: 'POST',
+      url: '/axes',
+      payload: { slug: 'ax', title: 'Original', filter: { property: 'status', equals: 'todo' } },
+    });
+
+    const res = await server.inject({
+      method: 'PATCH',
+      url: '/axes/ax',
+      payload: { title: 'Renamed' },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const axis = res.json<Axis>();
+    expect(axis.title).toBe('Renamed');
+    // Untouched field survives the partial update
+    expect(axis.filter).toEqual({ property: 'status', equals: 'todo' });
+
+    // Persisted — a fresh scan of disk reflects the change
+    const listRes = await server.inject({ method: 'GET', url: '/axes' });
+    const listed = listRes.json<Axis[]>().find(a => a.slug === 'ax');
+    expect(listed?.title).toBe('Renamed');
+  });
+
+  it('PATCH /axes/:slug 404s for an unknown slug', async () => {
+    server = await createServer({ port: 0, host: '127.0.0.1', contentRoot: tmp.contentRoot });
+    await server.ready();
+
+    const res = await server.inject({
+      method: 'PATCH',
+      url: '/axes/no-such',
+      payload: { title: 'X' },
+    });
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('DELETE /axes/:slug removes the axis file and index entry', async () => {
+    server = await createServer({ port: 0, host: '127.0.0.1', contentRoot: tmp.contentRoot });
+    await server.ready();
+
+    await server.inject({ method: 'POST', url: '/axes', payload: { slug: 'gone', title: 'Gone' } });
+
+    const res = await server.inject({ method: 'DELETE', url: '/axes/gone' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+
+    const listRes = await server.inject({ method: 'GET', url: '/axes' });
+    expect(listRes.json<Axis[]>()).toHaveLength(0);
+  });
+
+  it('PATCH /boards/:slug replaces swimlanes and persists to disk', async () => {
+    server = await createServer({ port: 0, host: '127.0.0.1', contentRoot: tmp.contentRoot });
+    await server.ready();
+
+    await server.inject({ method: 'POST', url: '/axes', payload: { slug: 'lane-a', title: 'A' } });
+    await server.inject({ method: 'POST', url: '/axes', payload: { slug: 'lane-b', title: 'B' } });
+    await server.inject({
+      method: 'POST',
+      url: '/boards',
+      payload: { slug: 'brd', title: 'Board', swimlanes: ['lane-a'] },
+    });
+
+    const res = await server.inject({
+      method: 'PATCH',
+      url: '/boards/brd',
+      payload: { swimlanes: ['lane-a', 'lane-b'] },
+    });
+
+    expect(res.statusCode).toBe(200);
+    const board = res.json<Board>();
+    expect(board.swimlanes).toEqual(['lane-a', 'lane-b']);
+    // Title untouched by the partial update
+    expect(board.title).toBe('Board');
+
+    const listRes = await server.inject({ method: 'GET', url: '/boards' });
+    const listed = listRes.json<Board[]>().find(b => b.slug === 'brd');
+    expect(listed?.swimlanes).toEqual(['lane-a', 'lane-b']);
+  });
+
+  it('PATCH /boards/:slug rejects duplicate axis slugs within swimlanes', async () => {
+    server = await createServer({ port: 0, host: '127.0.0.1', contentRoot: tmp.contentRoot });
+    await server.ready();
+
+    await server.inject({ method: 'POST', url: '/boards', payload: { slug: 'brd2', title: 'Board 2' } });
+
+    const res = await server.inject({
+      method: 'PATCH',
+      url: '/boards/brd2',
+      payload: { swimlanes: ['lane-a', 'lane-a'] },
+    });
+
+    expect(res.statusCode).toBe(422);
+  });
+
+  it('PATCH /boards/:slug 404s for an unknown slug', async () => {
+    server = await createServer({ port: 0, host: '127.0.0.1', contentRoot: tmp.contentRoot });
+    await server.ready();
+
+    const res = await server.inject({
+      method: 'PATCH',
+      url: '/boards/no-such',
+      payload: { title: 'X' },
+    });
+
+    expect(res.statusCode).toBe(404);
+  });
+
+  it('DELETE /boards/:slug removes the board file and index entry', async () => {
+    server = await createServer({ port: 0, host: '127.0.0.1', contentRoot: tmp.contentRoot });
+    await server.ready();
+
+    await server.inject({ method: 'POST', url: '/boards', payload: { slug: 'gone-brd', title: 'Gone' } });
+
+    const res = await server.inject({ method: 'DELETE', url: '/boards/gone-brd' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+
+    const listRes = await server.inject({ method: 'GET', url: '/boards' });
+    expect(listRes.json<Board[]>()).toHaveLength(0);
+  });
+});

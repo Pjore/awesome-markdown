@@ -1,9 +1,9 @@
 import { z } from 'zod';
 import { SyncEventSchema } from './events.js';
 import { ItemSchema, SlugSchema } from './schemas/item.js';
-import { BoardSchema } from './schemas/board.js';
-import { AxisSchema } from './schemas/axis.js';
-import { MutationSchema } from './schemas/mutation.js';
+import { BoardSchema, PropertyDisplaySchema } from './schemas/board.js';
+import { AxisSchema, AxisOrderSchema } from './schemas/axis.js';
+import { MutationSchema, WriteOnDropSchema } from './schemas/mutation.js';
 import { FilterRuleSchema } from './schemas/filter-rule.js';
 
 // ---------------------------------------------------------------------------
@@ -166,3 +166,51 @@ export const CreateBoardRequestSchema = z.object({
   swimlanes: z.array(SlugSchema).optional(),
 });
 export type CreateBoardRequest = z.infer<typeof CreateBoardRequestSchema>;
+
+// ---------------------------------------------------------------------------
+// PATCH /boards/:slug request body
+// ---------------------------------------------------------------------------
+
+/**
+ * Partially update an existing board. Every field is optional — only the
+ * keys present in the request body are overwritten; omitted keys keep
+ * their current value. `columns` / `swimlanes`, when present, replace the
+ * whole list (not merged) and must not contain duplicate slugs, same as
+ * `POST /boards`. At least one field must be present.
+ */
+export const PatchBoardRequestSchema = z
+  .object({
+    title: z.string().min(1).optional(),
+    description: z.string().optional(),
+    filter: FilterRuleSchema.optional(),
+    columns: z.array(SlugSchema).optional(),
+    swimlanes: z.array(SlugSchema).optional(),
+    cardLayout: z.array(PropertyDisplaySchema).optional(),
+    detailLayout: z.array(PropertyDisplaySchema).optional(),
+  })
+  .refine(body => Object.keys(body).length > 0, {
+    message: 'At least one field must be present',
+  });
+export type PatchBoardRequest = z.infer<typeof PatchBoardRequestSchema>;
+
+// ---------------------------------------------------------------------------
+// PATCH /axes/:slug request body
+// ---------------------------------------------------------------------------
+
+/**
+ * Partially update an existing axis. Every field is optional — only the
+ * keys present in the request body are overwritten; omitted keys keep
+ * their current value. At least one field must be present.
+ */
+export const PatchAxisRequestSchema = z
+  .object({
+    title: z.string().min(1).optional(),
+    description: z.string().optional(),
+    filter: FilterRuleSchema.optional(),
+    order: AxisOrderSchema.optional(),
+    writeOnDrop: WriteOnDropSchema.optional(),
+  })
+  .refine(body => Object.keys(body).length > 0, {
+    message: 'At least one field must be present',
+  });
+export type PatchAxisRequest = z.infer<typeof PatchAxisRequestSchema>;

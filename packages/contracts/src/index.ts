@@ -72,7 +72,9 @@ export {
   CreateItemRequestSchema,
   PatchItemRequestSchema,
   CreateAxisRequestSchema,
+  PatchAxisRequestSchema,
   CreateBoardRequestSchema,
+  PatchBoardRequestSchema,
 } from './dtos.js';
 export type {
   DeleteResponse,
@@ -85,7 +87,9 @@ export type {
   CreateItemRequest,
   PatchItemRequest,
   CreateAxisRequest,
+  PatchAxisRequest,
   CreateBoardRequest,
+  PatchBoardRequest,
 } from './dtos.js';
 
 // ---------------------------------------------------------------------------

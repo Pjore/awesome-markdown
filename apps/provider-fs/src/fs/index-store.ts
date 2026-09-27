@@ -47,6 +47,14 @@ export class IndexStore {
     return this._items.get(slug)?.filePath;
   }
 
+  getBoardFilePath(slug: string): string | undefined {
+    return this._boards.get(slug)?.filePath;
+  }
+
+  getAxisFilePath(slug: string): string | undefined {
+    return this._axes.get(slug)?.filePath;
+  }
+
   listItems(): Item[] {
     return Array.from(this._items.values()).map(e => e.data);
   }
