@@ -1,12 +1,18 @@
 # Dokploy deployment source for the "board" instance (project: board, compose: board).
 # This file is fetched directly from the `main` branch by Dokploy's GitHub source
-# integration (autoDeploy) — pushes to main trigger an automatic redeploy.
+# integration (autoDeploy) — pushes to main trigger an automatic redeploy. Release
+# tags additionally trigger an explicit compose.deploy call from docker-publish.yml,
+# since tag pushes don't hit the main-branch autoDeploy webhook.
 #
 # Router names below are pinned to Dokploy's existing domain records (appName
 # "compose-input-primary-program-r9pfq2", uniqueConfigKeys 30/31/32) and must
 # stay in sync if those domains are ever recreated. Secrets (BOARD_DEPLOY_KEY_B64)
 # and per-environment values (CONTENT_REPO, BOARD_HOST) are supplied by Dokploy's
 # own environment settings, not this file.
+#
+# provider-fs/sync-engine use image: (not build:), so a plain `docker compose up`
+# leaves an already-cached :latest image alone even after a new one is published —
+# pull_policy: always forces every deploy to re-pull before (re)creating the container.
 services:
   init-content:
     image: alpine/git:latest
@@ -33,6 +39,7 @@ services:
 
   provider-fs:
     image: ghcr.io/pjore/awesome-markdown-provider-fs:latest
+    pull_policy: always
     labels:
       - traefik.http.routers.compose-input-primary-program-r9pfq2-31-websecure.middlewares=forward-auth-errors@file,forward-auth@file
       - traefik.http.routers.compose-input-primary-program-r9pfq2-32-websecure.middlewares=forward-auth-errors@file,forward-auth@file,stripprefix-compose-input-primary-program-r9pfq2-32
@@ -50,6 +57,7 @@ services:
 
   sync-engine:
     image: ghcr.io/pjore/awesome-markdown-sync-engine:latest
+    pull_policy: always
     restart: always
     user: node
     environment:
