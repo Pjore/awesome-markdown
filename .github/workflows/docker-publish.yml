@@ -89,3 +89,35 @@ jobs:
             -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}" \
             -H "Content-Type: application/json" \
             -d "{\"composeId\": \"${{ vars.DOKPLOY_BOARD_COMPOSE_ID }}\", \"title\": \"Release ${{ github.ref_name }}\"}"
+
+      # compose.deploy only confirms the request was queued, and composeStatus
+      # can already read "done" from a stale previous run before the new one
+      # even starts — polling for "done" alone would pass immediately without
+      # proving anything changed (see incident 2026-09-27). Wait for status to
+      # actually leave "done" (deploy in progress) before waiting for it to
+      # return, so a silently-stale deploy fails loudly instead of going
+      # unnoticed.
+      - name: Wait for deploy to settle
+        run: |
+          status_url="https://dokploy.pjore.com/api/compose.one?composeId=${{ vars.DOKPLOY_BOARD_COMPOSE_ID }}"
+          fetch_status() { curl -sf "$status_url" -H "x-api-key: ${{ secrets.DOKPLOY_API_KEY }}" | jq -r '.composeStatus'; }
+
+          left_done=false
+          for i in $(seq 1 12); do
+            status=$(fetch_status)
+            echo "composeStatus=$status (waiting to start, attempt $i)"
+            [ "$status" = "error" ] && { echo "::error::Dokploy compose deploy failed (composeStatus=error)"; exit 1; }
+            if [ "$status" != "done" ]; then left_done=true; break; fi
+            sleep 5
+          done
+          [ "$left_done" = true ] || echo "::warning::composeStatus never left 'done' — deploy may not have been picked up yet, proceeding to final check anyway"
+
+          for i in $(seq 1 30); do
+            status=$(fetch_status)
+            echo "composeStatus=$status (attempt $i)"
+            [ "$status" = "done" ] && exit 0
+            [ "$status" = "error" ] && { echo "::error::Dokploy compose deploy failed (composeStatus=error)"; exit 1; }
+            sleep 10
+          done
+          echo "::error::Timed out waiting for composeStatus=done"
+          exit 1
