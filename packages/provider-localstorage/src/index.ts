@@ -109,8 +109,18 @@ function applyMutations(item: Item, mutations: Mutation[], now: string): Item {
       const nav = navigateToParent(clone, segs, true);
       if (nav) {
         const cur = nav.parent[nav.finalKey];
-        if (Array.isArray(cur)) cur.push(mut.value);
-        else nav.parent[nav.finalKey] = [mut.value];
+        // `body` is markdown free text, not an array property — mirror
+        // provider-fs's text-append semantics so both providers agree.
+        const isBodyPath = segs.length === 1 && segs[0] === 'body';
+        if (isBodyPath && (cur === undefined || cur === null || typeof cur === 'string')) {
+          const existing = typeof cur === 'string' ? cur : '';
+          const text = String(mut.value);
+          nav.parent[nav.finalKey] = existing.length > 0 ? `${existing}\n\n${text}` : text;
+        } else if (Array.isArray(cur)) {
+          if (!cur.includes(mut.value)) cur.push(mut.value);
+        } else {
+          nav.parent[nav.finalKey] = [mut.value];
+        }
       }
     } else if (mut.op === 'remove') {
       const nav = navigateToParent(clone, segs, false);

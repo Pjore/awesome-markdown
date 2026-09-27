@@ -147,6 +147,49 @@ describe("items routes", () => {
     expect(changedCount).toBe(1);
   });
 
+  it("PATCH /items/:slug — append onto a scalar string field concatenates text instead of wrapping it in an array", async () => {
+    const createRes = await server.inject({
+      method: "POST",
+      url: "/items",
+      headers: { "content-type": "application/json" },
+      payload: { slug: "append-body", title: "Append Body", body: "Existing body.", mutations: [] },
+    });
+    expect(createRes.statusCode).toBe(201);
+
+    const patchRes = await server.inject({
+      method: "PATCH",
+      url: "/items/append-body",
+      headers: { "content-type": "application/json" },
+      payload: { mutations: [{ op: "append", path: "body", value: "A follow-up note." }] },
+    });
+    expect(patchRes.statusCode).toBe(200);
+    const item = patchRes.json<Item>();
+    expect(item.body).toBe("Existing body.\n\nA follow-up note.");
+
+    const getRes = await server.inject({ method: "GET", url: "/items/append-body" });
+    expect(getRes.statusCode).toBe(200);
+    expect(getRes.json<Item>().body).toBe("Existing body.\n\nA follow-up note.");
+  });
+
+  it("PATCH /items/:slug — append onto an empty/missing body sets it directly (no leading separator)", async () => {
+    const createRes = await server.inject({
+      method: "POST",
+      url: "/items",
+      headers: { "content-type": "application/json" },
+      payload: { slug: "append-empty-body", title: "Append Empty Body", mutations: [] },
+    });
+    expect(createRes.statusCode).toBe(201);
+
+    const patchRes = await server.inject({
+      method: "PATCH",
+      url: "/items/append-empty-body",
+      headers: { "content-type": "application/json" },
+      payload: { mutations: [{ op: "append", path: "body", value: "First note." }] },
+    });
+    expect(patchRes.statusCode).toBe(200);
+    expect(patchRes.json<Item>().body).toBe("First note.");
+  });
+
   it("DELETE /items/:slug removes the item", async () => {
     await writeItemFixture(tmp.contentRoot, makeItem({ slug: "del-me", title: "Delete Me" }));
     await server.close();
