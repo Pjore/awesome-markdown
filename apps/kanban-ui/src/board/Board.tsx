@@ -6,26 +6,36 @@ import {
   KeyboardSensor,
   useSensor,
   useSensors,
-  closestCenter,
 } from '@dnd-kit/core';
 import type { DragEndEvent, DragStartEvent } from '@dnd-kit/core';
-import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import {
+  SortableContext,
+  horizontalListSortingStrategy,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
 import type { BoardRender, Cell as CellType, Homeless } from '@awesome-markdown/contracts';
-import { deriveMutations } from '@awesome-markdown/filter-engine';
 import { ColumnHeader } from './ColumnHeader.js';
 import { SwimlaneRow } from './SwimlaneRow.js';
 import { HomelessPanel } from './HomelessPanel.js';
 import { onDragEnd } from './dnd/onDragEnd.js';
-import { computeDropMutations, applyOptimisticMove, buildCellFilter } from './dnd/mutateDragDrop.js';
-import { decodeCellId } from './dnd/dragTypes.js';
-import type { HomelessItemDragData } from './dnd/dragTypes.js';
+import { computeDropMutations, applyOptimisticMove } from './dnd/mutateDragDrop.js';
+import { layoutAwareCollision, planHomelessDrop } from './dnd/boardDnd.js';
 import { useProvider } from '../provider/ProviderContext.js';
+import { useBoardLayout } from './layout/useBoardLayout.js';
+import { axisDragId } from './layout/axis-defaults.js';
+import type { AxisDim, AxisDragData } from './layout/axis-defaults.js';
+import { AddAxisButton, PencilIcon } from './layout/InlineControls.js';
+import { AxisDrawer } from './layout/AxisDrawer.js';
+import { BoardDrawer } from './layout/BoardDrawer.js';
 
 interface BoardProps {
   render: BoardRender;
   homeless: Homeless | null;
   onRefetch: () => void;
 }
+
+type Editing = { kind: 'axis'; dim: AxisDim; slug: string } | { kind: 'board' } | null;
 
 /**
  * Main board component: renders the column×swimlane grid and wires up DnD.
@@ -37,12 +47,18 @@ interface BoardProps {
  * - Invertibility check + mutation derivation via @awesome-markdown/filter-engine
  * - Read-only cells reject drops before any network call
  * - One drop → exactly one PATCH /items/:slug
+ *
+ * Layout editing: "+" adds a column/swimlane, headers drag to reorder, the
+ * pencil opens the axis (or board) settings drawer.
  */
 export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactElement {
   const provider = useProvider();
   const [activeItemSlug, setActiveItemSlug] = useState<string | null>(null);
   const [optimisticCells, setOptimisticCells] = useState<CellType[] | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [editing, setEditing] = useState<Editing>(null);
+  const layout = useBoardLayout(render, onRefetch, setError);
+  const closeDrawer = useCallback(() => setEditing(null), []);
 
   const cells = optimisticCells ?? render.cells;
 
@@ -63,74 +79,25 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
     (event: DragEndEvent): void => {
       setActiveItemSlug(null);
 
-      // --- Homeless item drop branch ---
+      // --- Axis header reorder branch ---
       const activeData = event.active.data.current as { type?: string } | undefined;
+      if (activeData?.type === 'axis') {
+        const { dim, slug } = activeData as AxisDragData;
+        const over = event.over?.data.current as AxisDragData | undefined;
+        if (over?.type === 'axis' && over.dim === dim) void layout.moveAxis(dim, slug, over.slug);
+        return;
+      }
+
+      // --- Homeless item drop branch ---
       if (activeData?.type === 'homeless-item') {
-        if (!event.over || !homeless) return;
-        const homelessData = activeData as HomelessItemDragData;
-        const { itemSlug } = homelessData;
-        const overId = String(event.over.id);
-
-        let dstColumnSlug: string;
-        let dstSwimlaneSlug: string;
-        let insertBeforeSlug: string | null;
-
-        const cellDecoded = decodeCellId(overId);
-        if (cellDecoded) {
-          dstColumnSlug = cellDecoded.columnSlug;
-          dstSwimlaneSlug = cellDecoded.swimlaneSlug;
-          insertBeforeSlug = null;
-        } else {
-          const dstCell = cells.find((c) => c.items.some((i) => i.slug === overId));
-          if (!dstCell) return;
-          dstColumnSlug = dstCell.columnSlug;
-          dstSwimlaneSlug = dstCell.swimlaneSlug;
-          insertBeforeSlug = overId;
-        }
-
-        const dstCell = cells.find(
-          (c) => c.columnSlug === dstColumnSlug && c.swimlaneSlug === dstSwimlaneSlug,
-        );
-        if (!dstCell) return;
-        if (dstCell.readOnly) return;
-
-        const colAxis = render.axes.columns.find((a) => a.slug === dstColumnSlug);
-        const slAxis = render.axes.swimlanes.find((a) => a.slug === dstSwimlaneSlug);
-        if (!colAxis || !slAxis) return;
-
-        const filter = buildCellFilter(render.board, colAxis, slAxis);
-        const writeOnDrop = colAxis.writeOnDrop ?? slAxis.writeOnDrop;
-        const mutations = deriveMutations(filter, { board: render.board.slug }, writeOnDrop);
-        if (!Array.isArray(mutations)) return; // read-only guard
-
-        const movingItem = homeless.items.find((i) => i.slug === itemSlug);
-        if (!movingItem) return;
-
-        // Insert item into destination cell (no source-cell removal needed)
-        const newCells = cells.map((cell) => {
-          if (cell.columnSlug !== dstColumnSlug || cell.swimlaneSlug !== dstSwimlaneSlug) {
-            return cell;
-          }
-          const withoutItem = cell.items.filter((i) => i.slug !== itemSlug);
-          if (insertBeforeSlug === null) {
-            return { ...cell, items: [...withoutItem, movingItem] };
-          }
-          const idx = withoutItem.findIndex((i) => i.slug === insertBeforeSlug);
-          const insertAt = idx >= 0 ? idx : withoutItem.length;
-          return {
-            ...cell,
-            items: [
-              ...withoutItem.slice(0, insertAt),
-              movingItem,
-              ...withoutItem.slice(insertAt),
-            ],
-          };
-        });
-        setOptimisticCells(newCells);
+        if (!homeless) return;
+        const plan = planHomelessDrop(event, cells, render, homeless);
+        if (!plan) return;
+        setOptimisticCells(plan.newCells);
 
         void (async () => {
           try {
-            await provider.patchItem(itemSlug, { mutations });
+            await provider.patchItem(plan.itemSlug, { mutations: plan.mutations });
             setOptimisticCells(null);
           } catch (err) {
             setOptimisticCells(null);
@@ -209,7 +176,7 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
         }
       })();
     },
-    [cells, render, provider, homeless],
+    [cells, render, provider, homeless, layout],
   );
 
   const activeItem =
@@ -227,6 +194,13 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
       )
     : [];
 
+  const isEditing = (dim: AxisDim, slug: string): boolean =>
+    editing?.kind === 'axis' && editing.dim === dim && editing.slug === slug;
+  const toggleAxis = (dim: AxisDim, slug: string): void =>
+    setEditing(isEditing(dim, slug) ? null : { kind: 'axis', dim, slug });
+  const editingAxis =
+    editing?.kind === 'axis' ? layout[editing.dim].find((a) => a.slug === editing.slug) : undefined;
+
   return (
     <div
       className="flex flex-col h-full"
@@ -235,12 +209,25 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
     >
       {/* Board title */}
       <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
-        <h1
-          style={{ fontFamily: 'var(--font-mono)', fontSize: '1.125rem', fontWeight: 500, color: 'var(--ink)' }}
-          data-testid="board-title"
-        >
-          {render.board.title}
-        </h1>
+        <div className="flex items-center gap-2">
+          <h1
+            style={{ fontFamily: 'var(--font-mono)', fontSize: '1.125rem', fontWeight: 500, color: 'var(--ink)', margin: 0 }}
+            data-testid="board-title"
+          >
+            {render.board.title}
+          </h1>
+          <button
+            type="button"
+            className="icon-btn"
+            aria-pressed={editing?.kind === 'board'}
+            aria-label="Board settings"
+            title="Board settings"
+            data-testid="edit-board"
+            onClick={() => setEditing(editing?.kind === 'board' ? null : { kind: 'board' })}
+          >
+            <PencilIcon />
+          </button>
+        </div>
         {render.board.description !== undefined && (
           <p style={{ fontSize: '0.875rem', color: 'var(--ink-muted)', marginTop: '2px' }}>{render.board.description}</p>
         )}
@@ -282,7 +269,7 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
 
       <DndContext
         sensors={sensors}
-        collisionDetection={closestCenter}
+        collisionDetection={layoutAwareCollision}
         onDragStart={handleDragStart}
         onDragEnd={handleDragEnd}
         onDragCancel={handleDragCancel}
@@ -292,27 +279,61 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
           <div className="flex sticky top-0 z-10" style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
             {/* Spacer aligned with swimlane label width */}
             <div className="w-28 flex-shrink-0" />
-            {render.axes.columns.map((col) => {
-              const count = cells
-                .filter((c) => c.columnSlug === col.slug)
-                .reduce((sum, c) => sum + c.items.length, 0);
-              return <ColumnHeader key={col.slug} column={col} itemCount={count} />;
-            })}
+            <SortableContext
+              items={layout.columns.map((c) => axisDragId('columns', c.slug))}
+              strategy={horizontalListSortingStrategy}
+            >
+              {layout.columns.map((col) => {
+                const count = cells
+                  .filter((c) => c.columnSlug === col.slug)
+                  .reduce((sum, c) => sum + c.items.length, 0);
+                return (
+                  <ColumnHeader
+                    key={col.slug}
+                    column={col}
+                    itemCount={count}
+                    editable={!layout.implicit.columns}
+                    selected={isEditing('columns', col.slug)}
+                    onEdit={() => toggleAxis('columns', col.slug)}
+                    onRename={(title) => void layout.saveAxis(col.slug, { title })}
+                  />
+                );
+              })}
+            </SortableContext>
+            <AddAxisButton
+              label="column"
+              style={{ width: '36px', minWidth: '36px', margin: '4px 8px', alignSelf: 'stretch' }}
+              onAdd={(title) => void layout.addAxis('columns', title)}
+            />
           </div>
 
           {/* Swimlane rows */}
           <div className="flex flex-col" data-testid="swimlane-rows">
-            {render.axes.swimlanes.map((sl) => (
-              <SwimlaneRow
-                key={sl.slug}
-                swimlane={sl}
-                columns={render.axes.columns}
-                cells={cells}
-                board={render.board}
-                onError={setError}
-                onCreated={onRefetch}
-              />
-            ))}
+            <SortableContext
+              items={layout.swimlanes.map((s) => axisDragId('swimlanes', s.slug))}
+              strategy={verticalListSortingStrategy}
+            >
+              {layout.swimlanes.map((sl) => (
+                <SwimlaneRow
+                  key={sl.slug}
+                  swimlane={sl}
+                  columns={layout.columns}
+                  cells={cells}
+                  board={render.board}
+                  editable={!layout.implicit.swimlanes}
+                  selected={isEditing('swimlanes', sl.slug)}
+                  onEdit={() => toggleAxis('swimlanes', sl.slug)}
+                  onRename={(title) => void layout.saveAxis(sl.slug, { title })}
+                  onError={setError}
+                  onCreated={onRefetch}
+                />
+              ))}
+            </SortableContext>
+            <AddAxisButton
+              label="swimlane"
+              style={{ width: '112px', height: '32px', margin: '8px 0' }}
+              onAdd={(title) => void layout.addAxis('swimlanes', title)}
+            />
           </div>
         </div>
 
@@ -342,6 +363,22 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
           )}
         </DragOverlay>
       </DndContext>
+
+      {editing?.kind === 'axis' && editingAxis && (
+        <AxisDrawer
+          key={`${editing.dim}:${editing.slug}`}
+          axis={editingAxis}
+          dim={editing.dim}
+          boardSlug={render.board.slug}
+          usage={layout.usage(editing.slug)}
+          onSave={(patch) => layout.saveAxis(editing.slug, patch)}
+          onRemove={() => layout.removeAxis(editing.dim, editing.slug)}
+          onClose={closeDrawer}
+        />
+      )}
+      {editing?.kind === 'board' && (
+        <BoardDrawer board={render.board} onSave={layout.saveBoard} onClose={closeDrawer} />
+      )}
     </div>
   );
 }
