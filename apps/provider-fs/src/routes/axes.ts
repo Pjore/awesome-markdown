@@ -10,6 +10,7 @@ import {
   PatchAxisRequestSchema,
   DeleteResponseSchema,
   SlugSchema,
+  mergePatch,
 } from '@awesome-markdown/contracts';
 import type { Axis } from '@awesome-markdown/contracts';
 import type { IndexStore } from '../fs/index-store.js';
@@ -46,7 +47,7 @@ export const axesRoutes: FastifyPluginAsyncZod<AxesPluginOptions> = async (
     '/axes',
     { schema: { body: CreateAxisRequestSchema.strict(), response: { 201: AxisSchema } } },
     async (req, reply) => {
-      const { slug, title, description, filter } = req.body;
+      const { slug, title, description, filter, order, writeOnDrop } = req.body;
 
       if (store.getAxis(slug)) {
         throw new RepoError('already_exists', `Axis ${slug} already exists`);
@@ -59,6 +60,8 @@ export const axesRoutes: FastifyPluginAsyncZod<AxesPluginOptions> = async (
         title,
         ...(description !== undefined ? { description } : {}),
         ...(filter !== undefined ? { filter } : {}),
+        ...(order !== undefined ? { order } : {}),
+        ...(writeOnDrop !== undefined ? { writeOnDrop } : {}),
         createdAt: now,
         updatedAt: now,
       };
@@ -84,8 +87,7 @@ export const axesRoutes: FastifyPluginAsyncZod<AxesPluginOptions> = async (
       if (!filePath) throw new RepoError('not_found', `Axis ${slug} not found`);
 
       const updated: Axis = {
-        ...existing,
-        ...req.body,
+        ...mergePatch(existing, req.body),
         updatedAt: new Date().toISOString(),
       };
 

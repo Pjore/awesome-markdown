@@ -9,11 +9,13 @@ export const endpoints = {
 
   // Boards
   boards: (base: string): string => `${base}/boards`,
+  board: (base: string, slug: string): string => `${base}/boards/${slug}`,
   boardRender: (base: string, slug: string): string => `${base}/boards/${slug}/render`,
   boardHomeless: (base: string, slug: string): string => `${base}/boards/${slug}/homeless`,
 
   // Axes
   axes: (base: string): string => `${base}/axes`,
+  axis: (base: string, slug: string): string => `${base}/axes/${slug}`,
 
   // Items
   items: (base: string): string => `${base}/items`,

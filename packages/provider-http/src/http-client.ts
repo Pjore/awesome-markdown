@@ -10,6 +10,8 @@ import {
   PatchItemRequestSchema,
   CreateAxisRequestSchema,
   CreateBoardRequestSchema,
+  PatchAxisRequestSchema,
+  PatchBoardRequestSchema,
 } from '@awesome-markdown/contracts';
 import type {
   Board,
@@ -21,6 +23,8 @@ import type {
   PatchItemRequest,
   CreateAxisRequest,
   CreateBoardRequest,
+  PatchAxisRequest,
+  PatchBoardRequest,
 } from '@awesome-markdown/contracts';
 import { z } from 'zod';
 import { endpoints } from './endpoints.js';
@@ -149,7 +153,23 @@ export class SidecarHttpClient {
     );
   }
 
+  async patchBoard(slug: string, req: PatchBoardRequest, signal?: AbortSignal): Promise<Board> {
+    return this.req(
+      endpoints.board(this.base, slug),
+      { method: 'PATCH', body: JSON.stringify(PatchBoardRequestSchema.parse(req)), signal },
+      (d) => BoardSchema.parse(d),
+    );
+  }
+
   // -- Axes ------------------------------------------------------------------
+
+  async patchAxis(slug: string, req: PatchAxisRequest, signal?: AbortSignal): Promise<Axis> {
+    return this.req(
+      endpoints.axis(this.base, slug),
+      { method: 'PATCH', body: JSON.stringify(PatchAxisRequestSchema.parse(req)), signal },
+      (d) => AxisSchema.parse(d),
+    );
+  }
 
   async listAxes(signal?: AbortSignal): Promise<Axis[]> {
     return this.req(

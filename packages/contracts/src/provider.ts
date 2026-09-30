@@ -8,6 +8,8 @@ import type {
   PatchItemRequest,
   CreateAxisRequest,
   CreateBoardRequest,
+  PatchAxisRequest,
+  PatchBoardRequest,
 } from './dtos.js';
 
 // ---------------------------------------------------------------------------
@@ -51,11 +53,13 @@ export interface PersistenceProvider {
   listBoards(): Promise<Board[]>;
   getBoard(slug: string): Promise<Board | null>;
   createBoard(req: CreateBoardRequest): Promise<Board>;
+  patchBoard(slug: string, req: PatchBoardRequest): Promise<Board>;
 
   // -- Axes ------------------------------------------------------------------
   listAxes(): Promise<Axis[]>;
   getAxis(slug: string): Promise<Axis | null>;
   createAxis(req: CreateAxisRequest): Promise<Axis>;
+  patchAxis(slug: string, req: PatchAxisRequest): Promise<Axis>;
 
   // -- Render / Homeless -----------------------------------------------------
   /** Full render envelope for a board: cells × axes × items. */

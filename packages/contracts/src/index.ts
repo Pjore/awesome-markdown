@@ -103,3 +103,5 @@ export type {
   PersistenceProvider,
 } from './provider.js';
 
+export { IMPLICIT_AXIS_SLUG, implicitAxis, resolveDimension, mergePatch } from './board-layout.js';
+
