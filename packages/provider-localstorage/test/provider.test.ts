@@ -114,6 +114,14 @@ describe('patchItem', () => {
     expect((patched as Record<string, unknown>)['tags']).toEqual(['a', 'b']);
   });
 
+  it('applies append mutation to `body` as a text concatenation, not an array-wrap', async () => {
+    await provider.createItem({ slug: 't2', title: 'Task 2', body: 'Existing body.', mutations: [] });
+    const patched = await provider.patchItem('t2', {
+      mutations: [{ op: 'append', path: 'body', value: 'A follow-up note.' }],
+    });
+    expect((patched as Record<string, unknown>)['body']).toBe('Existing body.\n\nA follow-up note.');
+  });
+
   it('applies remove mutation from array', async () => {
     seed([makeItem('t', { tags: ['a', 'b'] })]);
     const patched = await provider.patchItem('t', {
