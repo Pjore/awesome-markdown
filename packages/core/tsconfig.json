@@ -4,12 +4,11 @@
   "compilerOptions": {
     "outDir": "./dist",
     "rootDir": "./src",
-    "lib": ["ES2022"]
+    "types": []
   },
-  "include": ["src/**/*.ts"],
   "references": [
     { "path": "../../packages/contracts" },
-    { "path": "../../packages/core" },
     { "path": "../../packages/filter-engine" }
-  ]
+  ],
+  "include": ["src/**/*.ts"]
 }

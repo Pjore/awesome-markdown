@@ -15,9 +15,10 @@ COPY apps/provider-fs/ apps/provider-fs/
 RUN pnpm install --frozen-lockfile
 
 # Build shared workspace packages (TypeScript project references require this
-# order: contracts → filter-engine → provider-fs).
+# order: contracts → filter-engine → core → provider-fs).
 RUN pnpm --filter @awesome-markdown/contracts build
 RUN pnpm --filter @awesome-markdown/filter-engine build
+RUN pnpm --filter @awesome-markdown/core build
 
 # Build provider-fs.
 RUN pnpm --filter provider-fs build

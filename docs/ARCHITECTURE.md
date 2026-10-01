@@ -36,6 +36,7 @@ awesome-markdown is a query-driven kanban system built around markdown files. Th
 
 - **`packages/contracts`** — shared Zod schemas and inferred TypeScript types.
 - **`packages/filter-engine`** — shared filter evaluation, invertibility analysis, and drop mutation derivation.
+- **`packages/core`** — backend-agnostic board render/homeless computation, `applyMutations`, and markdown entity (de)serialization; `provider-fs` delegates to it so other backends render identically.
 - **`packages/provider-localstorage`** — browser-only provider for the zero-setup path.
 - **`packages/provider-http`** — HTTP client used by the UI when talking to remote providers.
 - **`apps/kanban-ui`** — React application with drag-and-drop board views.

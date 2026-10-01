@@ -1,17 +1,13 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
-import matter from 'gray-matter';
-import { ItemSchema, BoardSchema, AxisSchema } from '@awesome-markdown/contracts';
-import type { Item, Board, Axis } from '@awesome-markdown/contracts';
+import { parseEntity } from '@awesome-markdown/core/markdown';
+import type { ParsedEntity } from '@awesome-markdown/core/markdown';
 
 // ---------------------------------------------------------------------------
 // Typed entity union
 // ---------------------------------------------------------------------------
 
-export type ScannedEntity =
-  | { entityType: 'item'; slug: string; data: Item; filePath: string }
-  | { entityType: 'board'; slug: string; data: Board; filePath: string }
-  | { entityType: 'axis'; slug: string; data: Axis; filePath: string };
+export type ScannedEntity = ParsedEntity & { filePath: string };
 
 // ---------------------------------------------------------------------------
 // Single-file parser
@@ -32,47 +28,8 @@ export async function parseFile(filePath: string): Promise<ScannedEntity | null>
     return null;
   }
 
-  let parsed: ReturnType<typeof matter>;
-  try {
-    parsed = matter(raw);
-  } catch (err) {
-    console.warn(`[scanner] Failed to parse frontmatter in ${filePath}:`, err);
-    return null;
-  }
-
-  const entityType = parsed.data['entityType'];
-  if (entityType === undefined || entityType === null) return null;
-
-  const body = (parsed.content ?? '').trim();
-
-  if (entityType === 'item') {
-    const result = ItemSchema.safeParse({ ...parsed.data, body });
-    if (!result.success) {
-      console.warn(`[scanner] Invalid item at ${filePath}:`, result.error.message);
-      return null;
-    }
-    return { entityType: 'item', slug: result.data.slug, data: result.data, filePath };
-  }
-
-  if (entityType === 'board') {
-    const result = BoardSchema.safeParse(parsed.data);
-    if (!result.success) {
-      console.warn(`[scanner] Invalid board at ${filePath}:`, result.error.message);
-      return null;
-    }
-    return { entityType: 'board', slug: result.data.slug, data: result.data, filePath };
-  }
-
-  if (entityType === 'axis') {
-    const result = AxisSchema.safeParse(parsed.data);
-    if (!result.success) {
-      console.warn(`[scanner] Invalid axis at ${filePath}:`, result.error.message);
-      return null;
-    }
-    return { entityType: 'axis', slug: result.data.slug, data: result.data, filePath };
-  }
-
-  return null; // unknown entityType — silently ignored
+  const entity = parseEntity(raw, filePath);
+  return entity === null ? null : { ...entity, filePath };
 }
 
 // ---------------------------------------------------------------------------
