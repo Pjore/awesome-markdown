@@ -1,0 +1,204 @@
+{
+  "board": {
+    "entityType": "board",
+    "slug": "board-all",
+    "title": "All Items Board",
+    "description": "Shows all items with no candidate-set filter. Columns are the three status axes; the status-done column is read-only (non-invertible any filter). Swimlane is priority-high, which is reused as a column on board-dev.",
+    "columns": [
+      "status-todo",
+      "status-doing",
+      "status-done"
+    ],
+    "swimlanes": [
+      "all"
+    ],
+    "createdAt": "2026-05-04T00:00:00.000Z",
+    "updatedAt": "2026-05-04T00:00:00.000Z"
+  },
+  "axes": {
+    "columns": [
+      {
+        "entityType": "axis",
+        "slug": "status-todo",
+        "title": "To Do",
+        "description": "Items not yet started.",
+        "filter": {
+          "property": "status",
+          "equals": "todo"
+        },
+        "order": {
+          "by": "boards.$board.order",
+          "direction": "asc"
+        },
+        "createdAt": "2026-05-04T00:00:00.000Z",
+        "updatedAt": "2026-05-04T00:00:00.000Z"
+      },
+      {
+        "entityType": "axis",
+        "slug": "status-doing",
+        "title": "In Progress",
+        "description": "Items actively being worked on.",
+        "filter": {
+          "property": "status",
+          "equals": "doing"
+        },
+        "order": {
+          "by": "boards.$board.order",
+          "direction": "asc"
+        },
+        "createdAt": "2026-05-04T00:00:00.000Z",
+        "updatedAt": "2026-05-04T00:00:00.000Z"
+      },
+      {
+        "entityType": "axis",
+        "slug": "status-done",
+        "title": "Done",
+        "description": "Items where status is \"done\" or \"complete\". Uses an `any` (OR) filter so cells at this axis are always read-only — dropping here is disabled because the filter cannot be uniquely inverted.",
+        "filter": {
+          "any": [
+            {
+              "property": "status",
+              "equals": "done"
+            },
+            {
+              "property": "status",
+              "equals": "complete"
+            }
+          ]
+        },
+        "createdAt": "2026-05-04T00:00:00.000Z",
+        "updatedAt": "2026-05-04T00:00:00.000Z"
+      }
+    ],
+    "swimlanes": [
+      {
+        "entityType": "axis",
+        "slug": "all",
+        "title": "Show all",
+        "description": "Default catch-all axis with no filter. Every item appears in exactly one cell at",
+        "order": {
+          "by": "boards.$board.order",
+          "direction": "asc"
+        },
+        "createdAt": "2026-05-04T00:00:00.000Z",
+        "updatedAt": "2026-05-04T00:00:00.000Z"
+      }
+    ]
+  },
+  "cells": [
+    {
+      "columnSlug": "status-todo",
+      "swimlaneSlug": "all",
+      "readOnly": false,
+      "items": [
+        {
+          "entityType": "item",
+          "slug": "test",
+          "title": "test",
+          "body": "Some text!",
+          "boards": [
+            {
+              "board": "board-dev",
+              "order": "V"
+            },
+            {
+              "board": "board-all",
+              "order": "3"
+            }
+          ],
+          "createdAt": "2026-05-04T13:09:42.680Z",
+          "updatedAt": "2026-05-12T18:30:27.675Z",
+          "project": "dev",
+          "status": "todo",
+          "tags": [
+            "urgent",
+            "just-a-tag"
+          ],
+          "priority": "high"
+        }
+      ]
+    },
+    {
+      "columnSlug": "status-doing",
+      "swimlaneSlug": "all",
+      "readOnly": false,
+      "items": [
+        {
+          "entityType": "item",
+          "slug": "item-fix-auth-bug",
+          "title": "Authentication bug in login flow!",
+          "body": "Investigate and fix the JWT validation error on the `/login` endpoint.\n\nThis item has `boards[]` entries for **both** `board-dev` and `board-all`,\nexercising per-board `order` keys. It also carries the `urgent` tag, placing\nit in the `tag-urgent` column on `board-dev`.\n\n- On `board-dev`: column = `tag-urgent` (priority high + urgent tag), swimlane = `status-doing`\n- On `board-all`: column = `status-doing`, swimlane = `priority-high`\n\n/Per",
+          "boards": [
+            {
+              "board": "board-dev",
+              "order": "c0V"
+            },
+            {
+              "board": "board-all",
+              "order": "7"
+            }
+          ],
+          "createdAt": "2026-05-04T00:00:00.000Z",
+          "updatedAt": "2026-05-11T11:35:38.769Z",
+          "project": "dev",
+          "status": "doing",
+          "priority": "high",
+          "tags": [
+            "urgent",
+            "backend"
+          ],
+          "dueDate": "2026-05-10"
+        },
+        {
+          "entityType": "item",
+          "slug": "item-onboard-ml",
+          "title": "Onboard marketing team to new workflow",
+          "body": "Walk the marketing team through the kanban workflow and new tooling.\n\nThis item intentionally has **no `boards[]` entry** — it floats in the item\npool. It matches `board-all` (no candidate-set filter) but carries no\nboard-specific order or placement metadata. Use it to verify the homeless\nview behaviour.\n\n## Sub header\n\nWith some additional description text to make the item taller and more visible.",
+          "boards": [
+            {
+              "board": "board-all",
+              "order": "VVV"
+            }
+          ],
+          "createdAt": "2026-05-04T00:00:00.000Z",
+          "updatedAt": "2026-05-11T09:15:36.898Z",
+          "project": "marketing",
+          "status": "doing",
+          "priority": "low",
+          "tags": []
+        },
+        {
+          "entityType": "item",
+          "slug": "item-refactor-db",
+          "title": "Refactor database connection pooling",
+          "body": "Migrate from ad-hoc `pg.Pool` calls to a managed connection pool with proper\nlifecycle hooks and graceful shutdown.\n\nThis item has `status: done`, placing it in the `status-done` swimlane on\n`board-dev`. Because `status-done` uses a non-invertible `any` filter, any\ncell at that swimlane row is **read-only** — drag-and-drop into those cells is\ndisabled.\n\nIt has a `boards[]` entry only for `board-dev` (not `board-all`), so on\n`board-all` it appears without board-specific ordering.",
+          "boards": [
+            {
+              "board": "board-dev",
+              "order": "c0"
+            },
+            {
+              "board": "board-all",
+              "order": "VVVV"
+            }
+          ],
+          "createdAt": "2026-05-04T00:00:00.000Z",
+          "updatedAt": "2026-05-12T18:06:58.762Z",
+          "project": "dev",
+          "status": "doing",
+          "priority": "high",
+          "tags": [
+            "backend"
+          ],
+          "dueDate": "2026-06-01"
+        }
+      ]
+    },
+    {
+      "columnSlug": "status-done",
+      "swimlaneSlug": "all",
+      "readOnly": true,
+      "items": []
+    }
+  ]
+}
