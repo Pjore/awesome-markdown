@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ItemSchema, BoardSchema, AxisSchema } from '@awesome-markdown/contracts';
+import { ItemSchema, BoardSchema, AxisSchema, mergePatch, resolveDimension } from '@awesome-markdown/contracts';
 import type {
   Item,
   Board,
@@ -10,16 +10,18 @@ import type {
   PatchItemRequest,
   CreateAxisRequest,
   CreateBoardRequest,
+  PatchAxisRequest,
+  PatchBoardRequest,
   PersistenceProvider,
   ProviderCapabilities,
   ProviderEventHandler,
   Unsubscribe,
   FilterRule,
   AxisOrder,
-  Mutation,
 } from '@awesome-markdown/contracts';
-import { evaluate, analyzeInvertibility, resolvePath, parsePath } from '@awesome-markdown/filter-engine';
+import { evaluate, analyzeInvertibility, resolvePath } from '@awesome-markdown/filter-engine';
 import type { Ctx } from '@awesome-markdown/filter-engine';
+import { applyMutations } from './mutations.js';
 
 // ---------------------------------------------------------------------------
 // Storage — flat keyed by "entityType:slug"
@@ -54,79 +56,6 @@ function writeStore(store: Map<string, Entity>): void {
   const obj: Record<string, unknown> = {};
   for (const [k, v] of store) obj[k] = v;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(obj));
-}
-
-// ---------------------------------------------------------------------------
-// Mutation application (path-based atomic write)
-// ---------------------------------------------------------------------------
-
-type Rec = Record<string, unknown>;
-
-function navigateToParent(
-  root: Rec,
-  segments: string[],
-  upsert: boolean,
-): { parent: Rec; finalKey: string } | null {
-  if (segments.length === 0) return null;
-  let cur: unknown = root;
-  for (let i = 0; i < segments.length - 1; i++) {
-    const seg = segments[i]!;
-    if (Array.isArray(cur)) {
-      let entry = (cur as Rec[]).find((el) => el['board'] === seg);
-      if (!entry) {
-        if (!upsert) return null;
-        entry = { board: seg };
-        (cur as Rec[]).push(entry);
-      }
-      cur = entry;
-    } else if (typeof cur === 'object' && cur !== null) {
-      const obj = cur as Rec;
-      if (obj[seg] === undefined || obj[seg] === null) {
-        if (!upsert) return null;
-        // `boards` is always an array of `{ board, ... }` entries (see Item schema) —
-        // the next segment is matched against each entry's `board` property.
-        obj[seg] = seg === 'boards' ? [] : {};
-      }
-      cur = obj[seg];
-    } else {
-      return null;
-    }
-  }
-  const finalKey = segments[segments.length - 1]!;
-  return typeof cur === 'object' && cur !== null && !Array.isArray(cur)
-    ? { parent: cur as Rec, finalKey }
-    : null;
-}
-
-function applyMutations(item: Item, mutations: Mutation[], now: string): Item {
-  const clone = structuredClone(item) as Rec;
-  for (const mut of mutations) {
-    const segs = parsePath(mut.path);
-    if (mut.op === 'set') {
-      const nav = navigateToParent(clone, segs, true);
-      if (nav) nav.parent[nav.finalKey] = mut.value;
-    } else if (mut.op === 'append') {
-      const nav = navigateToParent(clone, segs, true);
-      if (nav) {
-        const cur = nav.parent[nav.finalKey];
-        if (Array.isArray(cur)) cur.push(mut.value);
-        else nav.parent[nav.finalKey] = [mut.value];
-      }
-    } else if (mut.op === 'remove') {
-      const nav = navigateToParent(clone, segs, false);
-      if (nav) {
-        const cur = nav.parent[nav.finalKey];
-        if (Array.isArray(cur))
-          nav.parent[nav.finalKey] = cur.filter((el) => el !== mut.value);
-      }
-    } else {
-      // delete
-      const nav = navigateToParent(clone, segs, false);
-      if (nav) delete nav.parent[nav.finalKey];
-    }
-  }
-  clone['updatedAt'] = now;
-  return clone as unknown as Item;
 }
 
 // ---------------------------------------------------------------------------
@@ -176,6 +105,15 @@ function resolveAxis(store: Map<string, Entity>, slug: string): Axis {
   return e?.entityType === 'axis' ? e : syntheticAxis(slug);
 }
 
+function firstDuplicate(arr: string[] | undefined): string | undefined {
+  const seen = new Set<string>();
+  for (const s of arr ?? []) {
+    if (seen.has(s)) return s;
+    seen.add(s);
+  }
+  return undefined;
+}
+
 // ---------------------------------------------------------------------------
 // LocalStorageProvider
 // ---------------------------------------------------------------------------
@@ -210,18 +148,9 @@ export class LocalStorageProvider implements PersistenceProvider {
     if (store.has(storeKey('board', req.slug))) {
       throw new Error(`Board already exists: ${req.slug}`);
     }
-    const dup = (arr: string[] | undefined): string | undefined => {
-      if (!arr) return undefined;
-      const seen = new Set<string>();
-      for (const s of arr) {
-        if (seen.has(s)) return s;
-        seen.add(s);
-      }
-      return undefined;
-    };
-    const dupCol = dup(req.columns);
+    const dupCol = firstDuplicate(req.columns);
     if (dupCol) throw new Error(`Duplicate column axis slug: ${dupCol}`);
-    const dupLane = dup(req.swimlanes);
+    const dupLane = firstDuplicate(req.swimlanes);
     if (dupLane) throw new Error(`Duplicate swimlane axis slug: ${dupLane}`);
 
     const now = new Date().toISOString();
@@ -240,6 +169,21 @@ export class LocalStorageProvider implements PersistenceProvider {
     writeStore(store);
     this.emit(req.slug, 'board');
     return board;
+  }
+
+  async patchBoard(slug: string, req: PatchBoardRequest): Promise<Board> {
+    const store = readStore();
+    const e = store.get(storeKey('board', slug));
+    if (!e || e.entityType !== 'board') throw new Error(`Board not found: ${slug}`);
+    const dupCol = firstDuplicate(req.columns);
+    if (dupCol) throw new Error(`Duplicate column axis slug: ${dupCol}`);
+    const dupLane = firstDuplicate(req.swimlanes);
+    if (dupLane) throw new Error(`Duplicate swimlane axis slug: ${dupLane}`);
+    const updated: Board = { ...mergePatch(e, req), updatedAt: new Date().toISOString() };
+    store.set(storeKey('board', slug), updated);
+    writeStore(store);
+    this.emit(slug, 'board');
+    return updated;
   }
 
   // -- Axes ------------------------------------------------------------------
@@ -265,6 +209,8 @@ export class LocalStorageProvider implements PersistenceProvider {
       title: req.title,
       description: req.description,
       filter: req.filter,
+      order: req.order,
+      writeOnDrop: req.writeOnDrop,
       createdAt: now,
       updatedAt: now,
     };
@@ -272,6 +218,17 @@ export class LocalStorageProvider implements PersistenceProvider {
     writeStore(store);
     this.emit(req.slug, 'axis');
     return axis;
+  }
+
+  async patchAxis(slug: string, req: PatchAxisRequest): Promise<Axis> {
+    const store = readStore();
+    const e = store.get(storeKey('axis', slug));
+    if (!e || e.entityType !== 'axis') throw new Error(`Axis not found: ${slug}`);
+    const updated: Axis = { ...mergePatch(e, req), updatedAt: new Date().toISOString() };
+    store.set(storeKey('axis', slug), updated);
+    writeStore(store);
+    this.emit(slug, 'axis');
+    return updated;
   }
 
   // -- Render ----------------------------------------------------------------
@@ -282,8 +239,8 @@ export class LocalStorageProvider implements PersistenceProvider {
     if (!be || be.entityType !== 'board') throw new Error(`Board not found: ${slug}`);
     const board = be;
     const ctx: Ctx = { board: board.slug };
-    const colAxes = (board.columns ?? []).map((s) => resolveAxis(store, s));
-    const laneAxes = (board.swimlanes ?? []).map((s) => resolveAxis(store, s));
+    const colAxes = resolveDimension(board.columns, (s) => resolveAxis(store, s));
+    const laneAxes = resolveDimension(board.swimlanes, (s) => resolveAxis(store, s));
     const allItems = [...store.values()].filter((e): e is Item => e.entityType === 'item');
     const candidates = allItems.filter(
       (item) => !board.filter || evaluate(board.filter, item, ctx),
@@ -313,7 +270,7 @@ export class LocalStorageProvider implements PersistenceProvider {
     if (!be || be.entityType !== 'board') throw new Error(`Board not found: ${boardSlug}`);
     const board = be;
     const ctx: Ctx = { board: board.slug };
-    const colAxes = (board.columns ?? []).map((s) => resolveAxis(store, s));
+    const colAxes = resolveDimension(board.columns, (s) => resolveAxis(store, s));
     const allItems = [...store.values()].filter((e): e is Item => e.entityType === 'item');
     const candidates = allItems.filter(
       (item) =>

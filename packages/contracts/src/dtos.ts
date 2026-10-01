@@ -143,6 +143,8 @@ export const CreateAxisRequestSchema = z.object({
   title: z.string().min(1),
   description: z.string().optional(),
   filter: FilterRuleSchema.optional(),
+  order: AxisOrderSchema.optional(),
+  writeOnDrop: WriteOnDropSchema.optional(),
 });
 export type CreateAxisRequest = z.infer<typeof CreateAxisRequestSchema>;
 
@@ -176,13 +178,14 @@ export type CreateBoardRequest = z.infer<typeof CreateBoardRequestSchema>;
  * keys present in the request body are overwritten; omitted keys keep
  * their current value. `columns` / `swimlanes`, when present, replace the
  * whole list (not merged) and must not contain duplicate slugs, same as
- * `POST /boards`. At least one field must be present.
+ * `POST /boards`. `null` removes an optional key. At least one field must
+ * be present.
  */
 export const PatchBoardRequestSchema = z
   .object({
     title: z.string().min(1).optional(),
-    description: z.string().optional(),
-    filter: FilterRuleSchema.optional(),
+    description: z.string().nullable().optional(),
+    filter: FilterRuleSchema.nullable().optional(),
     columns: z.array(SlugSchema).optional(),
     swimlanes: z.array(SlugSchema).optional(),
     cardLayout: z.array(PropertyDisplaySchema).optional(),
@@ -200,15 +203,16 @@ export type PatchBoardRequest = z.infer<typeof PatchBoardRequestSchema>;
 /**
  * Partially update an existing axis. Every field is optional — only the
  * keys present in the request body are overwritten; omitted keys keep
- * their current value. At least one field must be present.
+ * their current value; `null` removes an optional key. At least one field
+ * must be present.
  */
 export const PatchAxisRequestSchema = z
   .object({
     title: z.string().min(1).optional(),
-    description: z.string().optional(),
-    filter: FilterRuleSchema.optional(),
-    order: AxisOrderSchema.optional(),
-    writeOnDrop: WriteOnDropSchema.optional(),
+    description: z.string().nullable().optional(),
+    filter: FilterRuleSchema.nullable().optional(),
+    order: AxisOrderSchema.nullable().optional(),
+    writeOnDrop: WriteOnDropSchema.nullable().optional(),
   })
   .refine(body => Object.keys(body).length > 0, {
     message: 'At least one field must be present',

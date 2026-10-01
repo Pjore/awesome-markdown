@@ -3,11 +3,14 @@ import { Link, useNavigate } from 'react-router-dom';
 import type { Board } from '@awesome-markdown/contracts';
 import { useProvider } from '../provider/ProviderContext.js';
 import { useProviderSubscribe } from '../state/useProviderSubscribe.js';
-import { CreateBoardDialog } from '../components/CreateBoardDialog.js';
+import { InlineTextInput } from '../board/layout/InlineControls.js';
+import { slugify, uniqueSlug } from '../board/layout/axis-defaults.js';
 
 /**
  * Board list page — rendered at route `/`.
  * Lists all boards from the current provider; each links to `/boards/:slug`.
+ * "+ add board" asks for a title, creates an empty board and opens it —
+ * columns and swimlanes are then added on the board itself.
  */
 export function BoardListPage(): React.ReactElement {
   const provider = useProvider();
@@ -15,7 +18,19 @@ export function BoardListPage(): React.ReactElement {
   const [boards, setBoards] = useState<Board[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
-  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState<string | null>(null);
+
+  const createBoard = async (title: string): Promise<void> => {
+    setCreating(false);
+    try {
+      const taken = new Set((await provider.listBoards()).map((b) => b.slug));
+      const board = await provider.createBoard({ slug: uniqueSlug(slugify(title, 'board'), taken), title });
+      navigate(`/boards/${board.slug}`);
+    } catch (err) {
+      setCreateError(`Failed to create board: ${err instanceof Error ? err.message : 'Unknown error'}`);
+    }
+  };
 
   const cancelledRef = useRef(false);
 
@@ -83,9 +98,24 @@ export function BoardListPage(): React.ReactElement {
         >
           Your Boards
         </h2>
+        {creating ? (
+          <div style={{ width: '240px', fontFamily: 'var(--font-sans)', fontSize: '14px', padding: '6px 0' }}>
+            <InlineTextInput
+              initial=""
+              placeholder="Board title"
+              ariaLabel="New board title"
+              testId="create-board-title-input"
+              onCommit={(title) => void createBoard(title)}
+              onCancel={() => setCreating(false)}
+            />
+          </div>
+        ) : (
         <button
           type="button"
-          onClick={() => setShowCreateDialog(true)}
+          onClick={() => {
+            setCreateError(null);
+            setCreating(true);
+          }}
           style={{
             fontFamily: 'var(--font-mono)',
             fontSize: '12px',
@@ -100,11 +130,18 @@ export function BoardListPage(): React.ReactElement {
         >
           + add board
         </button>
+        )}
       </div>
+
+      {createError !== null && (
+        <p style={{ color: 'var(--ink)', fontFamily: 'var(--font-mono)', fontSize: '12px', marginBottom: '16px' }} role="alert" data-testid="create-board-error">
+          {createError}
+        </p>
+      )}
 
       {boards.length === 0 ? (
         <div className="text-center py-16" data-testid="board-list-empty">
-          <p style={{ color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)', fontSize: '13px' }}>No boards yet. Create one via settings.</p>
+          <p style={{ color: 'var(--ink-muted)', fontFamily: 'var(--font-mono)', fontSize: '13px' }}>No boards yet. Use + add board to create one.</p>
         </div>
       ) : (
         <ul className="space-y-3" style={{ listStyle: 'none', padding: 0, margin: 0 }} data-testid="board-list-items">
@@ -165,16 +202,6 @@ export function BoardListPage(): React.ReactElement {
             </li>
           ))}
         </ul>
-      )}
-
-      {showCreateDialog && (
-        <CreateBoardDialog
-          onClose={() => setShowCreateDialog(false)}
-          onCreated={(board) => {
-            setShowCreateDialog(false);
-            navigate(`/boards/${board.slug}`);
-          }}
-        />
       )}
     </div>
   );

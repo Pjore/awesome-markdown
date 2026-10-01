@@ -11,6 +11,8 @@ import {
   CreateBoardRequestSchema,
   PatchBoardRequestSchema,
   DeleteResponseSchema,
+  mergePatch,
+  resolveDimension,
 } from '@awesome-markdown/contracts';
 import type { Item, Axis, Board, FilterRule, AxisOrder } from '@awesome-markdown/contracts';
 import {
@@ -171,8 +173,7 @@ export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (
       }
 
       const updated: Board = {
-        ...existing,
-        ...req.body,
+        ...mergePatch(existing, req.body),
         updatedAt: new Date().toISOString(),
       };
 
@@ -210,8 +211,9 @@ export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (
       if (!board) throw new RepoError('not_found', `Board ${req.params.slug} not found`);
 
       const ctx: Ctx = { board: board.slug };
-      const colAxes = (board.columns ?? []).map(s => store.getAxis(s) ?? syntheticAxis(s));
-      const laneAxes = (board.swimlanes ?? []).map(s => store.getAxis(s) ?? syntheticAxis(s));
+      const lookup = (s: string): Axis => store.getAxis(s) ?? syntheticAxis(s);
+      const colAxes = resolveDimension(board.columns, lookup);
+      const laneAxes = resolveDimension(board.swimlanes, lookup);
 
       const candidates = store.listItems().filter(item =>
         !board.filter || evaluate(board.filter, item, ctx),
@@ -246,7 +248,7 @@ export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (
       if (!board) throw new RepoError('not_found', `Board ${req.params.slug} not found`);
 
       const ctx: Ctx = { board: board.slug };
-      const colAxes = (board.columns ?? []).map(s => store.getAxis(s) ?? syntheticAxis(s));
+      const colAxes = resolveDimension(board.columns, s => store.getAxis(s) ?? syntheticAxis(s));
 
       const candidates = store.listItems().filter(item =>
         item.boards?.some(e => e['board'] === board.slug) &&

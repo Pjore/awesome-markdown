@@ -257,10 +257,24 @@ describe('getBoardRender', () => {
     expect(cell.items[1]!.slug).toBe('older');
   });
 
-  it('returns empty cells array when board has no columns or swimlanes', async () => {
+  it('renders one implicit cell when board has no columns or swimlanes', async () => {
     seed([makeBoard('demo'), makeItem('task-1')]);
     const render = await provider.getBoardRender('demo');
-    expect(render.cells).toHaveLength(0);
+    expect(render.cells).toHaveLength(1);
+    expect(render.cells[0]!.items.map((i) => i.slug)).toEqual(['task-1']);
+    expect(render.axes.columns[0]).toMatchObject({ slug: 'all', synthetic: true });
+    expect(render.axes.swimlanes[0]).toMatchObject({ slug: 'all', synthetic: true });
+  });
+
+  it('renders one cell per column when board has columns but no swimlanes', async () => {
+    seed([
+      makeBoard('demo', { columns: ['todo'] }),
+      makeAxis('todo', { filter: { property: 'status', equals: 'todo' } }),
+      makeItem('t1', { status: 'todo' }),
+    ]);
+    const render = await provider.getBoardRender('demo');
+    expect(render.cells).toHaveLength(1);
+    expect(render.cells[0]).toMatchObject({ columnSlug: 'todo', swimlaneSlug: 'all' });
   });
 });
 
@@ -431,5 +445,37 @@ describe('createBoard', () => {
     provider.subscribe((e) => { if (e.type === 'change') events.push(e.entitySlug); });
     await provider.createBoard({ slug: 'demo', title: 'Demo' });
     expect(events).toEqual(['demo']);
+  });
+});
+
+describe('patchBoard / patchAxis', () => {
+  it('replaces columns and clears the filter with null', async () => {
+    await provider.createBoard({ slug: 'demo', title: 'Demo', filter: { property: 'p', equals: 'x' } });
+    const board = await provider.patchBoard('demo', { columns: ['b', 'a'], filter: null });
+    expect(board.columns).toEqual(['b', 'a']);
+    expect(board).not.toHaveProperty('filter');
+    expect(await provider.getBoard('demo')).toEqual(board);
+  });
+
+  it('rejects duplicate column slugs', async () => {
+    await provider.createBoard({ slug: 'demo', title: 'Demo' });
+    await expect(provider.patchBoard('demo', { columns: ['a', 'a'] })).rejects.toThrow();
+  });
+
+  it('creates an axis with order and patches it, clearing order with null', async () => {
+    await provider.createAxis({
+      slug: 'todo',
+      title: 'Todo',
+      filter: { property: 'column', equals: 'todo' },
+      order: { by: 'boards.$board.order', direction: 'asc' },
+    });
+    const axis = await provider.patchAxis('todo', { title: 'To do', order: null });
+    expect(axis.title).toBe('To do');
+    expect(axis).not.toHaveProperty('order');
+    expect(axis.filter).toEqual({ property: 'column', equals: 'todo' });
+  });
+
+  it('throws for an unknown axis', async () => {
+    await expect(provider.patchAxis('nope', { title: 'X' })).rejects.toThrow();
   });
 });
