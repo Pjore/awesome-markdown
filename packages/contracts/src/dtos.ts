@@ -13,6 +13,30 @@ import { FilterRuleSchema } from './schemas/filter-rule.js';
 export const DeleteResponseSchema = z.object({ ok: z.literal(true) });
 export type DeleteResponse = z.infer<typeof DeleteResponseSchema>;
 
+/**
+ * Known machine-readable error codes carried in `ErrorResponse.code`.
+ *
+ * Informational: `ErrorResponseSchema.code` stays `z.string()` so clients
+ * keep accepting codes from newer servers. Use
+ * `ErrorCodeSchema.safeParse(err.code)` to narrow.
+ */
+export const ErrorCodeSchema = z.enum([
+  'not_found',
+  'already_exists',
+  'validation_failed',
+  'forbidden',
+  'unauthorized',
+  'email_unverified',
+  'plan_limit_exceeded',
+  'rate_limited',
+  'invite_email_mismatch',
+  'invite_expired',
+  'sole_owner',
+  'client_error',
+  'io_error',
+]);
+export type ErrorCode = z.infer<typeof ErrorCodeSchema>;
+
 export const ErrorResponseSchema = z.object({
   error: z.string(),
   code: z.string().optional(),

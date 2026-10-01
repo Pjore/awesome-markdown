@@ -63,6 +63,7 @@ export type {
 // ---------------------------------------------------------------------------
 export {
   DeleteResponseSchema,
+  ErrorCodeSchema,
   ErrorResponseSchema,
   SseEnvelopeSchema,
   SsePayloadSchema,
@@ -78,6 +79,7 @@ export {
 } from './dtos.js';
 export type {
   DeleteResponse,
+  ErrorCode,
   ErrorResponse,
   SseEnvelope,
   SsePayload,
