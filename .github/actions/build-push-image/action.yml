@@ -1,0 +1,55 @@
+name: Build and push image
+description: Build a multi-arch service image and push it to GHCR with semver + latest tags.
+
+inputs:
+  service:
+    description: Service name, used as the buildx cache scope
+    required: true
+  dockerfile:
+    description: Path to the service Dockerfile (build context is the repo root)
+    required: true
+  image:
+    description: Fully qualified image name, e.g. ghcr.io/pjore/awesome-markdown-provider-fs
+    required: true
+  github-token:
+    description: Token with packages:write for GHCR login
+    required: true
+
+runs:
+  using: composite
+  steps:
+    - name: Log in to GitHub Container Registry
+      uses: docker/login-action@v4
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.github-token }}
+
+    - name: Extract image metadata
+      id: meta
+      uses: docker/metadata-action@v6
+      with:
+        images: ${{ inputs.image }}
+        tags: |
+          type=ref,event=branch
+          type=semver,pattern={{version}}
+          type=semver,pattern={{major}}.{{minor}}
+          type=raw,value=latest,enable={{is_default_branch}}
+
+    - name: Set up QEMU
+      uses: docker/setup-qemu-action@v4
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@v4
+
+    - name: Build and push
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: ${{ inputs.dockerfile }}
+        platforms: linux/amd64,linux/arm64
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        cache-from: type=gha,scope=${{ inputs.service }}
+        cache-to: type=gha,mode=max,scope=${{ inputs.service }}
