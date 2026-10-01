@@ -6,11 +6,16 @@ export type AxisDim = 'columns' | 'swimlanes';
 export const MANUAL_ORDER: AxisOrder = { by: 'boards.$board.order', direction: 'asc' };
 
 /**
- * Filter for a freshly added axis: `column: <slug>` / `row: <slug>`. It starts
- * empty and stays invertible, so dropping a card writes that property.
+ * Filter for a freshly added axis: `boards.$board.column: <slug>` /
+ * `boards.$board.row: <slug>`. Scoped per board so the same item can sit in
+ * different columns/rows on different boards. It starts empty and stays
+ * invertible, so dropping a card writes that property on the board entry.
  */
 export function defaultAxisFilter(dim: AxisDim, slug: string): FilterRule {
-  return { property: dim === 'columns' ? 'column' : 'row', equals: slug };
+  return {
+    property: dim === 'columns' ? 'boards.$board.column' : 'boards.$board.row',
+    equals: slug,
+  };
 }
 
 export function slugify(title: string, fallback = 'untitled'): string {
