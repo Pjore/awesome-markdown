@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { urlValidationMessage } from '../settings/url-validation.js';
 import type { ProviderSettings } from '../settings/provider-settings.js';
 import { useActiveProvider } from '../providers/active-provider.js';
-import { useBreadcrumb } from '../App.js';
+import { useBreadcrumb } from '@awesome-markdown/board-ui';
 
 /**
  * Full-page settings — route /settings.

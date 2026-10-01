@@ -1,7 +1,13 @@
-/* Self-hosted fonts */
+/*
+ * @awesome-markdown/board-ui styles — design tokens (light/dark), self-hosted
+ * fonts, layout utilities and board-editing classes. Import once from the host:
+ *   import "@awesome-markdown/board-ui/styles.css";
+ */
+
+/* Self-hosted fonts (resolved relative to this file by the host bundler) */
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('/fonts/JetBrainsMono-Regular.woff2') format('woff2');
+  src: url('./fonts/JetBrainsMono-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -9,7 +15,7 @@
 
 @font-face {
   font-family: 'JetBrains Mono';
-  src: url('/fonts/JetBrainsMono-Medium.woff2') format('woff2');
+  src: url('./fonts/JetBrainsMono-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;
@@ -17,7 +23,7 @@
 
 @font-face {
   font-family: 'Inter Tight';
-  src: url('/fonts/InterTight-Regular.woff2') format('woff2');
+  src: url('./fonts/InterTight-Regular.woff2') format('woff2');
   font-weight: 400;
   font-style: normal;
   font-display: swap;
@@ -25,7 +31,7 @@
 
 @font-face {
   font-family: 'Inter Tight';
-  src: url('/fonts/InterTight-Medium.woff2') format('woff2');
+  src: url('./fonts/InterTight-Medium.woff2') format('woff2');
   font-weight: 500;
   font-style: normal;
   font-display: swap;

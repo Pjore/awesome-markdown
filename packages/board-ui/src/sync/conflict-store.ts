@@ -7,7 +7,7 @@ import React, {
   useRef,
 } from 'react';
 import type { ConflictState, ResolveDecision } from '@awesome-markdown/contracts';
-import { fetchConflictState, submitDecisions, getSyncEngineUrl } from './conflict-api.js';
+import { fetchConflictState, submitDecisions } from './conflict-api.js';
 
 // ---------------------------------------------------------------------------
 // State
@@ -73,6 +73,12 @@ const ConflictCtx = createContext<ConflictContextValue | null>(null);
 // ---------------------------------------------------------------------------
 
 interface ConflictProviderProps {
+  /**
+   * Base URL of the sync-engine HTTP server (e.g. `http://localhost:7402` or a
+   * same-origin proxy path such as `/sync-engine`). Hosts without a
+   * sync-engine simply don't mount `ConflictProvider`.
+   */
+  syncEngineUrl: string;
   children: React.ReactNode;
 }
 
@@ -86,14 +92,17 @@ interface ConflictProviderProps {
  * The EventSource is reconnect-safe: duplicate `conflict` events for the same
  * mergeId are coalesced (idempotent set-state).
  */
-export function ConflictProvider({ children }: ConflictProviderProps): React.ReactElement {
+export function ConflictProvider({
+  syncEngineUrl,
+  children,
+}: ConflictProviderProps): React.ReactElement {
   const [state, dispatch] = useReducer(conflictReducer, initialState);
   const esRef = useRef<EventSource | null>(null);
 
   // Hydrate from server on mount
   useEffect(() => {
     let cancelled = false;
-    fetchConflictState().then((conflict) => {
+    fetchConflictState(syncEngineUrl).then((conflict) => {
       if (!cancelled) {
         dispatch({ type: 'SET_CONFLICT', conflict });
       }
@@ -101,12 +110,12 @@ export function ConflictProvider({ children }: ConflictProviderProps): React.Rea
       // Sync-engine not running — ignore silently
     });
     return () => { cancelled = true; };
-  }, []);
+  }, [syncEngineUrl]);
 
   // Subscribe to SSE events
   useEffect(() => {
     let cancelled = false;
-    const base = getSyncEngineUrl();
+    const base = syncEngineUrl;
 
     // Defer EventSource creation past React StrictMode's synchronous
     // cleanup pass so the connection isn't opened then immediately aborted.
@@ -121,7 +130,7 @@ export function ConflictProvider({ children }: ConflictProviderProps): React.Rea
           const data = JSON.parse(e.data) as { mergeId?: string; paths?: string[] };
           // If same mergeId, coalesce (don't re-render unnecessarily)
           // Fetch fresh state so we have the full ConflictState shape
-          fetchConflictState().then((conflict) => {
+          fetchConflictState(syncEngineUrl).then((conflict) => {
             dispatch({ type: 'SET_CONFLICT', conflict });
           }).catch(() => {});
         } catch {
@@ -147,7 +156,7 @@ export function ConflictProvider({ children }: ConflictProviderProps): React.Rea
         esRef.current = null;
       }
     };
-  }, []);
+  }, [syncEngineUrl]);
 
   const isPathAffected = useCallback(
     (filePath: string) => {
@@ -180,12 +189,12 @@ export function ConflictProvider({ children }: ConflictProviderProps): React.Rea
       if (!state.activeConflict) return;
       dispatch({ type: 'SET_SUBMITTING', value: true });
       try {
-        const result = await submitDecisions(state.activeConflict.mergeId, decisions);
+        const result = await submitDecisions(syncEngineUrl, state.activeConflict.mergeId, decisions);
         if (result.status === 'completed') {
           dispatch({ type: 'CLEAR_CONFLICT' });
         } else {
           // Partial — refresh state
-          const updated = await fetchConflictState();
+          const updated = await fetchConflictState(syncEngineUrl);
           dispatch({ type: 'SET_CONFLICT', conflict: updated });
         }
       } catch (err) {
@@ -197,7 +206,7 @@ export function ConflictProvider({ children }: ConflictProviderProps): React.Rea
         dispatch({ type: 'SET_SUBMITTING', value: false });
       }
     },
-    [state.activeConflict],
+    [state.activeConflict, syncEngineUrl],
   );
 
   const dismissError = useCallback(() => {

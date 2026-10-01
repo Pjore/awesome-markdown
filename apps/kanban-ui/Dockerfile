@@ -21,6 +21,7 @@ RUN pnpm --filter @awesome-markdown/contracts build
 RUN pnpm --filter @awesome-markdown/filter-engine build
 RUN pnpm --filter @awesome-markdown/provider-localstorage build
 RUN pnpm --filter @awesome-markdown/provider-http build
+RUN pnpm --filter @awesome-markdown/board-ui build
 
 # Ensure an .env file exists for VITE_* variable baking at build time.
 # If the user has not created apps/kanban-ui/.env before building, fall back to

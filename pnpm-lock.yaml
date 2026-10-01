@@ -24,30 +24,18 @@ importers:
 
   apps/kanban-ui:
     dependencies:
+      '@awesome-markdown/board-ui':
+        specifier: workspace:*
+        version: link:../../packages/board-ui
       '@awesome-markdown/contracts':
         specifier: workspace:*
         version: link:../../packages/contracts
-      '@awesome-markdown/filter-engine':
-        specifier: workspace:*
-        version: link:../../packages/filter-engine
       '@awesome-markdown/provider-http':
         specifier: workspace:*
         version: link:../../packages/provider-http
       '@awesome-markdown/provider-localstorage':
         specifier: workspace:*
         version: link:../../packages/provider-localstorage
-      '@dnd-kit/core':
-        specifier: ^6.3.1
-        version: 6.3.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
-      '@dnd-kit/sortable':
-        specifier: ^10.0.0
-        version: 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
-      '@dnd-kit/utilities':
-        specifier: ^3.2.2
-        version: 3.2.2(react@19.2.5)
-      diff:
-        specifier: ^7.0.0
-        version: 7.0.0
       react:
         specifier: ^19.0.0
         version: 19.2.5
@@ -162,6 +150,55 @@ importers:
       tsx:
         specifier: ^4.19.0
         version: 4.21.0
+      typescript:
+        specifier: ^5.7.3
+        version: 5.9.3
+      vitest:
+        specifier: ^3.0.0
+        version: 3.2.4(@types/node@22.19.17)(jiti@2.6.1)(jsdom@26.1.0)(lightningcss@1.32.0)(tsx@4.21.0)(yaml@2.8.3)
+
+  packages/board-ui:
+    dependencies:
+      '@awesome-markdown/contracts':
+        specifier: workspace:*
+        version: link:../contracts
+      '@awesome-markdown/filter-engine':
+        specifier: workspace:*
+        version: link:../filter-engine
+      '@awesome-markdown/provider-http':
+        specifier: workspace:*
+        version: link:../provider-http
+      '@dnd-kit/core':
+        specifier: ^6.3.1
+        version: 6.3.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5)
+      '@dnd-kit/sortable':
+        specifier: ^10.0.0
+        version: 10.0.0(@dnd-kit/core@6.3.1(react-dom@19.2.5(react@19.2.5))(react@19.2.5))(react@19.2.5)
+      '@dnd-kit/utilities':
+        specifier: ^3.2.2
+        version: 3.2.2(react@19.2.5)
+      diff:
+        specifier: ^7.0.0
+        version: 7.0.0
+    devDependencies:
+      '@awesome-markdown/provider-localstorage':
+        specifier: workspace:*
+        version: link:../provider-localstorage
+      '@types/react':
+        specifier: ^19.0.0
+        version: 19.2.14
+      '@types/react-dom':
+        specifier: ^19.0.0
+        version: 19.2.3(@types/react@19.2.14)
+      jsdom:
+        specifier: ^26.0.0
+        version: 26.1.0
+      react:
+        specifier: ^19.0.0
+        version: 19.2.5
+      react-dom:
+        specifier: ^19.0.0
+        version: 19.2.5(react@19.2.5)
       typescript:
         specifier: ^5.7.3
         version: 5.9.3

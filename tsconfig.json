@@ -6,6 +6,7 @@
     { "path": "./packages/filter-engine" },
     { "path": "./packages/provider-localstorage" },
     { "path": "./packages/provider-http" },
+    { "path": "./packages/board-ui" },
     { "path": "./apps/provider-fs" },
     { "path": "./apps/sync-engine" }
   ]

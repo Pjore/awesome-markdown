@@ -29,12 +29,12 @@ jobs:
       - run: npm install -g npm@latest
       - name: Build publishable packages
         run: |
-          for pkg in contracts filter-engine provider-http provider-localstorage; do
+          for pkg in contracts filter-engine provider-http provider-localstorage board-ui; do
             pnpm --filter "@awesome-markdown/$pkg" build
           done
       - name: Publish changed packages (OIDC trusted publishing, no stored token)
         run: |
-          for pkg in contracts filter-engine provider-http provider-localstorage; do
+          for pkg in contracts filter-engine provider-http provider-localstorage board-ui; do
             dir="packages/$pkg"
             name=$(node -p "require('./$dir/package.json').name")
             local_version=$(node -p "require('./$dir/package.json').version")

@@ -1,8 +1,7 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { Breadcrumb } from './Breadcrumb.js';
-import { SyncStatusDot } from './SyncStatusDot.js';
-import { ThemeToggle } from './ThemeToggle.js';
+import { SyncStatusDot, ThemeToggle } from '@awesome-markdown/board-ui';
 
 /**
  * Persistent hairline top bar (~36px).

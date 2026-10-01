@@ -1,5 +1,4 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import type { Board, Item } from '@awesome-markdown/contracts';
@@ -8,6 +7,7 @@ import { useOptionalConflict } from '../sync/conflict-store.js';
 import { deriveSummary } from '../lib/derive-summary.js';
 import { buildItemEditorHref, getBoardScopedString } from '../lib/item-board.js';
 import { PropertyValueDisplay } from '../lib/property-display.js';
+import { useRouterAdapter } from '../router/RouterAdapter.js';
 
 interface ItemCardProps {
   item: Item;
@@ -33,7 +33,7 @@ export function ItemCard({
   boardSlug,
   board,
 }: ItemCardProps): React.ReactElement {
-  const navigate = useNavigate();
+  const { navigate } = useRouterAdapter();
   const conflict = useOptionalConflict();
   const isConflicted = conflict?.isItemAffected(item.slug) ?? false;
 
@@ -90,9 +90,7 @@ export function ItemCard({
     // Don't navigate if the user is dragging
     if (isDragging) return;
     e.stopPropagation();
-    navigate(buildItemEditorHref(item.slug, boardSlug), {
-      state: { boardSlug, from: `/boards/${boardSlug}` },
-    });
+    navigate(buildItemEditorHref(item.slug, boardSlug));
   };
 
   return (
