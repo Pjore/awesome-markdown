@@ -3,7 +3,6 @@ import type { FastifyPluginOptions } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import path from 'node:path';
-import matter from 'gray-matter';
 import {
   AxisSchema,
   CreateAxisRequestSchema,
@@ -13,6 +12,7 @@ import {
   mergePatch,
 } from '@awesome-markdown/contracts';
 import type { Axis } from '@awesome-markdown/contracts';
+import { serializeEntity } from '@awesome-markdown/core/markdown';
 import type { IndexStore } from '../fs/index-store.js';
 import { writeFileAtomic } from '../fs/atomic-write.js';
 import { bus } from '../events/bus.js';
@@ -23,10 +23,6 @@ const axisParams = z.object({ slug: SlugSchema });
 interface AxesPluginOptions extends FastifyPluginOptions {
   store: IndexStore;
   contentRoot: string;
-}
-
-function serializeAxis(axis: Axis): string {
-  return matter.stringify('', axis);
 }
 
 /** GET /axes — list all non-synthetic (file-backed) axes. */
@@ -67,7 +63,7 @@ export const axesRoutes: FastifyPluginAsyncZod<AxesPluginOptions> = async (
       };
 
       const filePath = path.join(contentRoot, `${slug}.md`);
-      await writeFileAtomic(filePath, serializeAxis(axis));
+      await writeFileAtomic(filePath, serializeEntity(axis));
       store.upsertAxis(slug, axis, filePath);
       bus.publish({ type: 'change', path: `${slug}.md`, entityId: slug });
 
@@ -91,7 +87,7 @@ export const axesRoutes: FastifyPluginAsyncZod<AxesPluginOptions> = async (
         updatedAt: new Date().toISOString(),
       };
 
-      await writeFileAtomic(filePath, serializeAxis(updated));
+      await writeFileAtomic(filePath, serializeEntity(updated));
       store.upsertAxis(slug, updated, filePath);
       bus.publish({ type: 'change', path: path.relative(contentRoot, filePath), entityId: slug });
 
