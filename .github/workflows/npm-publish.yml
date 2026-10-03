@@ -29,12 +29,14 @@ jobs:
       - run: npm install -g npm@latest
       - name: Build publishable packages
         run: |
-          for pkg in contracts filter-engine provider-http provider-localstorage board-ui; do
+          for pkg in contracts filter-engine core provider-http provider-localstorage board-ui; do
             pnpm --filter "@awesome-markdown/$pkg" build
           done
       - name: Publish changed packages (OIDC trusted publishing, no stored token)
         run: |
-          for pkg in contracts filter-engine provider-http provider-localstorage board-ui; do
+          # `pnpm pack` rewrites `workspace:*` deps to real versions; a plain
+          # `npm publish` in the package dir would publish them verbatim.
+          for pkg in contracts filter-engine core provider-http provider-localstorage board-ui; do
             dir="packages/$pkg"
             name=$(node -p "require('./$dir/package.json').name")
             local_version=$(node -p "require('./$dir/package.json').version")
@@ -43,7 +45,8 @@ jobs:
               echo "skip $name@$local_version (already published)"
               continue
             fi
-            (cd "$dir" && npm publish --access public)
+            tarball=$(cd "$dir" && pnpm pack --pack-destination "$RUNNER_TEMP" | tail -n 1)
+            npm publish "$tarball" --access public
           done
       - name: Create GitHub Release
         env:
