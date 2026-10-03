@@ -20,6 +20,49 @@ import { createHttpProvider } from '@awesome-markdown/provider-http';
 const provider = createHttpProvider({ baseUrl: 'http://localhost:3000' });
 ```
 
+## Authentication
+
+```typescript
+const provider = createHttpProvider({
+  baseUrl: 'https://app.example.com/api/v1/w/<workspaceId>',
+  // Sent as `Authorization: Bearer <token>` on every HTTP request.
+  getToken: async () => accessToken,
+  // Optional: SSE-only credential, e.g. a short-lived single-use ticket.
+  // Called on every (re)connect. Falls back to `getToken` when omitted.
+  getSseToken: async () => (await mintTicket()).ticket,
+  // Optional: query parameter for the SSE credential (default `'token'`).
+  sseTokenParam: 'ticket',
+});
+```
+
+`EventSource` cannot send headers, so the SSE credential travels in the query
+string (`/subscribe?<sseTokenParam>=<value>`, URL-encoded). Prefer
+`getSseToken` with short-lived tickets over putting a long-lived access token
+in URLs. If fetching the credential fails, the client retries with the usual
+backoff.
+
+## Errors
+
+Non-2xx responses throw `ProviderHttpError` with `status`, the raw `body`, the
+server's `error` message, and `code` — the machine-readable
+`ErrorResponse.code` when present:
+
+```typescript
+import { ErrorCodeSchema } from '@awesome-markdown/contracts';
+import { ProviderHttpError } from '@awesome-markdown/provider-http';
+
+try {
+  await provider.createItem(req);
+} catch (err) {
+  if (!(err instanceof ProviderHttpError)) throw err;
+  const code = ErrorCodeSchema.safeParse(err.code);
+  if (code.success && code.data === 'plan_limit_exceeded') showUpgrade();
+}
+```
+
+`code` is typed `string | undefined`; servers may send codes newer than this
+package's `ErrorCodeSchema`.
+
 ## Connection State
 
 The HTTP provider exposes connection-state methods beyond the base interface:

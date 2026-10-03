@@ -13,8 +13,18 @@ export type EventSourceCtor = new (url: string) => EventSource;
 export interface SseClientConfig {
   url: string;
   EventSourceCtor?: EventSourceCtor;
+  /** Credential appended to the SSE URL (EventSource can't send headers). */
   getToken?: () => Promise<string>;
+  /**
+   * SSE-specific credential (e.g. a short-lived, single-use ticket). Takes
+   * precedence over `getToken` for the SSE URL; called on every (re)connect.
+   */
+  getSseToken?: () => Promise<string>;
+  /** Query parameter carrying the credential. Default: `'token'`. */
+  tokenParam?: string;
 }
+
+const DEFAULT_TOKEN_PARAM = 'token';
 
 // ---------------------------------------------------------------------------
 // Backoff constants
@@ -23,6 +33,11 @@ export interface SseClientConfig {
 const BASE_DELAY_MS = 500;
 const MAX_DELAY_MS = 30_000;
 const JITTER_FACTOR = 0.25;
+
+function withQueryParam(url: string, name: string, value: string): string {
+  const sep = url.includes('?') ? '&' : '?';
+  return `${url}${sep}${encodeURIComponent(name)}=${encodeURIComponent(value)}`;
+}
 
 // ---------------------------------------------------------------------------
 // SseClient
@@ -48,11 +63,13 @@ export class SseClient {
   private readonly EsCtor: EventSourceCtor;
   private readonly url: string;
   private readonly getToken: (() => Promise<string>) | undefined;
+  private readonly tokenParam: string;
 
   constructor(config: SseClientConfig) {
     this.url = config.url;
     this.EsCtor = config.EventSourceCtor ?? EventSource;
-    this.getToken = config.getToken;
+    this.getToken = config.getSseToken ?? config.getToken;
+    this.tokenParam = config.tokenParam ?? DEFAULT_TOKEN_PARAM;
   }
 
   // -- Public API ------------------------------------------------------------
@@ -121,8 +138,18 @@ export class SseClient {
     this.setState('connecting');
     let sseUrl = this.url;
     if (this.getToken) {
-      const token = await this.getToken();
-      sseUrl = `${sseUrl}?token=${token}`;
+      let token: string;
+      try {
+        token = await this.getToken();
+      } catch {
+        // Credential fetch failed (e.g. ticket endpoint unreachable) — retry
+        // with backoff instead of leaving the client stuck in 'connecting'.
+        if (!this.stopped && this.state === 'connecting') this.scheduleReconnect();
+        return;
+      }
+      // idle()/stop() may have run while the credential was in flight.
+      if (this.stopped || this.state !== 'connecting') return;
+      sseUrl = withQueryParam(sseUrl, this.tokenParam, token);
     }
     const es = new this.EsCtor(sseUrl);
     this.es = es;
