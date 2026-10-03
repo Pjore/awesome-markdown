@@ -1,46 +1,28 @@
-import React, { createContext, useContext, useState } from 'react';
+import React, { useState } from 'react';
 import { Routes, Route, Link } from 'react-router-dom';
+import {
+  BoardListPage,
+  BoardPage,
+  BreadcrumbContext,
+  ConflictBanner,
+  ConflictProvider,
+  ItemEditorPage,
+} from '@awesome-markdown/board-ui';
+import type { BreadcrumbSegment } from '@awesome-markdown/board-ui';
 import { TopBar } from './app-shell/TopBar.js';
 import { useActiveProvider } from './providers/active-provider.js';
-import { BoardListPage } from './pages/BoardListPage.js';
-import { BoardPage } from './pages/BoardPage.js';
-import { ItemEditorPage } from './pages/ItemEditorPage.js';
 import { SettingsPage } from './pages/SettingsPage.js';
-import { ConflictProvider } from './sync/conflict-store.js';
-import { ConflictBanner } from './components/ConflictBanner.js';
+import { ReactRouterAdapterProvider } from './router/react-router-adapter.js';
+import { getSyncEngineUrl } from './sync/sync-engine-url.js';
 
 /**
- * Context for breadcrumb segments. Pages can push their segment via this context.
- * Each segment: { label: string; to?: string }
- */
-export interface BreadcrumbSegment {
-  label: string;
-  to?: string;
-  /** When true, render `→` before this segment instead of `/` */
-  arrow?: boolean;
-}
-
-export const BreadcrumbContext = createContext<{
-  segments: BreadcrumbSegment[];
-  setSegments: (s: BreadcrumbSegment[]) => void;
-}>({
-  segments: [],
-  setSegments: () => undefined,
-});
-
-/**
- * Route-aware breadcrumb hook — used by pages to push their path segment.
- */
-export function useBreadcrumb(): { setSegments: (s: BreadcrumbSegment[]) => void } {
-  return useContext(BreadcrumbContext);
-}
-
-/**
- * Top-level application component.
+ * Top-level application shell.
  * Renders the app chrome (header with connection indicator + theme toggle)
- * and the routed content area:
+ * and routes to the board-ui pages:
  *   /              → BoardListPage (lists all boards)
  *   /boards/:slug  → BoardPage (single board by slug)
+ *   /items/:slug   → ItemEditorPage
+ *   /settings      → SettingsPage (kanban-ui only: provider selection)
  */
 export function App(): React.ReactElement {
   const { isSwitching } = useActiveProvider();
@@ -95,17 +77,19 @@ export function App(): React.ReactElement {
   );
 
   return (
-    <BreadcrumbContext.Provider
-      value={{ segments: breadcrumbSegments, setSegments: setBreadcrumbSegments }}
-    >
-      <ConflictProvider>
-        <TopBar />
-        <ConflictBanner />
-        <div className="flex-1 overflow-hidden">
-          {content}
-        </div>
-      </ConflictProvider>
-    </BreadcrumbContext.Provider>
+    <ReactRouterAdapterProvider>
+      <BreadcrumbContext.Provider
+        value={{ segments: breadcrumbSegments, setSegments: setBreadcrumbSegments }}
+      >
+        <ConflictProvider syncEngineUrl={getSyncEngineUrl()}>
+          <TopBar />
+          <ConflictBanner />
+          <div className="flex-1 overflow-hidden">
+            {content}
+          </div>
+        </ConflictProvider>
+      </BreadcrumbContext.Provider>
+    </ReactRouterAdapterProvider>
   );
 }
 

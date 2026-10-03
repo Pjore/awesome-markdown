@@ -1,8 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import type { Item, Mutation } from '@awesome-markdown/contracts';
 import { useProvider } from '../provider/ProviderContext.js';
-import { useBreadcrumb } from '../App.js';
+import { useBreadcrumb } from '../breadcrumb.js';
+import { useRouterAdapter } from '../router/RouterAdapter.js';
 import { BoardAssigneeField } from '../components/BoardAssigneeField.js';
 import { DeleteItemConfirmDialog } from '../components/DeleteItemConfirmDialog.js';
 import { ItemEditorActions } from '../components/ItemEditorActions.js';
@@ -11,21 +11,16 @@ import { useProviderSubscribe } from '../state/useProviderSubscribe.js';
 import { useBoardRender } from '../state/useBoardRender.js';
 import { PropertyValueDisplay } from '../lib/property-display.js';
 
-interface EditorLocationState {
-  boardSlug?: string;
-  from?: string;
-}
-
 export function ItemEditorPage(): React.ReactElement {
-  const { slug } = useParams<{ slug: string }>();
-  const location = useLocation();
-  const navigate = useNavigate();
+  const router = useRouterAdapter();
+  const { slug } = router.useParams();
+  const searchParams = router.useSearchParams();
+  const { navigate } = router;
   const provider = useProvider();
   const { setSegments } = useBreadcrumb();
 
-  const state = (location.state ?? {}) as EditorLocationState;
-  const boardSlug = state.boardSlug ?? new URLSearchParams(location.search).get('board') ?? undefined;
-  const backPath = state.from ?? (boardSlug ? `/boards/${boardSlug}` : '/');
+  const boardSlug = searchParams.get('board') ?? undefined;
+  const backPath = boardSlug ? `/boards/${boardSlug}` : '/';
   const { render: boardRender } = useBoardRender(boardSlug ?? '');
   const detailLayout = boardRender?.board.detailLayout ?? [];
 

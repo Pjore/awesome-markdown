@@ -1,7 +1,7 @@
 import React, { useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { BreadcrumbContext } from '../App.js';
-import type { BreadcrumbSegment } from '../App.js';
+import { BreadcrumbContext } from '@awesome-markdown/board-ui';
+import type { BreadcrumbSegment } from '@awesome-markdown/board-ui';
 
 /**
  * Route-aware breadcrumb rendered in the top bar center.

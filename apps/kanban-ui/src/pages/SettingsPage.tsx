@@ -1,9 +1,9 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { urlValidationMessage } from '../settings/url-validation.js';
-import type { ProviderSettings } from '../settings/provider-settings.js';
+import type { PersistedProviderSettings } from '../settings/provider-settings.js';
 import { useActiveProvider } from '../providers/active-provider.js';
-import { useBreadcrumb } from '../App.js';
+import { useBreadcrumb } from '@awesome-markdown/board-ui';
 
 /**
  * Full-page settings — route /settings.
@@ -15,7 +15,11 @@ export function SettingsPage(): React.ReactElement {
   const navigate = useNavigate();
   const { setSegments } = useBreadcrumb();
 
-  const [kind, setKind] = useState<ProviderSettings['kind']>(activeSettings.kind);
+  // Runtime-injected cloud settings aren't user-selectable; the form starts
+  // from localStorage so the user can still opt out of the host's backend.
+  const [kind, setKind] = useState<PersistedProviderSettings['kind']>(
+    activeSettings.kind === 'cloud' ? 'localStorage' : activeSettings.kind,
+  );
   const [baseUrl, setBaseUrl] = useState(
     activeSettings.kind === 'http'
       ? activeSettings.baseUrl
@@ -56,7 +60,7 @@ export function SettingsPage(): React.ReactElement {
   const handleSave = useCallback(async () => {
     setSaving(true);
     try {
-      const settings: ProviderSettings =
+      const settings: PersistedProviderSettings =
         kind === 'http' ? { kind: 'http', baseUrl: baseUrl.trim() } : { kind: 'localStorage' };
       await rebind(settings);
       navigate('/');
@@ -224,9 +228,9 @@ export function SettingsPage(): React.ReactElement {
         >
           Current:{' '}
           <strong>
-            {activeSettings.kind === 'http'
-              ? `HTTP/SSE — ${activeSettings.baseUrl}`
-              : 'localStorage'}
+            {activeSettings.kind === 'localStorage'
+              ? 'localStorage'
+              : `${activeSettings.kind === 'cloud' ? 'cloud (host-managed)' : 'HTTP/SSE'} — ${activeSettings.baseUrl}`}
           </strong>
         </p>
 

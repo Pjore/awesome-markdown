@@ -1,10 +1,10 @@
 import React, { useEffect, useState, useCallback, useRef } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import type { Board } from '@awesome-markdown/contracts';
 import { useProvider } from '../provider/ProviderContext.js';
 import { useProviderSubscribe } from '../state/useProviderSubscribe.js';
 import { InlineTextInput } from '../board/layout/InlineControls.js';
 import { slugify, uniqueSlug } from '../board/layout/axis-defaults.js';
+import { RouterLink, useRouterAdapter } from '../router/RouterAdapter.js';
 
 /**
  * Board list page — rendered at route `/`.
@@ -14,7 +14,7 @@ import { slugify, uniqueSlug } from '../board/layout/axis-defaults.js';
  */
 export function BoardListPage(): React.ReactElement {
   const provider = useProvider();
-  const navigate = useNavigate();
+  const { navigate } = useRouterAdapter();
   const [boards, setBoards] = useState<Board[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'error'>('loading');
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
@@ -147,7 +147,7 @@ export function BoardListPage(): React.ReactElement {
         <ul className="space-y-3" style={{ listStyle: 'none', padding: 0, margin: 0 }} data-testid="board-list-items">
           {boards.map((board) => (
             <li key={board.slug}>
-              <Link
+              <RouterLink
                 to={`/boards/${board.slug}`}
                 data-testid={`board-link-${board.slug}`}
                 onMouseEnter={() => setHoveredSlug(board.slug)}
@@ -198,7 +198,7 @@ export function BoardListPage(): React.ReactElement {
                 >
                   /boards/{board.slug}
                 </span>
-              </Link>
+              </RouterLink>
             </li>
           ))}
         </ul>

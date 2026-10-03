@@ -1,15 +1,15 @@
 import React, { useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
 import { Board } from '../board/Board.js';
 import { useBoardRender } from '../state/useBoardRender.js';
-import { useBreadcrumb } from '../App.js';
+import { useBreadcrumb } from '../breadcrumb.js';
+import { RouterLink, useRouterAdapter } from '../router/RouterAdapter.js';
 
 /**
  * Board page — rendered at route `/boards/:slug`.
  * Loads the board's render envelope and renders the full kanban board.
  */
 export function BoardPage(): React.ReactElement {
-  const { slug = '' } = useParams<{ slug: string }>();
+  const { slug = '' } = useRouterAdapter().useParams();
   const { status, render, homeless, refetch } = useBoardRender(slug);
   const { setSegments } = useBreadcrumb();
 
@@ -43,7 +43,7 @@ export function BoardPage(): React.ReactElement {
         <p style={{ color: 'var(--ink-muted)', marginBottom: '24px', maxWidth: '360px' }}>
           No board with this slug exists in the current provider, or it failed to load.
         </p>
-        <Link
+        <RouterLink
           to="/"
           style={{
             padding: '8px 16px',
@@ -56,7 +56,7 @@ export function BoardPage(): React.ReactElement {
           data-testid="back-to-list"
         >
           ← all boards
-        </Link>
+        </RouterLink>
       </div>
     );
   }
