@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "types": []
+  },
+  "references": [
+    { "path": "../../packages/contracts" },
+    { "path": "../../packages/filter-engine" }
+  ],
+  "include": ["src/**/*.ts"]
+}

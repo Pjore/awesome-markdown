@@ -14,9 +14,11 @@ Monorepo with pnpm workspaces:
 
 - `packages/contracts` — shared Zod v4 schemas and TypeScript types
 - `packages/filter-engine` — isomorphic filter evaluation and mutation derivation
+- `packages/core` — backend-agnostic render/homeless, `applyMutations`, entity (de)serialization (shared by providers)
 - `packages/provider-localstorage` — browser localStorage provider
 - `packages/provider-http` — HTTP client provider
-- `apps/kanban-ui` — React 19 + Vite 8 SPA
+- `packages/board-ui` — router-agnostic React board surface (pages, DnD, styles)
+- `apps/kanban-ui` — React 19 + Vite 8 SPA shell around `board-ui`
 - `apps/provider-fs` — Fastify sidecar for markdown content
 - `apps/sync-engine` — file watcher, git automation, and SSE server
 

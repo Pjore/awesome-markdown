@@ -10,6 +10,8 @@ import {
   PatchItemRequestSchema,
   CreateAxisRequestSchema,
   CreateBoardRequestSchema,
+  PatchAxisRequestSchema,
+  PatchBoardRequestSchema,
 } from '@awesome-markdown/contracts';
 import type {
   Board,
@@ -21,6 +23,8 @@ import type {
   PatchItemRequest,
   CreateAxisRequest,
   CreateBoardRequest,
+  PatchAxisRequest,
+  PatchBoardRequest,
 } from '@awesome-markdown/contracts';
 import { z } from 'zod';
 import { endpoints } from './endpoints.js';
@@ -29,11 +33,19 @@ import { endpoints } from './endpoints.js';
 // Error type
 // ---------------------------------------------------------------------------
 
+/**
+ * Non-2xx response from the provider.
+ *
+ * `code` is the machine-readable `ErrorResponse.code` from the response body
+ * when present (e.g. `not_found`, `forbidden`, `plan_limit_exceeded`) — narrow
+ * it with `ErrorCodeSchema.safeParse(err.code)` from contracts.
+ */
 export class ProviderHttpError extends Error {
   constructor(
     public readonly status: number,
     public readonly body: unknown,
     message: string,
+    public readonly code?: string,
   ) {
     super(message);
     this.name = 'ProviderHttpError';
@@ -64,8 +76,8 @@ async function parseErrorBody(res: Response): Promise<ProviderHttpError> {
     body = null;
   }
   const parsed = ErrorResponseSchema.safeParse(body);
-  const message = parsed.success ? parsed.data.error : `HTTP ${res.status}`;
-  return new ProviderHttpError(res.status, body, message);
+  if (!parsed.success) return new ProviderHttpError(res.status, body, `HTTP ${res.status}`);
+  return new ProviderHttpError(res.status, body, parsed.data.error, parsed.data.code);
 }
 
 const JSON_HEADERS = {
@@ -149,7 +161,23 @@ export class SidecarHttpClient {
     );
   }
 
+  async patchBoard(slug: string, req: PatchBoardRequest, signal?: AbortSignal): Promise<Board> {
+    return this.req(
+      endpoints.board(this.base, slug),
+      { method: 'PATCH', body: JSON.stringify(PatchBoardRequestSchema.parse(req)), signal },
+      (d) => BoardSchema.parse(d),
+    );
+  }
+
   // -- Axes ------------------------------------------------------------------
+
+  async patchAxis(slug: string, req: PatchAxisRequest, signal?: AbortSignal): Promise<Axis> {
+    return this.req(
+      endpoints.axis(this.base, slug),
+      { method: 'PATCH', body: JSON.stringify(PatchAxisRequestSchema.parse(req)), signal },
+      (d) => AxisSchema.parse(d),
+    );
+  }
 
   async listAxes(signal?: AbortSignal): Promise<Axis[]> {
     return this.req(

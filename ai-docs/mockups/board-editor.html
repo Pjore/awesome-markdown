@@ -1,0 +1,749 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mockup — board editor (create / edit)</title>
+<style>
+@font-face { font-family: 'JetBrains Mono'; src: url('../../apps/kanban-ui/public/fonts/JetBrainsMono-Regular.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'JetBrains Mono'; src: url('../../apps/kanban-ui/public/fonts/JetBrainsMono-Medium.woff2') format('woff2'); font-weight: 500; }
+@font-face { font-family: 'Inter Tight'; src: url('../../apps/kanban-ui/public/fonts/InterTight-Regular.woff2') format('woff2'); font-weight: 400; }
+@font-face { font-family: 'Inter Tight'; src: url('../../apps/kanban-ui/public/fonts/InterTight-Medium.woff2') format('woff2'); font-weight: 500; }
+
+:root {
+  --bg: #FAFAF7; --surface: #FAFAF7; --ink: #111111; --ink-muted: #6B6760;
+  --border: #E6E4DD; --accent: #FFE94A; --on-accent: #111111;
+  --font-mono: 'JetBrains Mono', monospace; --font-sans: 'Inter Tight', sans-serif;
+  --drawer: 460px;
+}
+[data-theme="dark"] {
+  --bg: #0E0E0E; --surface: #0E0E0E; --ink: #E8E8E8; --ink-muted: #8A867E;
+  --border: #262626; --accent: #F5E663; --on-accent: #111111;
+}
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 1.45; }
+button, input, select, textarea { border-radius: 0; font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code, .mono { font-family: var(--font-mono); }
+code { font-size: 12px; }
+.muted { color: var(--ink-muted); }
+
+/* Reviewer-only strip, not part of the product */
+.mockbar { display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; padding: 6px 40px; background: var(--ink); color: var(--bg); font: 11px var(--font-mono); }
+.mockbar button { background: none; border: 1px solid currentColor; color: inherit; padding: 2px 8px; cursor: pointer; font-size: 11px; }
+.mockbar button.on { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.mockbar .sep { opacity: .4; }
+
+.topbar { height: 48px; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 40px; border-bottom: 1px solid var(--border); font: 12px var(--font-mono); background: var(--bg); }
+.chrome { position: sticky; top: 0; z-index: 20; }
+.topbar .mark { font-weight: 500; }
+.topbar .crumb a { color: var(--ink-muted); text-decoration: none; }
+.topbar .right { justify-self: end; display: flex; gap: 8px; align-items: center; color: var(--ink-muted); }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ink); display: inline-block; }
+
+main { padding: 28px 40px 96px; transition: margin-right .15s; }
+main.with-drawer { margin-right: var(--drawer); }
+
+/* Board header */
+.title-input { width: 100%; max-width: 720px; font: 500 30px/1.2 var(--font-sans); border: 0; border-bottom: 1px solid transparent; background: transparent; padding: 2px 0 6px; }
+.title-input:hover { border-bottom-color: var(--border); }
+.title-input:focus { outline: none; border-bottom-color: var(--ink); }
+.desc-input { width: 100%; max-width: 720px; border: 0; background: transparent; padding: 2px 0; font-size: 14px; color: var(--ink-muted); }
+.desc-input:focus { outline: none; color: var(--ink); }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 20px; align-items: center; font: 12px var(--font-mono); color: var(--ink-muted); margin: 10px 0 28px; }
+.meta input { font: 12px var(--font-mono); border: 0; border-bottom: 1px dashed var(--ink-muted); background: transparent; width: 18ch; padding: 0; color: var(--ink); }
+.meta b { color: var(--ink); font-weight: 400; }
+
+.edit { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border: 1px solid transparent; background: none; cursor: pointer; color: var(--ink-muted); padding: 0; flex: none; }
+.edit:hover { color: var(--ink); border-color: var(--border); }
+.edit.on { color: var(--on-accent); background: var(--accent); }
+.edit svg { width: 12px; height: 12px; }
+
+/* Board canvas */
+.grid { display: grid; gap: 8px; align-items: stretch; overflow-x: auto; padding-bottom: 4px; }
+.corner { }
+.colh, .laneh { position: relative; font: 500 11px var(--font-mono); user-select: none; }
+.colh { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 6px; align-items: center; padding: 0 0 6px; border-bottom: 1px solid var(--ink); text-transform: uppercase; letter-spacing: .06em; cursor: grab; }
+.colh small, .laneh small { grid-column: 1 / -1; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--ink-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.laneh { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 2px 6px; align-content: start; align-items: center; padding: 8px 6px 8px 0; border-top: 1px solid var(--border); cursor: grab; }
+.grip { color: var(--ink-muted); font-size: 12px; visibility: hidden; }
+.colh:hover .grip, .laneh:hover .grip { visibility: visible; }
+.sel.colh { box-shadow: inset 0 -3px 0 var(--accent); }
+.sel.laneh { box-shadow: inset 3px 0 0 var(--accent); padding-left: 8px; }
+.ghost { cursor: default; color: var(--ink-muted); font-weight: 400; text-transform: none; letter-spacing: 0; }
+.dragging { opacity: .4; }
+.colh.drop-before::before, .colh.drop-after::after { content: ''; position: absolute; top: -4px; bottom: -4px; width: 2px; background: var(--accent); outline: 1px solid var(--ink); }
+.colh.drop-before::before { left: -5px; } .colh.drop-after::after { right: -5px; }
+.laneh.drop-before::before, .laneh.drop-after::after { content: ''; position: absolute; left: 0; right: -8px; height: 2px; background: var(--accent); outline: 1px solid var(--ink); }
+.laneh.drop-before::before { top: -5px; } .laneh.drop-after::after { bottom: -5px; }
+.rename { font: 500 11px var(--font-mono); text-transform: uppercase; letter-spacing: .06em; border: 0; border-bottom: 1px solid var(--accent); background: transparent; padding: 0; width: 100%; min-width: 0; }
+.rename:focus { outline: none; }
+.laneh .rename { text-transform: none; letter-spacing: 0; }
+
+.plus { font: 16px var(--font-mono); border: 1px dashed var(--ink-muted); background: transparent; color: var(--ink-muted); cursor: pointer; padding: 0; }
+.plus:hover { border-style: solid; border-color: var(--ink); color: var(--ink); background: color-mix(in srgb, var(--accent) 35%, transparent); }
+.plus-col { width: 36px; align-self: end; height: 36px; margin-bottom: 1px; }
+.plus-row { height: 36px; }
+
+.cell { border: 1px solid var(--border); min-height: 84px; padding: 6px; display: flex; flex-direction: column; gap: 4px; }
+.cell.ro { border-style: dashed; border-color: var(--ink-muted); }
+.cell .ro-tag { font: 10px var(--font-mono); color: var(--ink-muted); }
+.card { border: 1px solid var(--border); padding: 5px 8px; font-size: 13px; background: var(--surface); }
+.card .t { font: 10px var(--font-mono); color: var(--ink-muted); display: block; }
+.more { font: 11px var(--font-mono); color: var(--ink-muted); }
+.homeless { margin-top: 20px; border-top: 1px solid var(--border); padding-top: 10px; font-size: 12px; }
+.hint { font: 11px var(--font-mono); color: var(--ink-muted); margin-top: 14px; }
+
+/* Drawer */
+.drawer { position: fixed; top: var(--chrome, 78px); right: 0; bottom: 56px; width: var(--drawer); border-left: 1px solid var(--ink); background: var(--bg); overflow: auto; z-index: 15; }
+.drawer-h { position: sticky; top: 0; background: var(--bg); display: flex; align-items: baseline; gap: 10px; padding: 16px 20px 12px; border-bottom: 1px solid var(--border); z-index: 2; }
+.drawer-h .kind { font: 11px var(--font-mono); color: var(--ink-muted); }
+.drawer-h h3 { font: 500 17px var(--font-sans); margin: 0; }
+.drawer-h .x { margin-left: auto; }
+.drawer-b { padding: 16px 20px 24px; }
+.sub { padding: 16px 0; border-top: 1px dashed var(--border); }
+.sub:first-child { border-top: 0; padding-top: 0; }
+h4 { font: 500 12px var(--font-mono); margin: 0 0 6px; }
+.help { color: var(--ink-muted); font-size: 13px; margin: 0 0 10px; }
+.warn { font-size: 13px; margin: 0 0 10px; padding: 8px 10px; border: 1px dashed var(--ink-muted); }
+.notice { font-size: 13px; padding: 10px 12px; border-left: 3px solid var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); margin-bottom: 16px; }
+.field-row { display: flex; gap: 10px; flex-wrap: wrap; }
+.field { display: flex; flex-direction: column; gap: 4px; flex: 1; min-width: 150px; }
+.field.narrow { flex: 0 1 auto; min-width: 0; }
+.lbl { font: 11px var(--font-mono); color: var(--ink-muted); }
+.field input, .field select { border: 1px solid var(--border); background: transparent; padding: 6px 8px; font-size: 13px; }
+.field input.sans { font-family: var(--font-sans); font-size: 14px; }
+.static { padding: 6px 0; font-size: 12px; color: var(--ink-muted); }
+.segs { display: inline-flex; margin-bottom: 10px; flex-wrap: wrap; }
+.seg { font: 12px var(--font-mono); border: 1px solid var(--border); background: transparent; padding: 5px 10px; cursor: pointer; margin-left: -1px; }
+.seg:first-child { margin-left: 0; }
+.seg.on { background: var(--ink); color: var(--bg); border-color: var(--ink); position: relative; }
+.default-tag { font: 10px var(--font-mono); color: var(--ink-muted); border: 1px solid var(--border); padding: 0 4px; margin-left: 6px; vertical-align: 1px; }
+.fb { display: flex; flex-direction: column; gap: 6px; }
+.fb-head { font-size: 13px; display: flex; gap: 6px; align-items: center; }
+.fb-head select { border: 1px solid var(--border); background: transparent; padding: 2px 4px; font: 12px var(--font-mono); }
+.fb-row { display: grid; grid-template-columns: minmax(0, 1fr) 118px minmax(0, 1fr) 22px; gap: 6px; }
+.fb-row input, .fb-row select, .wod-row input, .wod-row select { border: 1px solid var(--border); background: transparent; padding: 5px 7px; font: 12px var(--font-mono); min-width: 0; }
+.fb-row .joiner { grid-column: 1 / -1; font: 11px var(--font-mono); color: var(--ink-muted); padding-left: 8px; }
+.wod-row { display: grid; grid-template-columns: 84px minmax(0, 1fr) minmax(0, 1fr) 22px; gap: 6px; margin-bottom: 6px; }
+.x { border: 0; background: none; cursor: pointer; color: var(--ink-muted); font-size: 16px; padding: 0; }
+.x:hover { color: var(--ink); }
+.fb-foot { display: flex; justify-content: space-between; align-items: baseline; font: 11px var(--font-mono); color: var(--ink-muted); }
+.btn { font: 12px var(--font-mono); border: 1px solid var(--border); background: transparent; padding: 6px 12px; cursor: pointer; }
+.btn:hover { border-color: var(--ink); }
+.btn.primary { background: var(--ink); color: var(--bg); border-color: var(--ink); }
+.btn.primary:disabled { opacity: .35; cursor: not-allowed; }
+.link { font: 12px var(--font-mono); background: none; border: 0; padding: 4px 0; cursor: pointer; color: var(--ink); text-decoration: underline; text-underline-offset: 3px; text-decoration-color: var(--border); }
+.link:hover { text-decoration-color: var(--ink); }
+.drawer-actions { display: flex; gap: 12px; align-items: center; padding-top: 14px; border-top: 1px dashed var(--border); }
+.file { margin-bottom: 20px; }
+.file-h { display: flex; gap: 10px; align-items: baseline; font: 12px var(--font-mono); padding: 6px 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+.file-h .st { font-size: 11px; padding: 0 5px; border: 1px solid var(--ink); }
+.file-h .st.new { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.file-h .note { color: var(--ink-muted); font-size: 11px; }
+pre { font: 12px/1.6 var(--font-mono); margin: 8px 0 0; white-space: pre-wrap; }
+
+.savebar { position: fixed; left: 0; right: 0; bottom: 0; height: 56px; border-top: 1px solid var(--border); background: var(--bg); display: flex; align-items: center; gap: 16px; padding: 0 40px; z-index: 20; font: 12px var(--font-mono); }
+.savebar .sum { color: var(--ink-muted); margin-right: auto; }
+.savebar .sum b { color: var(--ink); font-weight: 500; }
+</style>
+</head>
+<body>
+
+<div class="chrome" id="chrome">
+<div class="mockbar">
+  <span>mockup · board editor</span><span class="sep">|</span>
+  <span>state</span>
+  <button type="button" data-act="mode" data-mode="edit" id="m-edit">edit board-dev</button>
+  <button type="button" data-act="mode" data-mode="create" id="m-create">create new</button>
+  <span class="sep">|</span>
+  <button type="button" data-act="theme">toggle theme</button>
+  <span class="sep">|</span>
+  <span>try: + to add · drag headers to reorder · pencil to configure · double-click a title to rename</span>
+</div>
+
+<header class="topbar">
+  <span class="mark">awesome-markdown</span>
+  <span class="crumb" id="crumb"></span>
+  <span class="right"><span class="dot" title="synced"></span> synced</span>
+</header>
+</div>
+
+<main id="main"></main>
+<aside class="drawer" id="drawer" hidden></aside>
+<footer class="savebar" id="savebar"></footer>
+
+<datalist id="props"></datalist>
+<div id="vals"></div>
+
+<script>
+// ---------------------------------------------------------------- mock data
+const ITEMS = [
+  { slug: 'fix-auth-bug', title: 'Fix auth token refresh', project: 'dev', status: 'doing', priority: 'high', tags: ['urgent', 'auth'], assignee: 'anna', ord: 1, updatedAt: '2026-09-29' },
+  { slug: 'refactor-db', title: 'Refactor DB access layer', project: 'dev', status: 'done', priority: 'high', tags: ['db'], assignee: 'erik', ord: 2, updatedAt: '2026-09-20' },
+  { slug: 'add-sso', title: 'Add SSO login', project: 'dev', status: 'todo', priority: 'high', tags: ['auth', 'urgent'], assignee: 'anna', ord: 3, updatedAt: '2026-09-27' },
+  { slug: 'flaky-ci', title: 'Quarantine flaky CI job', project: 'dev', status: 'todo', priority: 'medium', tags: ['ci', 'urgent'], ord: 4, updatedAt: '2026-09-28' },
+  { slug: 'upgrade-node', title: 'Upgrade to Node 24', project: 'dev', status: 'complete', priority: 'high', tags: [], assignee: 'erik', ord: 5, updatedAt: '2026-09-10' },
+  { slug: 'rate-limit', title: 'Rate-limit public API', project: 'dev', status: 'doing', priority: 'high', tags: [], ord: 6, updatedAt: '2026-09-25' },
+  { slug: 'docs-cleanup', title: 'Clean up README', project: 'dev', status: 'todo', priority: 'low', tags: [], ord: 7, updatedAt: '2026-09-18' },
+  { slug: 'onboard-ml', title: 'Onboard ML team', project: 'marketing', status: 'doing', priority: 'low', tags: [], ord: 8, updatedAt: '2026-09-26' },
+  { slug: 'launch-post', title: 'Write launch post', project: 'marketing', status: 'todo', priority: 'high', tags: ['urgent'], assignee: 'lisa', ord: 9, updatedAt: '2026-09-29' },
+  { slug: 'press-kit', title: 'Assemble press kit', project: 'marketing', status: 'review', priority: 'medium', tags: [], assignee: 'lisa', ord: 10, updatedAt: '2026-09-24' },
+];
+const PROPS = ['status', 'priority', 'tags', 'project', 'assignee', 'title', 'updatedAt'];
+
+const C = (p, o, v) => ({ p, o, v });
+const F = (comb, conds) => ({ comb, conds });
+const DEFAULT_ORDER = { mode: 'manual' };
+const LIB = {
+  'all': { title: 'Show all', filter: null, order: { mode: 'manual' }, wod: null },
+  'priority-high': { title: 'High Priority', filter: F('all', [C('priority', 'equals', 'high')]), order: { mode: 'manual' }, wod: null },
+  'tag-urgent': { title: 'Urgent', filter: F('all', [C('tags', 'has', 'urgent')]), order: { mode: 'manual' },
+    wod: [{ op: 'append', path: 'tags', value: 'urgent' }, { op: 'set', path: 'priority', value: 'high' }] },
+  'status-todo': { title: 'To Do', filter: F('all', [C('status', 'equals', 'todo')]), order: { mode: 'manual' }, wod: null },
+  'status-doing': { title: 'Doing', filter: F('all', [C('status', 'equals', 'doing')]), order: { mode: 'manual' }, wod: null },
+  'status-done': { title: 'Done', filter: F('any', [C('status', 'equals', 'done'), C('status', 'equals', 'complete')]), order: { mode: 'default' }, wod: null },
+};
+const OTHER_BOARDS = { 'board-all': { columns: ['status-todo', 'status-doing', 'status-done'], swimlanes: ['all'] } };
+
+const OPS = [['equals', 'is'], ['in', 'is one of'], ['has', 'contains'], ['lacks', "doesn't contain"], ['exists_t', 'is set'], ['exists_f', 'is not set'],
+  ['gt', '>'], ['gte', '≥'], ['lt', '<'], ['lte', '≤'], ['matches', 'matches regex']];
+const OPWORD = Object.fromEntries(OPS);
+const PENCIL = '<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M11 2.5l2.5 2.5L5 13.5H2.5V11z"/><path d="M9.5 4l2.5 2.5"/></svg>';
+
+// ---------------------------------------------------------------- state
+let S;
+const clone = (o) => JSON.parse(JSON.stringify(o));
+function init(mode) {
+  S = mode === 'edit' ? {
+    mode, slug: 'board-dev', title: 'Dev Board', desc: 'Development-project items only.',
+    scope: F('all', [C('project', 'equals', 'dev')]),
+    columns: ['priority-high', 'tag-urgent'],
+    swimlanes: ['status-todo', 'status-doing', 'status-done'],
+  } : {
+    mode, slug: 'marketing-launch', title: 'Marketing launch', desc: '',
+    scope: F('all', [C('project', 'equals', 'marketing')]),
+    columns: [], swimlanes: [],
+  };
+  Object.assign(S, { axes: clone(LIB), drawer: null, renaming: null, dirty: new Set(), newAxes: new Set(), boardDirty: false, slugTouched: false });
+  render();
+}
+
+// ---------------------------------------------------------------- domain helpers
+const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const slugify = (t) => (t.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'untitled');
+const listVals = (v) => String(v).split(',').map((s) => s.trim()).filter(Boolean);
+function cmp(a, b) {
+  const na = Number(a), nb = Number(b);
+  if (a !== '' && b !== '' && !isNaN(na) && !isNaN(nb)) return na - nb;
+  return String(a).localeCompare(String(b));
+}
+function evalLeaf(c, it) {
+  if (!c.p) return true;
+  const val = it[c.p];
+  switch (c.o) {
+    case 'equals': return val !== undefined && String(val) === c.v;
+    case 'in': return listVals(c.v).includes(String(val));
+    case 'has': return Array.isArray(val) && val.includes(c.v);
+    case 'lacks': return !(Array.isArray(val) && val.includes(c.v));
+    case 'exists_t': return val !== undefined && val !== null;
+    case 'exists_f': return val === undefined || val === null;
+    case 'gt': return val !== undefined && cmp(val, c.v) > 0;
+    case 'gte': return val !== undefined && cmp(val, c.v) >= 0;
+    case 'lt': return val !== undefined && cmp(val, c.v) < 0;
+    case 'lte': return val !== undefined && cmp(val, c.v) <= 0;
+    case 'matches': try { return new RegExp(c.v).test(String(val ?? '')); } catch { return false; }
+  }
+  return true;
+}
+function evalF(f, it) {
+  if (!f || !f.conds.length) return true;
+  return f.comb === 'any' && f.conds.length > 1 ? f.conds.some((c) => evalLeaf(c, it)) : f.conds.every((c) => evalLeaf(c, it));
+}
+const inScope = (it) => evalF(S.scope, it);
+function condText(c) {
+  if (!c.p) return '…';
+  if (c.o.startsWith('exists')) return `${c.p} ${OPWORD[c.o]}`;
+  if (c.o === 'in') return `${c.p} is ${listVals(c.v).join(' / ') || '…'}`;
+  return `${c.p} ${OPWORD[c.o]} ${c.v || '…'}`;
+}
+function filterSummary(f, none = 'all cards') {
+  if (!f || !f.conds.length) return none;
+  return f.conds.map(condText).join(f.comb === 'any' ? ' or ' : ' and ');
+}
+// Mirrors filter-engine/invertibility.ts
+function derive(f) {
+  if (!f || !f.conds.length) return { ok: true, writes: [] };
+  if (f.comb === 'any' && f.conds.length > 1) return { ok: false, why: '"match any" can\'t tell which condition to make true' };
+  const writes = [];
+  for (const c of f.conds) {
+    if (!c.p) continue;
+    if (c.o === 'equals') writes.push(`set ${c.p}: ${c.v}`);
+    else if (c.o === 'in') {
+      const vs = listVals(c.v);
+      if (vs.length !== 1) return { ok: false, why: `"${c.p} is one of" several values — which one should a drop write?` };
+      writes.push(`set ${c.p}: ${vs[0]}`);
+    } else if (c.o === 'has') writes.push(`append ${c.p}: ${c.v}`);
+    else if (c.o === 'lacks') writes.push(`remove ${c.p}: ${c.v}`);
+    else if (c.o === 'exists_f') writes.push(`delete ${c.p}`);
+    else return { ok: false, why: `"${condText(c)}" describes a range, not a value to write` };
+  }
+  return { ok: true, writes };
+}
+function dropInfo(ax) {
+  if (ax.wod === 'readonly') return { ro: true };
+  if (Array.isArray(ax.wod)) return { ro: false };
+  return { ro: !derive(ax.filter).ok };
+}
+function usage(slug) {
+  const out = [];
+  for (const [b, def] of Object.entries(OTHER_BOARDS)) {
+    if (S.mode === 'edit' && b === S.slug) continue;
+    if (def.columns.includes(slug)) out.push({ board: b, dim: 'column' });
+    if (def.swimlanes.includes(slug)) out.push({ board: b, dim: 'swimlane' });
+  }
+  return out;
+}
+function orderText(o) {
+  if (o.mode === 'manual') return 'manual';
+  if (o.mode === 'property') return `by ${o.by || '…'} ${o.dir === 'desc' ? '↓' : '↑'}`;
+  return 'recently updated';
+}
+function sortItems(items, o) {
+  const arr = [...items];
+  if (o.mode === 'manual') return arr.sort((a, b) => a.ord - b.ord);
+  if (o.mode === 'property' && o.by) {
+    return arr.sort((a, b) => {
+      const va = a[o.by], vb = b[o.by];
+      if (va !== undefined && vb !== undefined) { const r = cmp(va, vb); if (r) return o.dir === 'desc' ? -r : r; }
+      return b.updatedAt.localeCompare(a.updatedAt);
+    });
+  }
+  return arr.sort((a, b) => b.updatedAt.localeCompare(a.updatedAt));
+}
+function uniqueSlug(base, except) {
+  let s = base, n = 2;
+  while (S.axes[s] && s !== except) s = `${base}-${n++}`;
+  return s;
+}
+function getF(key, create) {
+  if (key === 'scope') return S.scope;
+  const ax = S.axes[key.slice(5)];
+  if (!ax.filter && create) ax.filter = F('all', []);
+  return ax.filter;
+}
+function touch(key) {
+  if (key === 'scope') { S.boardDirty = true; return; }
+  const slug = key.startsWith('axis:') ? key.slice(5) : key;
+  if (!S.newAxes.has(slug)) S.dirty.add(slug);
+}
+function isDefault(ax) { return (!ax.filter || !ax.filter.conds.length) && ax.order.mode === 'manual' && !ax.wod; }
+
+// ---------------------------------------------------------------- board canvas
+function colHead(slug, scoped, lanes) {
+  const ax = S.axes[slug];
+  const n = scoped.filter((it) => evalF(ax.filter, it) && lanes.some((l) => evalF(l.filter, it))).length;
+  const sel = S.drawer?.slug === slug && S.drawer.dim === 'columns';
+  const title = S.renaming === slug
+    ? `<input class="rename" data-rename="${slug}" value="${esc(ax.title)}" aria-label="Column title">`
+    : `<span data-act="rename" data-slug="${slug}">${esc(ax.title)} · ${n}</span>`;
+  return `<div class="colh ${sel ? 'sel' : ''}" draggable="${S.renaming !== slug}" data-drag data-dim="columns" data-slug="${slug}">
+    <span class="grip">⠿</span>${title}
+    <button type="button" class="edit ${sel ? 'on' : ''}" data-act="edit" data-dim="columns" data-slug="${slug}" title="Configure column">${PENCIL}</button>
+    <small>${esc(filterSummary(ax.filter))} · ${orderText(ax.order)}${dropInfo(ax).ro ? ' · read-only' : ''}</small>
+  </div>`;
+}
+function laneHead(slug) {
+  const ax = S.axes[slug];
+  const sel = S.drawer?.slug === slug && S.drawer.dim === 'swimlanes';
+  const title = S.renaming === slug
+    ? `<input class="rename" data-rename="${slug}" value="${esc(ax.title)}" aria-label="Swimlane title">`
+    : `<span data-act="rename" data-slug="${slug}">${esc(ax.title)}</span>`;
+  return `<div class="laneh ${sel ? 'sel' : ''}" draggable="${S.renaming !== slug}" data-drag data-dim="swimlanes" data-slug="${slug}">
+    <span class="grip">⠿</span>${title}
+    <button type="button" class="edit ${sel ? 'on' : ''}" data-act="edit" data-dim="swimlanes" data-slug="${slug}" title="Configure swimlane">${PENCIL}</button>
+    <small>${esc(filterSummary(ax.filter))}${dropInfo(ax).ro ? ' · read-only' : ''}</small>
+  </div>`;
+}
+function renderBoard() {
+  const scoped = ITEMS.filter(inScope);
+  const none = { title: '', filter: null, order: { mode: 'default' }, wod: null };
+  const cols = S.columns.length ? S.columns : [null];
+  const lanes = S.swimlanes.length ? S.swimlanes : [null];
+  const laneAx = lanes.map((l) => (l ? S.axes[l] : none));
+  let h = `<div class="grid" style="grid-template-columns: 150px repeat(${cols.length}, minmax(200px, 1fr)) 36px">`;
+  h += '<div class="corner"></div>';
+  for (const c of cols) h += c ? colHead(c, scoped, laneAx) : `<div class="colh ghost">All cards · ${scoped.length}<span></span><span></span><small>add a column to split them</small></div>`;
+  h += `<button type="button" class="plus plus-col" data-act="add" data-dim="columns" title="Add column">+</button>`;
+  lanes.forEach((l, i) => {
+    h += l ? laneHead(l) : `<div class="laneh ghost"><span></span><span class="mono" style="font-size:11px">one row</span></div>`;
+    for (const c of cols) {
+      const cax = c ? S.axes[c] : none;
+      const items = sortItems(scoped.filter((it) => evalF(cax.filter, it) && evalF(laneAx[i].filter, it)), cax.order);
+      const ro = dropInfo(cax).ro || dropInfo(laneAx[i]).ro;
+      h += `<div class="cell ${ro ? 'ro' : ''}">${ro ? '<span class="ro-tag">read-only</span>' : ''}
+        ${items.slice(0, 4).map((it) => `<div class="card">${esc(it.title)}<span class="t">${cax.order.mode === 'property' && cax.order.by ? esc(cax.order.by) + ': ' + esc(it[cax.order.by] ?? '—') : it.status + ' · ' + it.priority}</span></div>`).join('')}
+        ${items.length > 4 ? `<span class="more">+${items.length - 4} more</span>` : ''}</div>`;
+    }
+    h += '<div></div>';
+  });
+  h += `<button type="button" class="plus plus-row" data-act="add" data-dim="swimlanes" title="Add swimlane">+</button></div>`;
+  const allAx = [...(S.columns.length ? S.columns.map((c) => S.axes[c]) : [none])];
+  const homeless = scoped.filter((it) => !allAx.some((a) => evalF(a.filter, it)) || !laneAx.some((a) => evalF(a.filter, it)));
+  h += `<div class="homeless"><span class="mono">homeless · ${homeless.length}</span><span class="muted"> — on the board but in no cell${homeless.length ? ': ' + homeless.map((i) => esc(i.title)).join(', ') : ''}</span></div>`;
+  return h;
+}
+
+function renderMain() {
+  const create = S.mode === 'create';
+  const scopeN = ITEMS.filter(inScope).length;
+  const scopeSel = S.drawer?.kind === 'scope';
+  const main = document.getElementById('main');
+  main.classList.toggle('with-drawer', !!S.drawer);
+  main.innerHTML = `
+    <input class="title-input" data-board="title" value="${esc(S.title)}" placeholder="Board title" aria-label="Board title">
+    <input class="desc-input" data-board="desc" value="${esc(S.desc)}" placeholder="Add a description…" aria-label="Description">
+    <div class="meta">
+      ${create ? `<span>content/<input data-board="slug" id="slug-in" value="${esc(S.slug)}" aria-label="file name">.md</span>` : `<span>content/${S.slug}.md</span>`}
+      <span>cards: <b>${esc(filterSummary(S.scope, 'every item'))}</b> · ${scopeN} of ${ITEMS.length}
+        <button type="button" class="edit ${scopeSel ? 'on' : ''}" data-act="edit-scope" title="Choose which cards are on this board" style="vertical-align:middle">${PENCIL}</button></span>
+    </div>
+    ${renderBoard()}
+    <p class="hint">+ adds a column or swimlane with no filter and manual order · drag a header to reorder · pencil to configure · dashed = can't drop</p>`;
+  const r = main.querySelector('[data-rename]');
+  if (r) { r.focus(); r.select(); }
+}
+
+// ---------------------------------------------------------------- drawer
+function filterBuilder(key, f, noneText) {
+  const conds = f?.conds || [];
+  const joiner = f?.comb === 'any' ? 'or' : 'and';
+  const rows = conds.map((c, i) => `
+    ${i > 0 ? `<div class="fb-row"><span class="joiner">${joiner}</span></div>` : ''}
+    <div class="fb-row">
+      <input list="props" placeholder="property" aria-label="property" data-f="${key}" data-i="${i}" data-k="p" value="${esc(c.p)}">
+      <select aria-label="operator" data-f="${key}" data-i="${i}" data-k="o">${OPS.map(([v, l]) => `<option value="${v}" ${c.o === v ? 'selected' : ''}>${l}</option>`).join('')}</select>
+      ${c.o.startsWith('exists') ? '<span></span>' : `<input list="vals-${esc(c.p)}" aria-label="value" placeholder="${c.o === 'in' ? 'a, b, c' : 'value'}" data-f="${key}" data-i="${i}" data-k="v" value="${esc(c.v)}">`}
+      <button type="button" class="x" title="Remove condition" data-act="cond-del" data-f="${key}" data-i="${i}">×</button>
+    </div>`).join('');
+  const head = conds.length > 1 ? `<div class="fb-head">Match
+    <select data-f="${key}" data-k="comb"><option value="all" ${f.comb === 'all' ? 'selected' : ''}>all</option><option value="any" ${f.comb === 'any' ? 'selected' : ''}>any</option></select>
+    of these conditions</div>` : '';
+  const pool = key === 'scope' ? ITEMS : ITEMS.filter(inScope);
+  const n = pool.filter((it) => evalF(f, it)).length;
+  return `<div class="fb">${head}${conds.length ? '' : `<p class="help" style="margin:0">${noneText}</p>`}${rows}
+    <div class="fb-foot"><button type="button" class="link" data-act="cond-add" data-f="${key}">+ condition</button>
+    <span>${n} of ${pool.length} ${key === 'scope' ? 'items in the repo' : 'board cards'} match</span></div></div>`;
+}
+function orderEditor(slug, o) {
+  const seg = (m, l) => `<button type="button" class="seg ${o.mode === m ? 'on' : ''}" data-act="order-mode" data-slug="${slug}" data-mode="${m}">${l}</button>`;
+  let body = '';
+  if (o.mode === 'manual') {
+    body = `<p class="help">Cards stay where you drag them. Each item stores its position for this board in <code>boards.${esc(S.slug)}.order</code>.</p>`;
+  } else if (o.mode === 'property') {
+    const dir = (d, l) => `<button type="button" class="seg ${(o.dir || 'asc') === d ? 'on' : ''}" data-act="order-dir" data-slug="${slug}" data-dir="${d}">${l}</button>`;
+    const vals = [...new Set(ITEMS.filter(inScope).map((it) => it[o.by]).filter((v) => v !== undefined && !Array.isArray(v)))]
+      .sort((a, b) => (o.dir === 'desc' ? -cmp(a, b) : cmp(a, b)));
+    body = `<div class="field-row">
+        <label class="field"><span class="lbl">property</span><input class="mono" list="props" data-axis="${slug}" data-field="order.by" value="${esc(o.by || '')}"></label>
+        <div class="field narrow"><span class="lbl">direction</span><div class="segs" style="margin:0">${dir('asc', '↑ asc')}${dir('desc', '↓ desc')}</div></div>
+      </div>
+      <p class="help" style="margin-top:8px">Gives: <code>${vals.map(esc).join(' → ') || '—'}</code>${o.by === 'priority' ? '<br>Values sort as text, so high → low → medium. Use numbers for a custom rank.' : ''}<br>Dragging cards to reorder has no effect while sorted.</p>`;
+  } else {
+    body = `<p class="help">Most recently updated cards first.</p>`;
+  }
+  return `<div class="segs">${seg('manual', 'Manual')}${seg('property', 'By property')}${seg('default', 'Recently updated')}</div>${body}`;
+}
+function dropEditor(slug, ax, dimWord) {
+  const mode = ax.wod === 'readonly' ? 'readonly' : Array.isArray(ax.wod) ? 'custom' : 'auto';
+  const seg = (m, l) => `<button type="button" class="seg ${mode === m ? 'on' : ''}" data-act="drop-mode" data-slug="${slug}" data-mode="${m}">${l}</button>`;
+  let body = '';
+  if (mode === 'auto') {
+    const d = derive(ax.filter);
+    body = d.ok
+      ? `<p class="help">Worked out from the filter: <code>${esc(d.writes.join(', ') || 'no change')}</code></p>`
+      : `<p class="warn">Can't work out what to write — ${esc(d.why)}. Cards can't be dropped in this ${dimWord} until you choose custom writes.</p>`;
+  } else if (mode === 'custom') {
+    body = ax.wod.map((w, i) => `<div class="wod-row">
+        <select data-wod="${slug}" data-i="${i}" data-k="op">${['set', 'append', 'remove', 'delete'].map((o) => `<option ${w.op === o ? 'selected' : ''}>${o}</option>`).join('')}</select>
+        <input list="props" placeholder="property" data-wod="${slug}" data-i="${i}" data-k="path" value="${esc(w.path)}">
+        ${w.op === 'delete' ? '<span></span>' : `<input placeholder="value" list="vals-${esc(w.path)}" data-wod="${slug}" data-i="${i}" data-k="value" value="${esc(w.value)}">`}
+        <button type="button" class="x" data-act="wod-del" data-slug="${slug}" data-i="${i}">×</button></div>`).join('')
+      + `<button type="button" class="link" data-act="wod-add" data-slug="${slug}">+ write</button>
+         <p class="help" style="margin-top:8px">Replaces the automatic writes. A dropped card should end up matching the filter, or it jumps out of the cell.</p>`;
+  } else {
+    body = `<p class="help">Cards can't be dropped into this ${dimWord}.</p>`;
+  }
+  return `<div class="segs">${seg('auto', 'Automatic')}${seg('custom', 'Custom writes')}${seg('readonly', 'Read-only')}</div>${body}`;
+}
+function axisDrawer(slug, dim) {
+  const ax = S.axes[slug];
+  const shared = usage(slug);
+  const dimWord = dim === 'columns' ? 'column' : 'swimlane';
+  const orderPart = dim === 'columns'
+    ? orderEditor(slug, ax.order)
+    : `<p class="help">Swimlanes don't sort cards — each cell uses its column's order.</p>`;
+  return `<div class="drawer-h"><span class="kind">${dimWord}</span><h3>${esc(ax.title)}</h3>
+      <button type="button" class="x" data-act="close" title="Close">×</button></div>
+    <div class="drawer-b">
+      ${shared.length ? `<div class="notice"><b>Shared.</b> Also used on ${shared.map((u) => `<code>${u.board}</code> as a ${u.dim}`).join(', ')} — changes apply there too.
+        <button type="button" class="link" data-act="fork" data-slug="${slug}" data-dim="${dim}">Make a separate copy for this board</button></div>` : ''}
+      <div class="sub"><div class="field-row">
+        <label class="field"><span class="lbl">title</span><input class="sans" data-axis="${slug}" data-field="title" value="${esc(ax.title)}"></label>
+        <div class="field narrow"><span class="lbl">file</span><div class="static mono">content/${slug}.md</div></div>
+      </div></div>
+      <div class="sub"><h4>Filter${!ax.filter || !ax.filter.conds.length ? '<span class="default-tag">default</span>' : ''}</h4>
+        <p class="help">A card appears in this ${dimWord} when it matches:</p>
+        ${filterBuilder('axis:' + slug, ax.filter, `No conditions — every card on the board appears in this ${dimWord}.`)}</div>
+      <div class="sub"><h4>Card order${ax.order.mode === 'manual' ? '<span class="default-tag">default</span>' : ''}</h4>${orderPart}</div>
+      <div class="sub"><h4>When a card is dropped here${!ax.wod ? '<span class="default-tag">default</span>' : ''}</h4>${dropEditor(slug, ax, dimWord)}</div>
+      <div class="drawer-actions">
+        <button type="button" class="link" data-act="remove" data-slug="${slug}" data-dim="${dim}">Remove ${dimWord}</button>
+        <span class="muted mono" style="font-size:11px">${S.newAxes.has(slug) ? 'discards it' : 'axis file is kept'}</span>
+      </div>
+    </div>`;
+}
+function scopeDrawer() {
+  return `<div class="drawer-h"><span class="kind">board</span><h3>Cards on this board</h3>
+      <button type="button" class="x" data-act="close" title="Close">×</button></div>
+    <div class="drawer-b"><p class="help">Only cards matching these conditions appear. Columns and swimlanes then sort them into cells.</p>
+      ${filterBuilder('scope', S.scope, 'No conditions — every item in the repo is on this board.')}</div>`;
+}
+
+const yv = (v) => (/^[\w.$/-]+$/.test(String(v)) ? String(v) : JSON.stringify(String(v)));
+const OPKEY = { equals: 'equals', in: 'in', has: 'has', lacks: 'lacks', exists_t: 'exists', exists_f: 'exists', gt: 'gt', gte: 'gte', lt: 'lt', lte: 'lte', matches: 'matches' };
+function yLeaf(c, ind, first) {
+  const v = c.o === 'exists_t' ? 'true' : c.o === 'exists_f' ? 'false' : c.o === 'in' ? `[${listVals(c.v).map(yv).join(', ')}]` : yv(c.v);
+  return `${first}property: ${c.p}\n${ind}${OPKEY[c.o]}: ${v}`;
+}
+function yFilter(f) {
+  const conds = (f?.conds || []).filter((c) => c.p);
+  if (!conds.length) return '';
+  if (conds.length === 1) return `filter:\n${yLeaf(conds[0], '  ', '  ')}\n`;
+  return `filter:\n  ${f.comb}:\n${conds.map((c) => yLeaf(c, '      ', '    - ')).join('\n')}\n`;
+}
+const yList = (k, arr) => (arr.length ? `${k}:\n${arr.map((s) => `  - ${s}`).join('\n')}\n` : '');
+function boardYaml() {
+  return `---\nentityType: board\nslug: ${S.slug}\ntitle: ${yv(S.title)}\n${S.desc ? `description: ${yv(S.desc)}\n` : ''}${yFilter(S.scope)}${yList('columns', S.columns)}${yList('swimlanes', S.swimlanes)}updatedAt: '2026-09-30T00:00:00.000Z'\n---`;
+}
+function axisYaml(slug) {
+  const ax = S.axes[slug];
+  let y = `---\nentityType: axis\nslug: ${slug}\ntitle: ${yv(ax.title)}\n${yFilter(ax.filter)}`;
+  if (ax.order.mode === 'manual') y += 'order:\n  by: boards.$board.order\n  direction: asc\n';
+  if (ax.order.mode === 'property') y += `order:\n  by: ${ax.order.by || '…'}\n  direction: ${ax.order.dir || 'asc'}\n`;
+  if (ax.wod === 'readonly') y += 'writeOnDrop:\n  readonly: true\n';
+  if (Array.isArray(ax.wod)) y += `writeOnDrop:\n${ax.wod.map((w) => `  - op: ${w.op}\n    path: ${w.path}${w.op === 'delete' ? '' : `\n    value: ${yv(w.value)}`}`).join('\n')}\n`;
+  return y + '---';
+}
+function changes() {
+  const onBoard = new Set([...S.columns, ...S.swimlanes]);
+  const created = [...S.newAxes].filter((s) => onBoard.has(s));
+  const modified = [...S.dirty];
+  const sharedMod = modified.filter((s) => usage(s).length);
+  const boardState = S.mode === 'create' ? 'new' : S.boardDirty ? 'mod' : null;
+  return { created, modified, sharedMod, boardState, any: !!(boardState || created.length || modified.length) };
+}
+function filesDrawer() {
+  const ch = changes();
+  const file = (path, st, body, note = '') => `<div class="file"><div class="file-h"><span class="st ${st}">${st === 'new' ? 'new' : 'modified'}</span><span>${path}</span><span class="note">${note}</span></div><pre>${esc(body)}</pre></div>`;
+  let b = ch.any ? '<p class="help">Written as one commit. Frontmatter only — markdown bodies are untouched.</p>' : '<p class="help">No changes yet.</p>';
+  if (ch.boardState) b += file(`content/${S.slug}.md`, ch.boardState, boardYaml());
+  for (const s of ch.created) b += file(`content/${s}.md`, 'new', axisYaml(s));
+  for (const s of ch.modified) b += file(`content/${s}.md`, 'mod', axisYaml(s), usage(s).length ? `also changes ${usage(s).map((u) => u.board).join(', ')}` : '');
+  return `<div class="drawer-h"><span class="kind">changes</span><h3>Files to write</h3><button type="button" class="x" data-act="close" title="Close">×</button></div><div class="drawer-b">${b}</div>`;
+}
+function renderDrawer() {
+  const d = document.getElementById('drawer');
+  d.hidden = !S.drawer;
+  if (!S.drawer) { d.innerHTML = ''; return; }
+  d.innerHTML = S.drawer.kind === 'axis' ? axisDrawer(S.drawer.slug, S.drawer.dim) : S.drawer.kind === 'scope' ? scopeDrawer() : filesDrawer();
+}
+
+function renderFooter() {
+  const ch = changes();
+  const parts = [];
+  if (ch.boardState) parts.push('<b>1</b> board');
+  if (ch.created.length) parts.push(`<b>${ch.created.length}</b> new ax${ch.created.length === 1 ? 'is' : 'es'}`);
+  if (ch.modified.length) parts.push(`<b>${ch.modified.length}</b> changed ax${ch.modified.length === 1 ? 'is' : 'es'}`);
+  const warn = ch.sharedMod.length ? ` — also affects ${[...new Set(ch.sharedMod.flatMap((s) => usage(s).map((u) => u.board)))].join(', ')}` : '';
+  document.getElementById('savebar').innerHTML = `<span class="sum">${parts.length ? 'will write ' + parts.join(', ') + warn : 'no changes'}</span>
+    ${ch.any ? '<button type="button" class="link" data-act="files">view files</button>' : ''}
+    <button type="button" class="link" data-act="mode" data-mode="${S.mode}">${S.mode === 'create' ? 'cancel' : 'discard'}</button>
+    <button type="button" class="btn primary" ${ch.any ? '' : 'disabled'}>${S.mode === 'create' ? 'Create board' : 'Save changes'}</button>`;
+}
+function renderLists() {
+  const vals = {};
+  for (const it of ITEMS) for (const p of PROPS) for (const v of [].concat(it[p] ?? [])) (vals[p] ||= new Set()).add(v);
+  document.getElementById('props').innerHTML = PROPS.map((p) => `<option value="${p}">`).join('');
+  document.getElementById('vals').innerHTML = Object.entries(vals).map(([p, set]) => `<datalist id="vals-${p}">${[...set].map((v) => `<option value="${esc(v)}">`).join('')}</datalist>`).join('');
+}
+function render() {
+  if (S.drawer?.kind === 'axis' && !S.axes[S.drawer.slug]) S.drawer = null;
+  document.getElementById('m-edit').classList.toggle('on', S.mode === 'edit');
+  document.getElementById('m-create').classList.toggle('on', S.mode === 'create');
+  document.getElementById('crumb').innerHTML = S.mode === 'edit' ? `<a href="#">boards</a> / <a href="#">${S.slug}</a> / edit` : '<a href="#">boards</a> / new';
+  renderMain(); renderDrawer(); renderFooter();
+}
+
+// ---------------------------------------------------------------- actions
+function addAxis(dim) {
+  const base = dim === 'columns' ? 'New column' : 'New swimlane';
+  const slug = uniqueSlug(slugify(base));
+  S.axes[slug] = { title: base, filter: null, order: { ...DEFAULT_ORDER }, wod: null };
+  S.newAxes.add(slug);
+  S[dim].push(slug);
+  S.renaming = slug;
+  S.boardDirty = true;
+}
+function commitRename(slug, value) {
+  const ax = S.axes[slug];
+  if (!ax) return;
+  if (value.trim()) ax.title = value.trim();
+  S.renaming = null;
+  if (S.newAxes.has(slug)) {
+    const next = uniqueSlug(slugify(ax.title), slug);
+    if (next !== slug) {
+      S.axes[next] = ax; delete S.axes[slug];
+      S.newAxes.delete(slug); S.newAxes.add(next);
+      for (const dim of ['columns', 'swimlanes']) S[dim] = S[dim].map((s) => (s === slug ? next : s));
+      if (S.drawer?.slug === slug) S.drawer.slug = next;
+    }
+  } else touch(slug);
+}
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const { act, slug, dim } = b.dataset;
+  const ax = slug && S.axes[slug];
+  switch (act) {
+    case 'mode': init(b.dataset.mode); return;
+    case 'theme': { const r = document.documentElement; r.dataset.theme = r.dataset.theme === 'dark' ? 'light' : 'dark'; return; }
+    case 'add': addAxis(dim); break;
+    case 'rename': return;
+    case 'edit': S.drawer = S.drawer?.slug === slug && S.drawer.dim === dim ? null : { kind: 'axis', slug, dim }; break;
+    case 'edit-scope': S.drawer = S.drawer?.kind === 'scope' ? null : { kind: 'scope' }; break;
+    case 'files': S.drawer = S.drawer?.kind === 'files' ? null : { kind: 'files' }; break;
+    case 'close': S.drawer = null; break;
+    case 'cond-add': getF(b.dataset.f, true).conds.push(C('', 'equals', '')); touch(b.dataset.f); break;
+    case 'cond-del': getF(b.dataset.f).conds.splice(+b.dataset.i, 1); touch(b.dataset.f); break;
+    case 'order-mode': ax.order = { ...ax.order, mode: b.dataset.mode, by: ax.order.by || 'priority', dir: ax.order.dir || 'asc' }; touch(slug); break;
+    case 'order-dir': ax.order.dir = b.dataset.dir; touch(slug); break;
+    case 'drop-mode': {
+      const m = b.dataset.mode;
+      if (m === 'auto') ax.wod = null;
+      else if (m === 'readonly') ax.wod = 'readonly';
+      else if (!Array.isArray(ax.wod)) {
+        const d = derive(ax.filter);
+        ax.wod = d.ok && d.writes.length
+          ? d.writes.map((w) => { const [op, rest] = w.split(/ (.*)/); const [path, value = ''] = rest.split(': '); return { op, path, value }; })
+          : [{ op: 'set', path: '', value: '' }];
+      }
+      touch(slug); break;
+    }
+    case 'wod-add': ax.wod.push({ op: 'set', path: '', value: '' }); touch(slug); break;
+    case 'wod-del': ax.wod.splice(+b.dataset.i, 1); touch(slug); break;
+    case 'remove':
+      S[dim] = S[dim].filter((s) => s !== slug);
+      if (S.newAxes.has(slug)) { delete S.axes[slug]; S.newAxes.delete(slug); }
+      S.drawer = null; S.boardDirty = true; break;
+    case 'fork': {
+      const copy = uniqueSlug(`${slug}-${S.slug.replace(/^board-/, '')}`);
+      S.axes[copy] = clone(ax);
+      S.newAxes.add(copy); S.dirty.delete(slug);
+      S[dim] = S[dim].map((s) => (s === slug ? copy : s));
+      S.drawer = { kind: 'axis', slug: copy, dim }; S.boardDirty = true; break;
+    }
+    default: return;
+  }
+  render();
+});
+document.addEventListener('dblclick', (e) => {
+  const t = e.target.closest('[data-act="rename"]');
+  if (!t) return;
+  S.renaming = t.dataset.slug; render();
+});
+
+document.addEventListener('change', (e) => {
+  const t = e.target;
+  const d = t.dataset;
+  if (d.rename) return;
+  if (d.f) {
+    const f = getF(d.f, true);
+    if (d.k === 'comb') f.comb = t.value; else f.conds[+d.i][d.k] = t.value;
+    touch(d.f);
+  } else if (d.axis) {
+    const ax = S.axes[d.axis];
+    if (d.field === 'title') ax.title = t.value;
+    if (d.field === 'order.by') ax.order.by = t.value;
+    touch(d.axis);
+  } else if (d.wod) {
+    S.axes[d.wod].wod[+d.i][d.k] = t.value; touch(d.wod);
+  } else if (d.board) {
+    if (d.board === 'slug') { S.slug = slugify(t.value); S.slugTouched = true; } else S[d.board] = t.value;
+    S.boardDirty = true;
+  } else return;
+  render();
+});
+document.addEventListener('input', (e) => {
+  const t = e.target;
+  if (t.dataset.board === 'title' && S.mode === 'create' && !S.slugTouched) {
+    S.slug = slugify(t.value);
+    document.getElementById('slug-in').value = S.slug;
+  }
+});
+document.addEventListener('keydown', (e) => {
+  const t = e.target;
+  if (t.dataset?.rename && (e.key === 'Enter' || e.key === 'Escape')) { e.preventDefault(); t.blur(); }
+  else if (e.key === 'Escape' && S.drawer) { S.drawer = null; render(); }
+});
+document.addEventListener('focusout', (e) => {
+  const t = e.target;
+  if (t.dataset?.rename && S.renaming === t.dataset.rename) { commitRename(t.dataset.rename, t.value); render(); }
+});
+
+// Drag headers to reorder columns (horizontal) and swimlanes (vertical)
+let dragging = null, dropAt = null;
+const clearMarks = () => document.querySelectorAll('.drop-before, .drop-after').forEach((n) => n.classList.remove('drop-before', 'drop-after'));
+document.addEventListener('dragstart', (e) => {
+  const h = e.target.closest?.('[data-drag]');
+  if (!h) return;
+  dragging = { dim: h.dataset.dim, slug: h.dataset.slug };
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', h.dataset.slug);
+  requestAnimationFrame(() => h.classList.add('dragging'));
+});
+document.addEventListener('dragover', (e) => {
+  if (!dragging) return;
+  const h = e.target.closest('[data-drag]');
+  if (!h || h.dataset.dim !== dragging.dim) return;
+  e.preventDefault();
+  const r = h.getBoundingClientRect();
+  const after = dragging.dim === 'columns' ? e.clientX > r.left + r.width / 2 : e.clientY > r.top + r.height / 2;
+  clearMarks();
+  if (h.dataset.slug !== dragging.slug) h.classList.add(after ? 'drop-after' : 'drop-before');
+  dropAt = { slug: h.dataset.slug, after };
+});
+document.addEventListener('drop', (e) => {
+  if (!dragging || !dropAt) return;
+  e.preventDefault();
+  if (dropAt.slug !== dragging.slug) {
+    const list = S[dragging.dim].filter((s) => s !== dragging.slug);
+    list.splice(list.indexOf(dropAt.slug) + (dropAt.after ? 1 : 0), 0, dragging.slug);
+    S[dragging.dim] = list;
+    S.boardDirty = true;
+  }
+  dragging = dropAt = null;
+  render();
+});
+document.addEventListener('dragend', () => { dragging = dropAt = null; clearMarks(); document.querySelectorAll('.dragging').forEach((n) => n.classList.remove('dragging')); });
+
+const syncChrome = () => document.documentElement.style.setProperty('--chrome', document.getElementById('chrome').offsetHeight + 'px');
+window.addEventListener('resize', syncChrome);
+syncChrome();
+renderLists();
+init('edit');
+</script>
+</body>
+</html>

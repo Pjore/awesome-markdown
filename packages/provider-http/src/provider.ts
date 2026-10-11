@@ -12,6 +12,8 @@ import type {
   PatchItemRequest,
   CreateAxisRequest,
   CreateBoardRequest,
+  PatchAxisRequest,
+  PatchBoardRequest,
 } from '@awesome-markdown/contracts';
 import type { ConnectionState, ConnectionStateHandler } from './connection-state.js';
 import { SidecarHttpClient } from './http-client.js';
@@ -52,7 +54,16 @@ export interface HttpProviderConfig {
   baseUrl: string;
   fetchFn?: FetchFn;
   EventSourceCtor?: EventSourceCtor;
+  /** Bearer token for HTTP requests; also used for the SSE URL unless `getSseToken` is set. */
   getToken?: () => Promise<string>;
+  /**
+   * Credential for the SSE URL only (e.g. a short-lived, single-use ticket
+   * minted per connection). Called on every (re)connect. Falls back to
+   * `getToken` when omitted.
+   */
+  getSseToken?: () => Promise<string>;
+  /** Query parameter carrying the SSE credential. Default: `'token'`. */
+  sseTokenParam?: string;
 }
 
 // ---------------------------------------------------------------------------
@@ -66,6 +77,8 @@ export function createHttpProvider(config: HttpProviderConfig): HttpPersistenceP
     url: endpoints.subscribe(base),
     EventSourceCtor: config.EventSourceCtor,
     getToken: config.getToken,
+    getSseToken: config.getSseToken,
+    tokenParam: config.sseTokenParam,
   });
 
   const subscribers = new Set<ProviderEventHandler>();
@@ -138,6 +151,10 @@ export function createHttpProvider(config: HttpProviderConfig): HttpPersistenceP
       return client.createBoard(req);
     },
 
+    async patchBoard(slug: string, req: PatchBoardRequest): Promise<Board> {
+      return client.patchBoard(slug, req);
+    },
+
     // -- Axes ----------------------------------------------------------------
 
     async listAxes(): Promise<Axis[]> {
@@ -150,6 +167,10 @@ export function createHttpProvider(config: HttpProviderConfig): HttpPersistenceP
 
     async createAxis(req: CreateAxisRequest): Promise<Axis> {
       return client.createAxis(req);
+    },
+
+    async patchAxis(slug: string, req: PatchAxisRequest): Promise<Axis> {
+      return client.patchAxis(slug, req);
     },
 
     // -- Render / Homeless ---------------------------------------------------

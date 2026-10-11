@@ -1,6 +1,12 @@
 # kanban-ui
 
-React 19 + Vite 8 + Tailwind v4 kanban board SPA for awesome-markdown.
+React 19 + Vite 8 kanban board SPA for awesome-markdown.
+
+This app is a thin shell: router (`react-router-dom`), top bar, provider settings and
+routes. The board surface itself — pages, drag-and-drop, item editor, conflict UI and
+styles — lives in [`@awesome-markdown/board-ui`](../../packages/board-ui), wired in via
+`src/router/react-router-adapter.tsx`. Build `board-ui` first (`pnpm typecheck` does it);
+run `pnpm --filter @awesome-markdown/board-ui dev` alongside the dev server to rebuild it on change.
 
 ## Dev Commands
 
@@ -19,6 +25,20 @@ The UI supports two persistence backends, switchable at runtime via the **Settin
 |----------|----------|-------------|
 | `localStorage` | Nothing — zero setup | Default; stores board data in the browser |
 | `Local FS sidecar` | `provider-fs` running at a configurable URL | Persists items as markdown files; enables sync-engine |
+
+A hosting page can also inject a runtime-only **cloud** provider (same HTTP contract,
+plus auth callbacks) by defining it before the bundle loads. It overrides the stored
+choice for that page load and is never written to localStorage:
+
+```html
+<script>
+  window.__AWESOME_MARKDOWN_CLOUD_PROVIDER__ = {
+    kind: 'cloud',
+    baseUrl: 'https://app.example.com/api/v1/w/<workspace-id>',
+    getToken: () => auth.getAccessToken(),
+  };
+</script>
+```
 
 To switch providers: open Settings, choose provider type, enter the sidecar URL (default `http://localhost:7701`), and confirm. The UI rebinds the provider and reloads board state without a page reload.
 

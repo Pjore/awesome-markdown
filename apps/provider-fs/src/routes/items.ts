@@ -11,9 +11,9 @@ import {
   SlugSchema,
 } from '@awesome-markdown/contracts';
 import type { Item } from '@awesome-markdown/contracts';
-import matter from 'gray-matter';
+import { applyMutations } from '@awesome-markdown/core';
+import { serializeEntity } from '@awesome-markdown/core/markdown';
 import type { IndexStore } from '../fs/index-store.js';
-import { applyMutations } from '../fs/apply-mutations.js';
 import { writeFileAtomic } from '../fs/atomic-write.js';
 import { bus } from '../events/bus.js';
 import { RepoError } from '../errors.js';
@@ -21,11 +21,6 @@ import { RepoError } from '../errors.js';
 interface ItemsPluginOptions extends FastifyPluginOptions {
   store: IndexStore;
   contentRoot: string;
-}
-
-function serializeItem(item: Item): string {
-  const { body, ...frontmatter } = item;
-  return matter.stringify(body ?? '', frontmatter);
 }
 
 const itemParams = z.object({ slug: SlugSchema });
@@ -77,7 +72,7 @@ export const itemsRoutes: FastifyPluginAsyncZod<ItemsPluginOptions> = async (
       const finalItem: Item = { ...item, createdAt: now, updatedAt: now };
 
       const filePath = path.join(contentRoot, `${finalSlug}.md`);
-      await writeFileAtomic(filePath, serializeItem(finalItem));
+      await writeFileAtomic(filePath, serializeEntity(finalItem));
       store.upsertItem(finalSlug, finalItem, filePath);
       bus.publish({ type: 'change', path: `${finalSlug}.md`, entityId: finalSlug });
 
@@ -97,7 +92,7 @@ export const itemsRoutes: FastifyPluginAsyncZod<ItemsPluginOptions> = async (
       if (!filePath) throw new RepoError('not_found', `Item ${slug} not found`);
 
       const updated = applyMutations(existing, req.body.mutations);
-      await writeFileAtomic(filePath, serializeItem(updated));
+      await writeFileAtomic(filePath, serializeEntity(updated));
       store.upsertItem(slug, updated, filePath);
       bus.publish({ type: 'change', path: path.relative(contentRoot, filePath), entityId: slug });
 

@@ -3,15 +3,16 @@ import type { FastifyPluginOptions } from 'fastify';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import path from 'node:path';
-import matter from 'gray-matter';
 import {
   AxisSchema,
   CreateAxisRequestSchema,
   PatchAxisRequestSchema,
   DeleteResponseSchema,
   SlugSchema,
+  mergePatch,
 } from '@awesome-markdown/contracts';
 import type { Axis } from '@awesome-markdown/contracts';
+import { serializeEntity } from '@awesome-markdown/core/markdown';
 import type { IndexStore } from '../fs/index-store.js';
 import { writeFileAtomic } from '../fs/atomic-write.js';
 import { bus } from '../events/bus.js';
@@ -22,10 +23,6 @@ const axisParams = z.object({ slug: SlugSchema });
 interface AxesPluginOptions extends FastifyPluginOptions {
   store: IndexStore;
   contentRoot: string;
-}
-
-function serializeAxis(axis: Axis): string {
-  return matter.stringify('', axis);
 }
 
 /** GET /axes — list all non-synthetic (file-backed) axes. */
@@ -46,7 +43,7 @@ export const axesRoutes: FastifyPluginAsyncZod<AxesPluginOptions> = async (
     '/axes',
     { schema: { body: CreateAxisRequestSchema.strict(), response: { 201: AxisSchema } } },
     async (req, reply) => {
-      const { slug, title, description, filter } = req.body;
+      const { slug, title, description, filter, order, writeOnDrop } = req.body;
 
       if (store.getAxis(slug)) {
         throw new RepoError('already_exists', `Axis ${slug} already exists`);
@@ -59,12 +56,14 @@ export const axesRoutes: FastifyPluginAsyncZod<AxesPluginOptions> = async (
         title,
         ...(description !== undefined ? { description } : {}),
         ...(filter !== undefined ? { filter } : {}),
+        ...(order !== undefined ? { order } : {}),
+        ...(writeOnDrop !== undefined ? { writeOnDrop } : {}),
         createdAt: now,
         updatedAt: now,
       };
 
       const filePath = path.join(contentRoot, `${slug}.md`);
-      await writeFileAtomic(filePath, serializeAxis(axis));
+      await writeFileAtomic(filePath, serializeEntity(axis));
       store.upsertAxis(slug, axis, filePath);
       bus.publish({ type: 'change', path: `${slug}.md`, entityId: slug });
 
@@ -84,12 +83,11 @@ export const axesRoutes: FastifyPluginAsyncZod<AxesPluginOptions> = async (
       if (!filePath) throw new RepoError('not_found', `Axis ${slug} not found`);
 
       const updated: Axis = {
-        ...existing,
-        ...req.body,
+        ...mergePatch(existing, req.body),
         updatedAt: new Date().toISOString(),
       };
 
-      await writeFileAtomic(filePath, serializeAxis(updated));
+      await writeFileAtomic(filePath, serializeEntity(updated));
       store.upsertAxis(slug, updated, filePath);
       bus.publish({ type: 'change', path: path.relative(contentRoot, filePath), entityId: slug });
 

@@ -14,6 +14,8 @@ permissions:
   packages: write
 
 jobs:
+  # Images the Dokploy board deploy actually pulls (image: + pull_policy: always
+  # in docker-compose.dokploy.yml). trigger-board-deploy waits on these only.
   build-push:
     name: Build and push ${{ matrix.service }}
     runs-on: ubuntu-latest
@@ -22,56 +24,36 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - service: kanban-ui
-            dockerfile: apps/kanban-ui/Dockerfile
-            image: ghcr.io/pjore/awesome-markdown-kanban-ui
           - service: provider-fs
             dockerfile: apps/provider-fs/Dockerfile
             image: ghcr.io/pjore/awesome-markdown-provider-fs
           - service: sync-engine
             dockerfile: apps/sync-engine/Dockerfile
             image: ghcr.io/pjore/awesome-markdown-sync-engine
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-
-      - name: Log in to GitHub Container Registry
-        uses: docker/login-action@v4
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/build-push-image
         with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+          service: ${{ matrix.service }}
+          dockerfile: ${{ matrix.dockerfile }}
+          image: ${{ matrix.image }}
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract image metadata
-        id: meta
-        uses: docker/metadata-action@v6
+  # Published for other consumers only: the board deploy builds kanban-ui from
+  # source (build: in docker-compose.dokploy.yml), so a slow or failed build
+  # here (e.g. a QEMU crash on the arm64 leg) must not hold back the redeploy.
+  build-push-kanban-ui:
+    name: Build and push kanban-ui
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v6
+      - uses: ./.github/actions/build-push-image
         with:
-          images: ${{ matrix.image }}
-          tags: |
-            type=ref,event=branch
-            type=semver,pattern={{version}}
-            type=semver,pattern={{major}}.{{minor}}
-            type=raw,value=latest,enable={{is_default_branch}}
-
-      - name: Set up QEMU
-        uses: docker/setup-qemu-action@v4
-
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
-
-      - name: Build and push
-        uses: docker/build-push-action@v7
-        timeout-minutes: 40
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          platforms: linux/amd64,linux/arm64
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
-          cache-from: type=gha,scope=${{ matrix.service }}
-          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+          service: kanban-ui
+          dockerfile: apps/kanban-ui/Dockerfile
+          image: ghcr.io/pjore/awesome-markdown-kanban-ui
+          github-token: ${{ secrets.GITHUB_TOKEN }}
 
   trigger-board-deploy:
     name: Trigger Dokploy board redeploy

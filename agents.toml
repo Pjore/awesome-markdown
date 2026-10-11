@@ -3,7 +3,7 @@ agents = ["copilot", "pi"]
 
 [[skills]]
 name = "credential-security"
-source = "Pjore/awesome-os"
+source = "Pjore/skills"
 
 [[hooks]]
 event = "PostToolUse"
@@ -11,15 +11,15 @@ command = ".agents/skills/credential-security/scripts/redact-filter.sh"
 
 [[skills]]
 name = "branch-and-pr"
-source = "Pjore/awesome-os"
+source = "Pjore/skills"
 
 [[skills]]
 name = "commit-work"
-source = "Pjore/awesome-os"
+source = "Pjore/skills"
 
 [[skills]]
 name = "agent-browser"
-source = "Pjore/awesome-os"
+source = "Pjore/skills"
 
 [[skills]]
 name = "frontend-design"

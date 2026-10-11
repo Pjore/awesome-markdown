@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { BrowserRouter } from 'react-router-dom';
-import './styles.css';
+import '@awesome-markdown/board-ui/styles.css';
 import { App } from './App.js';
 import { ActiveProviderProvider } from './providers/active-provider.js';
 import { loadProviderSettings } from './settings/storage.js';

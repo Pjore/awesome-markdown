@@ -11,15 +11,25 @@ export default defineConfig({
     testTimeout: 15000,
   },
   resolve: {
-    alias: {
-      '@awesome-markdown/contracts': resolve(
-        __dirname,
-        '../../packages/contracts/src/index.ts'
-      ),
-      '@awesome-markdown/filter-engine': resolve(
-        __dirname,
-        '../../packages/filter-engine/src/index.ts'
-      ),
-    },
+    // Exact-match aliases so `@awesome-markdown/core/markdown` doesn't get
+    // swallowed by the `@awesome-markdown/core` prefix.
+    alias: [
+      {
+        find: /^@awesome-markdown\/contracts$/,
+        replacement: resolve(__dirname, '../../packages/contracts/src/index.ts'),
+      },
+      {
+        find: /^@awesome-markdown\/filter-engine$/,
+        replacement: resolve(__dirname, '../../packages/filter-engine/src/index.ts'),
+      },
+      {
+        find: /^@awesome-markdown\/core$/,
+        replacement: resolve(__dirname, '../../packages/core/src/index.ts'),
+      },
+      {
+        find: /^@awesome-markdown\/core\/markdown$/,
+        replacement: resolve(__dirname, '../../packages/core/src/markdown.ts'),
+      },
+    ],
   },
 });

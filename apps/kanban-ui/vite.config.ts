@@ -16,6 +16,9 @@ export default defineConfig(({ mode }) => {
 
   return {
     plugins: [react()],
+    // board-ui ships React components; keep a single React instance even if
+    // the workspace ever resolves a second copy through the library.
+    resolve: { dedupe: ['react', 'react-dom'] },
     server: {
       port,
       host: '0.0.0.0',

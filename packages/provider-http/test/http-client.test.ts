@@ -144,6 +144,25 @@ describe('SidecarHttpClient — createAxis', () => {
   });
 });
 
+describe('SidecarHttpClient — patchBoard / patchAxis', () => {
+  it('PATCH /boards/:slug keeps null so the server can clear the key', async () => {
+    const [fetch, calls] = makeFetch(200, board);
+    const result = await makeClient(fetch).patchBoard('demo', { columns: ['todo'], filter: null });
+    expect(result).toEqual(board);
+    expect(String(calls[0]![0])).toBe('http://localhost:7701/boards/demo');
+    expect(calls[0]![1]?.method).toBe('PATCH');
+    expect(JSON.parse(calls[0]![1]?.body as string)).toEqual({ columns: ['todo'], filter: null });
+  });
+
+  it('PATCH /axes/:slug and returns Axis', async () => {
+    const [fetch, calls] = makeFetch(200, axis);
+    const result = await makeClient(fetch).patchAxis('todo', { title: 'To Do' });
+    expect(result).toEqual(axis);
+    expect(String(calls[0]![0])).toBe('http://localhost:7701/axes/todo');
+    expect(calls[0]![1]?.method).toBe('PATCH');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Render / Homeless
 // ---------------------------------------------------------------------------

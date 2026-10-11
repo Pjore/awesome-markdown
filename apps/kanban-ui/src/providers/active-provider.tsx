@@ -1,7 +1,7 @@
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import type { PersistenceProvider } from '@awesome-markdown/contracts';
 import { isHttpProvider } from '@awesome-markdown/provider-http';
-import { ProviderContextProvider } from '../provider/ProviderContext.js';
+import { ProviderContextProvider } from '@awesome-markdown/board-ui';
 import type { ProviderSettings } from '../settings/provider-settings.js';
 import { saveProviderSettings } from '../settings/storage.js';
 import { createProviderFromSettings } from './provider-factory.js';

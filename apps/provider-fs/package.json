@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@awesome-markdown/contracts": "workspace:*",
+    "@awesome-markdown/core": "workspace:*",
     "@awesome-markdown/filter-engine": "workspace:*",
     "chokidar": "^3.6.0",
     "@fastify/cors": "^11.2.0",
