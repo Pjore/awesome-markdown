@@ -54,7 +54,12 @@ export function applyMutations(item: Item, mutations: Mutation[], now: string): 
       const nav = navigateToParent(clone, segs, true);
       if (nav) {
         const cur = nav.parent[nav.finalKey];
-        if (Array.isArray(cur)) cur.push(mut.value);
+        const isBodyPath = segs.length === 1 && segs[0] === 'body';
+        if (isBodyPath && (cur === undefined || cur === null || typeof cur === 'string')) {
+          const existing = typeof cur === 'string' ? cur : '';
+          const text = String(mut.value);
+          nav.parent[nav.finalKey] = existing.length > 0 ? `${existing}\n\n${text}` : text;
+        } else if (Array.isArray(cur)) cur.push(mut.value);
         else nav.parent[nav.finalKey] = [mut.value];
       }
     } else if (mut.op === 'remove') {

@@ -48,6 +48,33 @@ describe('applyMutations', () => {
     expect(out['labels']).toEqual(['x']);
   });
 
+  it.each([undefined, null, ''])(
+    'appends text to an empty body (%s) without a leading separator',
+    (body) => {
+      const out = applyMutations(
+        item({ body }),
+        [{ op: 'append', path: 'body', value: 'New paragraph' }],
+        NOW
+      );
+      expect(out.body).toBe('New paragraph');
+      expect(out.updatedAt).toBe(NOW);
+    }
+  );
+
+  it('appends paragraphs to an existing body without mutating the input', () => {
+    const input = item({ body: 'Original paragraph' });
+    const out = applyMutations(
+      input,
+      [
+        { op: 'append', path: 'body', value: 'Next paragraph' },
+        { op: 'append', path: 'body', value: 'Last paragraph' },
+      ],
+      NOW
+    );
+    expect(out.body).toBe('Original paragraph\n\nNext paragraph\n\nLast paragraph');
+    expect(input.body).toBe('Original paragraph');
+  });
+
   it('remove filters the value out; missing arrays are untouched', () => {
     const out = applyMutations(item({ tags: ['a', 'b', 'a'] }), [
       { op: 'remove', path: 'tags', value: 'a' },

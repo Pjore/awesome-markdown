@@ -88,10 +88,18 @@ export function applyMutations(
     } else if (mut.op === 'append') {
       const nav = navigateToParent(clone, segments, true);
       if (nav) {
-        const arr = nav.parent[nav.finalKey];
-        if (Array.isArray(arr)) {
-          if (!(arr as unknown[]).includes(mut.value)) {
-            (arr as unknown[]).push(mut.value);
+        const current = nav.parent[nav.finalKey];
+        const isBodyPath = segments.length === 1 && segments[0] === 'body';
+        if (
+          isBodyPath &&
+          (current === undefined || current === null || typeof current === 'string')
+        ) {
+          const existing = typeof current === 'string' ? current : '';
+          const text = String(mut.value);
+          nav.parent[nav.finalKey] = existing.length > 0 ? `${existing}\n\n${text}` : text;
+        } else if (Array.isArray(current)) {
+          if (!(current as unknown[]).includes(mut.value)) {
+            (current as unknown[]).push(mut.value);
           }
         } else {
           nav.parent[nav.finalKey] = [mut.value];
