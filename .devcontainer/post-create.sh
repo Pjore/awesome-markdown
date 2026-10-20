@@ -2,6 +2,12 @@
 # post-create.sh — runs once after devcontainer is created
 set -euo pipefail
 
+if ! command -v rg >/dev/null 2>&1; then
+  if ! (sudo -n apt-get update && sudo -n apt-get install -y ripgrep); then
+    echo "WARNING: ripgrep installation failed; continuing without rg." >&2
+  fi
+fi
+
 # Install agent-browser (arch-aware)
 # arm64: no Chrome for Testing builds — use Playwright Chromium instead
 # amd64: use agent-browser's bundled Chromium
