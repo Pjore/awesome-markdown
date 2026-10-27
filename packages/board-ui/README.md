@@ -68,6 +68,21 @@ implementation for `react-router-dom`.
 `SyncStatusDot` (HTTP provider connection state), `ThemeToggle` / `useTheme`
 (light/dark via `data-theme` on `<html>`).
 
+## Item frontmatter editing
+
+The item detail page offers **edit raw frontmatter** to view and edit all metadata
+as YAML, including custom objects, arrays and per-board entries. Switching back to
+fields validates the YAML and preserves custom properties. The description stays
+separate and is saved together with metadata in one `patchItem` call.
+
+Invalid YAML or item metadata blocks saving without discarding the draft. The
+item's `slug` and `entityType` cannot change here, and the provider manages
+`updatedAt`. YAML comments and original formatting are not retained: providers
+expose parsed metadata, not the original file text.
+
+Providers must accept JSON values (including objects and arrays) in `set`
+mutations to support full frontmatter edits. Removed properties use `delete`.
+
 ## Styles
 
 `@awesome-markdown/board-ui/styles.css` contains the design tokens (`--bg`, `--ink`,

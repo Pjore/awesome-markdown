@@ -23,13 +23,14 @@ export type PropertyValue = z.infer<typeof PropertyValueSchema>;
 // ---------------------------------------------------------------------------
 
 /**
- * Set a scalar property to a value (or clear it by setting null).
+ * Set a property to a JSON value (or clear it by setting null).
+ * Objects and arrays support replacing full frontmatter properties.
  * Invertible from: `equals` and single-item `in` leaf operators.
  */
 export const SetMutationSchema = z.object({
   op: z.literal('set'),
   path: DottedPathSchema,
-  value: PropertyValueSchema,
+  value: z.json(),
 });
 export type SetMutation = z.infer<typeof SetMutationSchema>;
 

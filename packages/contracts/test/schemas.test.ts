@@ -163,6 +163,16 @@ describe('MutationSchema', () => {
   it('accepts set mutation with null value (clear property)', () => {
     expect(MutationSchema.safeParse({ op: 'set', path: 'assignee', value: null }).success).toBe(true);
   });
+  it('accepts structured JSON set values for full frontmatter edits', () => {
+    for (const value of [[], {}, ['x', null, false], { nested: { list: [1, true] } }]) {
+      expect(MutationSchema.safeParse({ op: 'set', path: 'custom', value }).success).toBe(true);
+    }
+  });
+  it('rejects non-JSON set values', () => {
+    for (const value of [undefined, Infinity, NaN, { nested: undefined }]) {
+      expect(MutationSchema.safeParse({ op: 'set', path: 'custom', value }).success).toBe(false);
+    }
+  });
   it('accepts append mutation', () => {
     expect(MutationSchema.safeParse({ op: 'append', path: 'tags', value: 'urgent' }).success).toBe(true);
   });
