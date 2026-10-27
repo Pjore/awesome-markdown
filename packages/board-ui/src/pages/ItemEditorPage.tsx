@@ -6,7 +6,8 @@ import { useRouterAdapter } from '../router/RouterAdapter.js';
 import { BoardAssigneeField } from '../components/BoardAssigneeField.js';
 import { DeleteItemConfirmDialog } from '../components/DeleteItemConfirmDialog.js';
 import { ItemEditorActions } from '../components/ItemEditorActions.js';
-import { getBoardScopedString } from '../lib/item-board.js';
+import { ItemFrontmatterEditor } from '../components/ItemFrontmatterEditor.js';
+import { useItemEditorDraft } from '../state/useItemEditorDraft.js';
 import { useProviderSubscribe } from '../state/useProviderSubscribe.js';
 import { useBoardRender } from '../state/useBoardRender.js';
 import { PropertyValueDisplay } from '../lib/property-display.js';
@@ -25,9 +26,8 @@ export function ItemEditorPage(): React.ReactElement {
   const detailLayout = boardRender?.board.detailLayout ?? [];
 
   const [item, setItem] = useState<Item | null>(null);
-  const [title, setTitle] = useState('');
-  const [body, setBody] = useState('');
-  const [assignee, setAssignee] = useState('');
+  const draft = useItemEditorDraft(boardSlug);
+  const { title, setTitle, body, setBody, assignee, setAssignee } = draft;
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,9 +46,7 @@ export function ItemEditorPage(): React.ReactElement {
           return;
         }
         setItem(fetched);
-        setTitle(fetched.title);
-        setBody(fetched.body ?? '');
-        setAssignee(boardSlug ? getBoardScopedString(fetched, boardSlug, 'assignee') : '');
+        draft.reset(fetched);
       })
       .catch((err: unknown) => {
         setError(err instanceof Error ? err.message : 'Failed to load item.');
@@ -65,9 +63,7 @@ export function ItemEditorPage(): React.ReactElement {
       .then((fetched) => {
         if (!fetched) return;
         setItem(fetched);
-        setTitle(fetched.title);
-        setBody(fetched.body ?? '');
-        setAssignee(boardSlug ? getBoardScopedString(fetched, boardSlug, 'assignee') : '');
+        draft.reset(fetched);
       })
       .catch(() => {});
   });
@@ -87,33 +83,16 @@ export function ItemEditorPage(): React.ReactElement {
 
   const handleSave = useCallback(async (): Promise<void> => {
     if (!slug || !item) return;
-    const trimmedTitle = title.trim();
-    if (!trimmedTitle) {
-      setError('Title cannot be empty.');
+    let mutations: Mutation[];
+    try {
+      mutations = draft.mutations(item);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Invalid frontmatter.');
       return;
     }
 
     setSaving(true);
     setError(null);
-
-    const mutations: Mutation[] = [];
-    if (trimmedTitle !== item.title) {
-      mutations.push({ op: 'set', path: 'title', value: trimmedTitle });
-    }
-    if (body !== (item.body ?? '')) {
-      mutations.push({ op: 'set', path: 'body', value: body });
-    }
-    if (boardSlug) {
-      const nextAssignee = assignee.trim();
-      const currentAssignee = getBoardScopedString(item, boardSlug, 'assignee');
-      if (nextAssignee !== currentAssignee) {
-        mutations.push(
-          nextAssignee === ''
-            ? { op: 'delete', path: `boards.${boardSlug}.assignee` }
-            : { op: 'set', path: `boards.${boardSlug}.assignee`, value: nextAssignee },
-        );
-      }
-    }
 
     if (mutations.length === 0) {
       navigate(backPath);
@@ -128,7 +107,7 @@ export function ItemEditorPage(): React.ReactElement {
     } finally {
       setSaving(false);
     }
-  }, [slug, item, title, body, assignee, boardSlug, provider, navigate, backPath]);
+  }, [slug, item, draft, provider, navigate, backPath]);
 
   const handleCancel = useCallback((): void => {
     navigate(backPath);
@@ -268,31 +247,55 @@ export function ItemEditorPage(): React.ReactElement {
         {slug}
       </div>
 
-      {/* Title input */}
-      <input
-        type="text"
-        value={title}
-        onChange={handleTitleChange}
-        placeholder="Title"
+      <ItemFrontmatterEditor
+        rawMode={draft.rawMode}
+        value={draft.raw}
         disabled={saving}
-        autoFocus
-        style={{
-          fontFamily: 'var(--font-sans)',
-          fontSize: '22px',
-          fontWeight: 500,
-          color: 'var(--ink)',
-          background: 'transparent',
-          border: 'none',
-          borderBottom: '1px solid var(--border)',
-          borderRadius: 0,
-          padding: '4px 0',
-          width: '100%',
-          outline: 'none',
+        onToggle={() => {
+          try {
+            draft.toggleMode();
+            setError(null);
+          } catch (err) {
+            setError(err instanceof Error ? err.message : 'Invalid frontmatter.');
+          }
         }}
-        onFocus={(e) => { e.currentTarget.style.borderBottomColor = 'var(--accent)'; }}
-        onBlur={(e) => { e.currentTarget.style.borderBottomColor = 'var(--border)'; }}
-        data-testid="item-editor-title"
+        onChange={(value) => {
+          draft.setRaw(value);
+          setDirty(true);
+        }}
       />
+
+      {/* Title input */}
+      {!draft.rawMode && (
+        <input
+          type="text"
+          value={title}
+          onChange={handleTitleChange}
+          placeholder="Title"
+          disabled={saving}
+          autoFocus
+          style={{
+            fontFamily: 'var(--font-sans)',
+            fontSize: '22px',
+            fontWeight: 500,
+            color: 'var(--ink)',
+            background: 'transparent',
+            border: 'none',
+            borderBottom: '1px solid var(--border)',
+            borderRadius: 0,
+            padding: '4px 0',
+            width: '100%',
+            outline: 'none',
+          }}
+          onFocus={(e) => {
+            e.currentTarget.style.borderBottomColor = 'var(--accent)';
+          }}
+          onBlur={(e) => {
+            e.currentTarget.style.borderBottomColor = 'var(--border)';
+          }}
+          data-testid="item-editor-title"
+        />
+      )}
 
       {/* Body textarea */}
       <textarea
@@ -315,12 +318,16 @@ export function ItemEditorPage(): React.ReactElement {
           outline: 'none',
           lineHeight: 1.6,
         }}
-        onFocus={(e) => { e.currentTarget.style.borderColor = 'var(--accent)'; }}
-        onBlur={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; }}
+        onFocus={(e) => {
+          e.currentTarget.style.borderColor = 'var(--accent)';
+        }}
+        onBlur={(e) => {
+          e.currentTarget.style.borderColor = 'var(--border)';
+        }}
         data-testid="item-editor-body"
       />
 
-      {boardSlug && (
+      {boardSlug && !draft.rawMode && (
         <BoardAssigneeField
           boardSlug={boardSlug}
           value={assignee}
@@ -356,6 +363,7 @@ export function ItemEditorPage(): React.ReactElement {
             borderLeft: '2px solid var(--ink-muted)',
             paddingLeft: '12px',
           }}
+          role="alert"
           data-testid="item-editor-save-error"
         >
           {error}

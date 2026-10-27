@@ -89,6 +89,42 @@ describe('frontmatter shape', () => {
     expect(parsed.data['title']).toBe('Updated Title');
   });
 
+  it('PATCH replaces structured frontmatter and persists deletions without changing the body', async () => {
+    await server.inject({
+      method: 'POST',
+      url: '/items',
+      payload: {
+        slug: 'raw-edit',
+        title: 'Raw edit',
+        body: 'Keep **markdown**.',
+        mutations: [{ op: 'set', path: 'obsolete', value: true }],
+      },
+    });
+    const metadata = {
+      tags: ['one', 'two'],
+      custom: { nested: [1, false, null], empty: {} },
+      boards: [{ board: 'dev', order: 'a0', note: { text: 'keep' } }],
+    };
+    const response = await server.inject({
+      method: 'PATCH',
+      url: '/items/raw-edit',
+      payload: {
+        mutations: [
+          ...Object.entries(metadata).map(([key, value]) => ({ op: 'set', path: key, value })),
+          { op: 'delete', path: 'obsolete' },
+        ],
+      },
+    });
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject(metadata);
+    const parsed = matter(await readFile(path.join(tmp.contentRoot, 'raw-edit.md'), 'utf8'));
+    expect(parsed.data).toMatchObject(metadata);
+    expect(parsed.data).not.toHaveProperty('obsolete');
+    expect(parsed.content.trim()).toBe('Keep **markdown**.');
+    const fetched = await server.inject({ method: 'GET', url: '/items/raw-edit' });
+    expect(fetched.json()).toMatchObject(metadata);
+  });
+
   it('POST /items with mutations sets extra fields in frontmatter', async () => {
     const res = await server.inject({
       method: 'POST',
@@ -111,5 +147,3 @@ describe('frontmatter shape', () => {
     expect(item['tags']).toEqual(['x', 'y', 'z']);
   });
 });
-
-

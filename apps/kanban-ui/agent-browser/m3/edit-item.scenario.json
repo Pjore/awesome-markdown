@@ -1,47 +1,72 @@
 {
   "id": "edit-item",
-  "version": "1",
-  "description": "Open an existing item, change title and body, save, reload page. Assert updated title and body remain after reload.",
+  "version": "2",
+  "description": "Edit fields and full YAML frontmatter, reject invalid YAML, then save and reload to verify structured metadata and body persistence. Uses an isolated browser context with a v2 localStorage fixture (the legacy m3 seed is a placeholder).",
   "services": ["kanban-ui:dev"],
-  "seed": "m3",
-  "url": "http://localhost:5173/?seed=m3",
+  "url": "http://localhost:5173/",
   "actions": [
-    { "type": "navigate", "url": "http://localhost:5173/?seed=m3" },
-    { "type": "wait", "selector": "[data-testid='board']" },
+    { "type": "navigate", "url": "http://localhost:5173/" },
     {
-      "type": "click",
-      "selector": "[data-testid^='edit-item-']",
-      "nth": 0,
-      "hover-parent": "[data-testid^='item-card-']"
+      "type": "eval",
+      "script": "localStorage.setItem('awesome-markdown:v2', JSON.stringify({'item:edit-demo': {entityType:'item',slug:'edit-demo',title:'Original title',body:'Original body',createdAt:'2026-01-01',updatedAt:'2026-01-01',obsolete:true}}))"
     },
-    { "type": "wait", "selector": "[data-testid='item-editor-modal']" },
+    { "type": "navigate", "url": "http://localhost:5173/items/edit-demo" },
+    { "type": "wait", "selector": "[data-testid='item-editor']" },
     {
       "type": "clear-and-fill",
-      "selector": "[data-testid='editor-title']",
-      "value": "Updated title after edit"
+      "selector": "[data-testid='item-editor-title']",
+      "value": "Updated title"
     },
     {
       "type": "clear-and-fill",
-      "selector": "[data-testid='editor-body']",
+      "selector": "[data-testid='item-editor-body']",
       "value": "Updated body content"
     },
-    { "type": "click", "selector": "[data-testid='editor-save']" },
-    { "type": "wait-for-gone", "selector": "[data-testid='item-editor-modal']" },
+    { "type": "click", "selector": "[data-testid='item-editor-frontmatter-toggle']" },
     {
       "type": "assert-visible",
-      "selector": "[data-testid^='item-title-']",
-      "text-contains": "Updated title after edit"
+      "selector": "[data-testid='item-editor-frontmatter']",
+      "value-contains": "title: Updated title"
     },
+    {
+      "type": "clear-and-fill",
+      "selector": "[data-testid='item-editor-frontmatter']",
+      "value": "broken: ["
+    },
+    { "type": "keypress", "key": "Control+s" },
+    { "type": "wait", "selector": "[data-testid='item-editor-save-error']" },
+    {
+      "type": "clear-and-fill",
+      "selector": "[data-testid='item-editor-frontmatter']",
+      "value": "entityType: item\nslug: edit-demo\ntitle: Updated title\ncreatedAt: 2026-01-01\nupdatedAt: 2026-01-01\ntags: [one, two]\ncustom: {reviewed: true, score: 3}\nboards:\n  - board: board-main\n    assignee: alice\n    note: keep"
+    },
+    { "type": "keypress", "key": "Control+s" },
+    { "type": "wait-for-gone", "selector": "[data-testid='item-editor']" },
+    { "type": "navigate", "url": "http://localhost:5173/items/edit-demo" },
     { "type": "reload" },
-    { "type": "wait", "selector": "[data-testid='board']" }
+    { "type": "wait", "selector": "[data-testid='item-editor']" },
+    { "type": "click", "selector": "[data-testid='item-editor-frontmatter-toggle']" }
   ],
   "assertions": [
     {
+      "id": "metadata-persisted",
+      "description": "Full nested metadata and board entries survive reload; removed keys stay removed.",
+      "check": "eval",
+      "script": "const item = JSON.parse(localStorage.getItem('awesome-markdown:v2'))['item:edit-demo']; if(item.custom.reviewed !== true || item.custom.score !== 3 || item.tags.join(',') !== 'one,two' || item.boards[0].note !== 'keep' || 'obsolete' in item) throw Error('Metadata roundtrip failed');"
+    },
+    {
       "id": "title-persisted",
-      "description": "Updated title is still visible after page reload (persisted in localStorage)",
-      "selector": "[data-testid^='item-title-']",
-      "check": "any-text-contains",
-      "value": "Updated title after edit"
+      "description": "The title edited in fields is preserved through YAML editing.",
+      "selector": "[data-testid='item-editor-frontmatter']",
+      "check": "value-contains",
+      "value": "title: Updated title"
+    },
+    {
+      "id": "body-persisted",
+      "description": "The description stays separate from frontmatter and survives reload.",
+      "selector": "[data-testid='item-editor-body']",
+      "check": "value-equals",
+      "value": "Updated body content"
     }
   ]
 }
