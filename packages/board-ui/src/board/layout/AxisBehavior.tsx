@@ -106,7 +106,7 @@ export function toDropDraft(wod: WriteOnDrop | undefined): DropDraft {
     mode: 'custom',
     writes: wod.map((m) => ({
       op: m.op,
-      path: m.path,
+      path: typeof m.path === 'string' ? m.path : JSON.stringify(m.path),
       value: 'value' in m ? String(m.value ?? '') : '',
     })),
   };
@@ -119,8 +119,12 @@ export function fromDropDraft(d: DropDraft): WriteOnDrop | null {
     .filter((w) => w.path.trim() !== '')
     .map((w) =>
       w.op === 'delete'
-        ? { op: 'delete', path: w.path.trim() }
-        : { op: w.op, path: w.path.trim(), value: w.value }
+        ? { op: 'delete', path: w.path.trim().startsWith('[') ? JSON.parse(w.path) : w.path.trim() }
+        : {
+            op: w.op,
+            path: w.path.trim().startsWith('[') ? JSON.parse(w.path) : w.path.trim(),
+            value: w.value,
+          }
     );
   return writes.length > 0 ? writes : null;
 }
@@ -133,16 +137,18 @@ export function DropEditor({
   draft,
   filter,
   boardSlug,
+  axisSlug,
   noun,
   onChange,
 }: {
   draft: DropDraft;
   filter: FilterRule | undefined;
   boardSlug: string;
+  axisSlug: string;
   noun: string;
   onChange: (d: DropDraft) => void;
 }): React.ReactElement {
-  const derived = deriveMutations(filter, { board: boardSlug });
+  const derived = deriveMutations(filter, { board: boardSlug, axis: axisSlug });
   const setWrite = (i: number, patch: Partial<WriteDraft>): void =>
     onChange({ ...draft, writes: draft.writes.map((w, j) => (j === i ? { ...w, ...patch } : w)) });
 

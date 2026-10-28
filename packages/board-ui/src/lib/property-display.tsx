@@ -1,17 +1,14 @@
 import React from 'react';
 import type { Item, PropertyDisplay } from '@awesome-markdown/contracts';
-import { getBoardEntry } from './item-board.js';
+import { resolvePath } from '@awesome-markdown/filter-engine';
 
 /**
  * Resolves a property's value for an item on a given board.
  *
- * Per-board entries (`item.boards[].<property>`) take precedence over the
- * item's top-level property of the same name.
+ * Card layouts name explicit configuration paths; property names impose no schema.
  */
 export function resolveItemProperty(item: Item, boardSlug: string, property: string): unknown {
-  const boardEntry = getBoardEntry(item, boardSlug);
-  if (boardEntry && property in boardEntry) return boardEntry[property];
-  return (item as unknown as Record<string, unknown>)[property];
+  return resolvePath(property, item, { board: boardSlug });
 }
 
 function formatValue(value: unknown): string {
@@ -21,7 +18,10 @@ function formatValue(value: unknown): string {
 }
 
 function initials(value: string): string {
-  const parts = value.trim().split(/[\s_-]+/).filter(Boolean);
+  const parts = value
+    .trim()
+    .split(/[\s_-]+/)
+    .filter(Boolean);
   const chars = parts.length > 1 ? [parts[0]![0], parts[1]![0]] : [value.slice(0, 2)];
   return chars.join('').toUpperCase();
 }
@@ -33,8 +33,17 @@ interface PropertyValueProps {
 }
 
 /** Renders a single configured property according to its `visualStyle`. */
-export function PropertyValueDisplay({ item, boardSlug, layout }: PropertyValueProps): React.ReactElement | null {
-  const raw = resolveItemProperty(item, boardSlug, layout.property);
+export function PropertyValueDisplay({
+  item,
+  boardSlug,
+  layout,
+}: PropertyValueProps): React.ReactElement | null {
+  let raw: unknown;
+  try {
+    raw = resolveItemProperty(item, boardSlug, layout.property);
+  } catch (error) {
+    return <span role="alert">{error instanceof Error ? error.message : String(error)}</span>;
+  }
   const text = formatValue(raw);
   if (text === '') return null;
 

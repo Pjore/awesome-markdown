@@ -1,3 +1,4 @@
+import { itemLabel } from '@awesome-markdown/contracts';
 import React from 'react';
 import { useDraggable } from '@dnd-kit/core';
 import { CSS } from '@dnd-kit/utilities';
@@ -49,7 +50,7 @@ export function HomelessItemCard({ item }: HomelessItemCardProps): React.ReactEl
       {...attributes}
       {...listeners}
     >
-      {item.title}
+      {itemLabel(item)}
     </li>
   );
 }

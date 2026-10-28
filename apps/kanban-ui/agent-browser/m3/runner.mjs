@@ -22,9 +22,7 @@ const REQUIRED_FIELDS = ['id', 'version', 'description', 'services', 'actions', 
 
 async function loadScenarios() {
   const entries = await readdir(__dirname);
-  const scenarioFiles = entries
-    .filter((f) => f.endsWith('.scenario.json'))
-    .sort();
+  const scenarioFiles = entries.filter((f) => f.endsWith('.scenario.json')).sort();
 
   const scenarios = [];
   for (const file of scenarioFiles) {
@@ -43,9 +41,7 @@ async function loadScenarios() {
 function validateScenario(file, data) {
   const missing = REQUIRED_FIELDS.filter((f) => !(f in data));
   if (missing.length > 0) {
-    throw new Error(
-      `Scenario ${file} is missing required fields: ${missing.join(', ')}`,
-    );
+    throw new Error(`Scenario ${file} is missing required fields: ${missing.join(', ')}`);
   }
   if (!Array.isArray(data.actions) || data.actions.length === 0) {
     throw new Error(`Scenario ${file} must have at least one action`);
@@ -80,7 +76,13 @@ async function main() {
   for (const { file, data } of scenarios) {
     try {
       validateScenario(file, data);
-      results.push({ file, id: data.id, status: 'VALID', actions: data.actions.length, assertions: data.assertions.length });
+      results.push({
+        file,
+        id: data.id,
+        status: 'VALID',
+        actions: data.actions.length,
+        assertions: data.assertions.length,
+      });
     } catch (err) {
       results.push({ file, id: data.id ?? '(unknown)', status: 'INVALID', error: err.message });
       allValid = false;
@@ -101,7 +103,9 @@ async function main() {
   console.log('');
 
   if (!allValid) {
-    console.error('One or more scenarios failed validation. Fix errors before running agent-browser.');
+    console.error(
+      'One or more scenarios failed validation. Fix errors before running agent-browser.'
+    );
     process.exit(1);
   }
 
@@ -116,6 +120,11 @@ async function main() {
     console.log(`  apps/kanban-ui/agent-browser/m3/${file}  (seed: ${data.seed ?? 'none'})`);
   }
   console.log('');
+  if (process.argv.includes('--live')) {
+    await import('./recursive-item.live.mjs');
+    console.log('M3 live recursive item scenarios passed.');
+    return;
+  }
   console.log('M3 verify:m3 setup complete. Exiting 0.');
   process.exit(0);
 }

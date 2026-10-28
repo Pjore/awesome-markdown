@@ -102,7 +102,7 @@ describe('board-ui RouterAdapter seam', () => {
     const adapter = fakeAdapter({ slug: 'task-1' }, 'board=board-dev');
     await mount(adapter, <ItemEditorPage />);
 
-    const cancel = container.querySelector<HTMLButtonElement>('[data-testid="item-editor-cancel"]');
+    const cancel = container.querySelector<HTMLButtonElement>('[data-testid="item-back"]');
     expect(cancel).not.toBeNull();
     await act(async () => cancel?.click());
     expect(adapter.navigate).toHaveBeenCalledWith('/boards/board-dev');

@@ -2,7 +2,7 @@ import React, { useState, useRef } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import type { Cell as CellData, Axis, Board } from '@awesome-markdown/contracts';
-import { deriveMutations, analyzeInvertibility } from '@awesome-markdown/filter-engine';
+import { cellMutations, analyzeInvertibility } from '@awesome-markdown/filter-engine';
 import { ItemCard } from './ItemCard.js';
 import { encodeCellId } from './dnd/dragTypes.js';
 import { buildCellFilter } from './dnd/mutateDragDrop.js';
@@ -84,9 +84,7 @@ export function Cell({
       return;
     }
 
-    const filter = buildCellFilter(board, columnAxis, swimlaneAxis);
-    const writeOnDrop = columnAxis.writeOnDrop ?? swimlaneAxis.writeOnDrop;
-    const result = deriveMutations(filter, { board: board.slug }, writeOnDrop);
+    const result = cellMutations(board, columnAxis, swimlaneAxis);
 
     if (!Array.isArray(result)) {
       onError('Cannot create item: cell is read-only.');
@@ -101,9 +99,7 @@ export function Cell({
       setNewTitle('');
       onCreated();
     } catch (err) {
-      onError(
-        `Failed to create item: ${err instanceof Error ? err.message : 'Unknown error'}`,
-      );
+      onError(`Failed to create item: ${err instanceof Error ? err.message : 'Unknown error'}`);
     } finally {
       setSaving(false);
     }
@@ -197,8 +193,12 @@ export function Cell({
                   color: 'var(--ink)',
                   outline: 'none',
                 }}
-                onFocus={(e) => { e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent)'; }}
-                onBlur={(e) => { e.currentTarget.style.boxShadow = 'none'; }}
+                onFocus={(e) => {
+                  e.currentTarget.style.boxShadow = '0 0 0 2px var(--accent)';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.boxShadow = 'none';
+                }}
                 data-testid={`new-item-input-${columnAxis.slug}-${swimlaneAxis.slug}`}
               />
               <div className="flex gap-1">
@@ -223,7 +223,10 @@ export function Cell({
                 </button>
                 <button
                   type="button"
-                  onClick={() => { setCreating(false); setNewTitle(''); }}
+                  onClick={() => {
+                    setCreating(false);
+                    setNewTitle('');
+                  }}
                   disabled={saving}
                   style={{
                     fontFamily: 'var(--font-mono)',

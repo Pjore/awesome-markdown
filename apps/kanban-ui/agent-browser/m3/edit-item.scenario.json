@@ -1,47 +1,39 @@
 {
   "id": "edit-item",
-  "version": "1",
-  "description": "Open an existing item, change title and body, save, reload page. Assert updated title and body remain after reload.",
+  "version": "2",
+  "description": "Read an item, explicitly enter Edit, save properties and document together, remain on the item, and reload without data loss. Live recursive/error/recovery coverage: runner.mjs --live.",
   "services": ["kanban-ui:dev"],
   "seed": "m3",
   "url": "http://localhost:5173/?seed=m3",
   "actions": [
     { "type": "navigate", "url": "http://localhost:5173/?seed=m3" },
-    { "type": "wait", "selector": "[data-testid='board']" },
+    { "type": "navigate", "url": "http://localhost:5173/items/m3-item-1?board=m3-demo" },
+    { "type": "wait", "selector": "[data-testid='item-properties']" },
+    { "type": "assert-not-exists", "selector": "[data-testid='item-save']" },
+    { "type": "click", "selector": "[data-testid='item-edit']" },
+    { "type": "fill-label", "label": "title text", "value": "Updated title after edit" },
     {
-      "type": "click",
-      "selector": "[data-testid^='edit-item-']",
-      "nth": 0,
-      "hover-parent": "[data-testid^='item-card-']"
+      "type": "fill",
+      "selector": "[data-testid='item-editor-body']",
+      "value": "Updated document content"
     },
-    { "type": "wait", "selector": "[data-testid='item-editor-modal']" },
-    {
-      "type": "clear-and-fill",
-      "selector": "[data-testid='editor-title']",
-      "value": "Updated title after edit"
-    },
-    {
-      "type": "clear-and-fill",
-      "selector": "[data-testid='editor-body']",
-      "value": "Updated body content"
-    },
-    { "type": "click", "selector": "[data-testid='editor-save']" },
-    { "type": "wait-for-gone", "selector": "[data-testid='item-editor-modal']" },
-    {
-      "type": "assert-visible",
-      "selector": "[data-testid^='item-title-']",
-      "text-contains": "Updated title after edit"
-    },
-    { "type": "reload" },
-    { "type": "wait", "selector": "[data-testid='board']" }
+    { "type": "click", "selector": "[data-testid='item-save']" },
+    { "type": "wait-for-gone", "selector": "[data-testid='item-save']" },
+    { "type": "reload" }
   ],
   "assertions": [
     {
       "id": "title-persisted",
-      "description": "Updated title is still visible after page reload (persisted in localStorage)",
-      "selector": "[data-testid^='item-title-']",
-      "check": "any-text-contains",
+      "selector": ".item-heading h1",
+      "check": "text-contains",
       "value": "Updated title after edit"
-    }
+    },
+    {
+      "id": "document-persisted",
+      "selector": "[data-testid='item-document']",
+      "check": "text-contains",
+      "value": "Updated document content"
+    },
+    { "id": "stays-on-item", "check": "url-contains", "value": "/items/m3-item-1" }
   ]
 }

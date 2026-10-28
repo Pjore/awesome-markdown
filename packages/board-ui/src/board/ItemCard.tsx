@@ -1,3 +1,4 @@
+import { itemLabel } from '@awesome-markdown/contracts';
 import React, { useState } from 'react';
 import { useSortable } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -5,7 +6,7 @@ import type { Board, Item } from '@awesome-markdown/contracts';
 import type { ItemDragData } from './dnd/dragTypes.js';
 import { useOptionalConflict } from '../sync/conflict-store.js';
 import { deriveSummary } from '../lib/derive-summary.js';
-import { buildItemEditorHref, getBoardScopedString } from '../lib/item-board.js';
+import { buildItemEditorHref } from '../lib/item-board.js';
 import { PropertyValueDisplay } from '../lib/property-display.js';
 import { useRouterAdapter } from '../router/RouterAdapter.js';
 
@@ -46,14 +47,7 @@ export function ItemCard({
 
   const [isHovered, setIsHovered] = useState(false);
 
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: item.slug,
     data: dragData,
     disabled: isConflicted,
@@ -79,12 +73,11 @@ export function ItemCard({
   };
 
   const itemAsMap = item as Record<string, unknown>;
-  const tags = Array.isArray(itemAsMap['tags']) ? (itemAsMap['tags'] as string[]) : [];
-  const summary = item.body !== undefined && item.body.trim() !== ''
-    ? deriveSummary(item.body)
-    : '';
-  const assignee = getBoardScopedString(item, boardSlug, 'assignee').trim();
-  const showsAssigneeInLayout = board.cardLayout?.some((layout) => layout.property === 'assignee') ?? false;
+  const tags = Array.isArray(itemAsMap['tags'])
+    ? itemAsMap['tags'].filter((value): value is string => typeof value === 'string')
+    : [];
+  const summary =
+    item.body !== undefined && item.body.trim() !== '' ? deriveSummary(item.body) : '';
 
   const handleClick = (e: React.MouseEvent): void => {
     // Don't navigate if the user is dragging
@@ -123,7 +116,7 @@ export function ItemCard({
           }}
           data-testid={`item-title-${item.slug}`}
         >
-          {item.title}
+          {itemLabel(item)}
         </span>
         {isConflicted && (
           <span
@@ -174,21 +167,6 @@ export function ItemCard({
         </p>
       )}
 
-      {assignee !== '' && !showsAssigneeInLayout && (
-        <div
-          style={{
-            fontFamily: 'var(--font-mono)',
-            fontSize: '10.5px',
-            fontWeight: 400,
-            color: 'var(--ink-muted)',
-            marginTop: '6px',
-          }}
-          data-testid={`item-assignee-${item.slug}`}
-        >
-          assigned → {assignee}
-        </div>
-      )}
-
       {board.cardLayout && board.cardLayout.length > 0 && (
         <div className="flex items-center flex-wrap gap-1" style={{ marginTop: '6px' }}>
           {board.cardLayout.map((layout) => (
@@ -204,4 +182,3 @@ export function ItemCard({
     </div>
   );
 }
-

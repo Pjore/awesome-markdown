@@ -7,6 +7,7 @@
   "url": "http://localhost:5173/?seed=m3",
   "actions": [
     { "type": "navigate", "url": "http://localhost:5173/?seed=m3" },
+    { "type": "navigate", "url": "http://localhost:5173/boards/m3-demo" },
     { "type": "wait", "selector": "[data-testid='board']" },
     {
       "type": "get-attribute",

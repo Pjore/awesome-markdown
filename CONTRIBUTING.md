@@ -122,7 +122,9 @@ Add or update tests when you change behavior, fix bugs, or introduce new interfa
 
 ### Seeding demo data for UI verification
 
-In localStorage mode, the `?seed=mN` query parameter seeds demo boards into `localStorage["awesome-markdown:v1"]`. It only runs on the **home page** — loading `/boards/<slug>` directly on a fresh browser context will not seed data and the UI will show "Failed to load board". Load `/?seed=m3`, wait for the page to settle, then navigate into the board.
+In localStorage mode, `?seed=m3` explicitly creates the recursive-property demo in `localStorage["awesome-markdown:v2"]` before rendering. Load `/?seed=m3`, then open the **Recursive item demo** board (`/boards/m3-demo`). Repeating the seed leaves an existing demo board unchanged; it is not an example reset or an invalid-data fallback. Other milestone seeds may still be stubs.
+
+For live recursive-editor browser coverage in both providers, start provider-fs against a temporary content root and run `UI_URL=http://127.0.0.1:5183 PROVIDER_URL=http://127.0.0.1:7713 node apps/kanban-ui/agent-browser/m3/runner.mjs --live`. The normal verification command validates descriptors only.
 
 In provider-fs mode (sidecar running on port 7701), no seeding is needed — boards come directly from `content/`, so `/boards/<slug>` can be opened directly.
 

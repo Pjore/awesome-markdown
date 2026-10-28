@@ -1,13 +1,11 @@
-import type {
-  Board,
-  Axis,
-  Cell,
-  FilterRule,
-  Mutation,
-  WriteOnDrop,
-  Item,
-} from '@awesome-markdown/contracts';
-import { deriveMutations, keyBetween } from '@awesome-markdown/filter-engine';
+import type { Board, Axis, Cell, FilterRule, Mutation, Item } from '@awesome-markdown/contracts';
+import {
+  cellFilter,
+  cellMutations,
+  keyBetween,
+  resolvePath,
+  substitutePath,
+} from '@awesome-markdown/filter-engine';
 
 // ---------------------------------------------------------------------------
 // Filter composition
@@ -17,44 +15,8 @@ import { deriveMutations, keyBetween } from '@awesome-markdown/filter-engine';
  * Build the combined cell filter (board ∧ column ∧ swimlane).
  * Returns undefined when all three are absent (match-all).
  */
-export function buildCellFilter(
-  board: Board,
-  col: Axis,
-  sl: Axis,
-): FilterRule | undefined {
-  const rules: FilterRule[] = (
-    [board.filter, col.filter, sl.filter] as Array<FilterRule | undefined>
-  ).filter((f): f is FilterRule => f !== undefined);
-  if (rules.length === 0) return undefined;
-  if (rules.length === 1) return rules[0];
-  return { all: rules };
-}
-
-// ---------------------------------------------------------------------------
-// writeOnDrop resolution
-// ---------------------------------------------------------------------------
-
-/**
- * Column writeOnDrop takes precedence over swimlane writeOnDrop.
- */
-function getWriteOnDropOverride(col: Axis, sl: Axis): WriteOnDrop | undefined {
-  if (col.writeOnDrop !== undefined) return col.writeOnDrop;
-  return sl.writeOnDrop;
-}
-
-// ---------------------------------------------------------------------------
-// Per-board order key helper
-// ---------------------------------------------------------------------------
-
-/** Read the per-board `order` string for an item, if present. */
-export function getItemBoardOrder(item: Item, boardSlug: string): string | undefined {
-  const boards = item.boards;
-  if (!Array.isArray(boards)) return undefined;
-  const entry = boards.find(
-    (e) => (e as Record<string, unknown>)['board'] === boardSlug,
-  ) as Record<string, unknown> | undefined;
-  const o = entry?.['order'];
-  return typeof o === 'string' ? o : undefined;
+export function buildCellFilter(board: Board, col: Axis, sl: Axis): FilterRule | undefined {
+  return cellFilter(board, col, sl);
 }
 
 // ---------------------------------------------------------------------------
@@ -72,13 +34,11 @@ export function applyOptimisticMove(
   srcSwimlaneSlug: string,
   dstColumnSlug: string,
   dstSwimlaneSlug: string,
-  insertBeforeSlug: string | null,
+  insertBeforeSlug: string | null
 ): Cell[] {
   return cells.map((cell) => {
-    const isDst =
-      cell.columnSlug === dstColumnSlug && cell.swimlaneSlug === dstSwimlaneSlug;
-    const isSrc =
-      cell.columnSlug === srcColumnSlug && cell.swimlaneSlug === srcSwimlaneSlug;
+    const isDst = cell.columnSlug === dstColumnSlug && cell.swimlaneSlug === dstSwimlaneSlug;
+    const isSrc = cell.columnSlug === srcColumnSlug && cell.swimlaneSlug === srcSwimlaneSlug;
 
     if (!isDst && !isSrc) return cell;
 
@@ -93,11 +53,7 @@ export function applyOptimisticMove(
       const insertAt = idx >= 0 ? idx : withoutItem.length;
       return {
         ...cell,
-        items: [
-          ...withoutItem.slice(0, insertAt),
-          item,
-          ...withoutItem.slice(insertAt),
-        ],
+        items: [...withoutItem.slice(0, insertAt), item, ...withoutItem.slice(insertAt)],
       };
     }
 
@@ -121,9 +77,9 @@ export interface DropMutations {
  * Returns null when the destination cell is read-only or when
  * deriveMutations returns `{ readonly: true }` as a belt-and-suspenders check.
  *
- * One drop = exactly one PATCH. The returned mutation list includes:
- *   1. Cell-placement mutations derived from the destination cell's filter.
- *   2. One `set boards.<boardSlug>.order = <fractional-key>` mutation for ordering.
+ * One drop = one PATCH. Cross-cell placement uses the bound destination
+ * rules. Reordering writes only the selected configured ascending string
+ * sort target; no implicit membership or per-board order field is invented.
  */
 export function computeDropMutations(params: {
   itemSlug: string;
@@ -134,14 +90,11 @@ export function computeDropMutations(params: {
   board: Board;
   insertBeforeSlug: string | null;
 }): DropMutations | null {
-  const { itemSlug, srcCell, dstCell, colAxis, slAxis, board, insertBeforeSlug } =
-    params;
+  const { itemSlug, srcCell, dstCell, colAxis, slAxis, board, insertBeforeSlug } = params;
 
   if (dstCell.readOnly) return null;
 
-  const filter = buildCellFilter(board, colAxis, slAxis);
-  const override = getWriteOnDropOverride(colAxis, slAxis);
-  const result = deriveMutations(filter, { board: board.slug }, override);
+  const result = cellMutations(board, colAxis, slAxis);
 
   if (!Array.isArray(result)) return null; // ReadOnly from deriveMutations
 
@@ -156,22 +109,36 @@ export function computeDropMutations(params: {
   const prevItem = dstItemsWithoutMoved[insertAt - 1] ?? null;
   const nextItem = dstItemsWithoutMoved[insertAt] ?? null;
 
-  const prevOrder = prevItem !== null ? getItemBoardOrder(prevItem, board.slug) : undefined;
-  const nextOrder = nextItem !== null ? getItemBoardOrder(nextItem, board.slug) : undefined;
-
-  const newOrderKey = keyBetween(prevOrder, nextOrder);
-  const orderMutation: Mutation = {
-    op: 'set',
-    path: `boards.${board.slug}.order`,
-    value: newOrderKey,
-  };
-
   const isReorder =
-    srcCell.columnSlug === dstCell.columnSlug &&
-    srcCell.swimlaneSlug === dstCell.swimlaneSlug;
-
-  return {
-    mutations: [...result, orderMutation],
-    type: isReorder ? 'reorder' : 'move',
-  };
+    srcCell.columnSlug === dstCell.columnSlug && srcCell.swimlaneSlug === dstCell.swimlaneSlug;
+  const order = colAxis.order ?? slAxis.order;
+  const ctx = { board: board.slug, axis: colAxis.order ? colAxis.slug : slAxis.slug };
+  const prevOrder = prevItem && order ? resolvePath(order.by, prevItem, ctx) : undefined;
+  const nextOrder = nextItem && order ? resolvePath(order.by, nextItem, ctx) : undefined;
+  const moving = srcCell.items.find((item) => item.slug === itemSlug);
+  const currentOrder = moving && order ? resolvePath(order.by, moving, ctx) : undefined;
+  const fractional = (value: unknown): value is string =>
+    typeof value === 'string' && /^[0-9A-Za-z]+$/.test(value);
+  const compatible =
+    order?.direction === 'asc' &&
+    (currentOrder === undefined || fractional(currentOrder)) &&
+    (!prevItem || fractional(prevOrder)) &&
+    (!nextItem || fractional(nextOrder));
+  let orderWrites: Mutation[] = [];
+  if (compatible && order) {
+    try {
+      const key = keyBetween(prevOrder as string | undefined, nextOrder as string | undefined);
+      if (
+        (typeof prevOrder !== 'string' || prevOrder < key) &&
+        (typeof nextOrder !== 'string' || key < nextOrder)
+      ) {
+        orderWrites = [{ op: 'set', path: substitutePath(order.by, ctx), value: key }];
+      }
+    } catch {
+      /* Invalid fractional neighbors disable manual ordering, not cross-cell placement. */
+    }
+  }
+  if (isReorder && orderWrites.length === 0) return null;
+  const mutations = isReorder ? orderWrites : [...result, ...orderWrites];
+  return mutations.length ? { mutations, type: isReorder ? 'reorder' : 'move' } : null;
 }
