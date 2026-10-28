@@ -27,6 +27,8 @@ export function startWatcher(contentRoot: string, store: IndexStore): () => void
     const entity = await parseFile(filePath);
     if (!entity) {
       store.removeByFilePath(filePath);
+    } else if (entity.entityType === 'invalid') {
+      store.markSourceError(filePath, entity.message);
     } else if (entity.entityType === 'item') {
       store.upsertItem(entity.slug, entity.data, filePath);
     } else if (entity.entityType === 'board') {

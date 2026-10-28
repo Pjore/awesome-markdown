@@ -44,11 +44,11 @@ beforeEach(() => {
 describe('createItem', () => {
   it('creates item with correct fields', async () => {
     const item = await provider.createItem({ slug: 'task-1', title: 'Task 1', mutations: [] });
-    expect(item.entityType).toBe('item');
-    expect(item.slug).toBe('task-1');
-    expect(item.title).toBe('Task 1');
-    expect(item.createdAt).toBeDefined();
-    expect(item.updatedAt).toBeDefined();
+    expect(item.item.entityType).toBe('item');
+    expect(item.item.slug).toBe('task-1');
+    expect(item.item.title).toBe('Task 1');
+    expect(item.item.createdAt).toBeDefined();
+    expect(item.item.updatedAt).toBeDefined();
   });
 
   it('reads back created item', async () => {
@@ -59,9 +59,9 @@ describe('createItem', () => {
   it('handles slug collision with numeric suffix', async () => {
     await provider.createItem({ slug: 'task', title: 'First', mutations: [] });
     const second = await provider.createItem({ slug: 'task', title: 'Second', mutations: [] });
-    expect(second.slug).toBe('task-2');
+    expect(second.item.slug).toBe('task-2');
     const third = await provider.createItem({ slug: 'task', title: 'Third', mutations: [] });
-    expect(third.slug).toBe('task-3');
+    expect(third.item.slug).toBe('task-3');
   });
 
   it('applies initial mutations', async () => {
@@ -69,31 +69,31 @@ describe('createItem', () => {
       slug: 'task-1', title: 'Task 1',
       mutations: [{ op: 'set', path: 'status', value: 'open' }],
     });
-    expect((item as Record<string, unknown>)['status']).toBe('open');
+    expect(item.item['status']).toBe('open');
   });
 
   it('set mutation on boards.<slug>.<field> creates a proper boards[] array entry', async () => {
     const item = await provider.createItem({
       slug: 'task-1', title: 'Task 1',
-      mutations: [{ op: 'set', path: 'boards.demo.order', value: 'a0' }],
+      mutations: [{ op: 'set', path: ['boards', { selector: 'board', value: 'demo' }, 'order'], value: 'a0' }],
     });
-    expect(item.boards).toEqual([{ board: 'demo', order: 'a0' }]);
+    expect(item.item.boards).toEqual([{ board: 'demo', order: 'a0' }]);
   });
 
   it('stores body field', async () => {
     const item = await provider.createItem({
       slug: 'task-1', title: 'Task', mutations: [], body: 'hello',
     });
-    expect(item.body).toBe('hello');
+    expect(item.item.body).toBe('hello');
   });
 
   it('`boards.<slug>.*` mutation on a fresh item creates boards as an array', async () => {
     const item = await provider.createItem({
       slug: 'task-1', title: 'Task 1',
-      mutations: [{ op: 'set', path: 'boards.my-board.order', value: 'a0' }],
+      mutations: [{ op: 'set', path: ['boards', { selector: 'board', value: 'my-board' }, 'order'], value: 'a0' }],
     });
-    expect(Array.isArray(item.boards)).toBe(true);
-    expect(item.boards).toEqual([{ board: 'my-board', order: 'a0' }]);
+    expect(Array.isArray(item.item.boards)).toBe(true);
+    expect(item.item.boards).toEqual([{ board: 'my-board', order: 'a0' }]);
   });
 });
 
@@ -101,46 +101,51 @@ describe('patchItem', () => {
   it('applies set mutation', async () => {
     await provider.createItem({ slug: 'task-1', title: 'Task', mutations: [] });
     const patched = await provider.patchItem('task-1', {
+      revision: (await provider.getItem('task-1'))!.revision,
       mutations: [{ op: 'set', path: 'status', value: 'done' }],
     });
-    expect((patched as Record<string, unknown>)['status']).toBe('done');
+    expect(patched.item['status']).toBe('done');
   });
 
   it('applies append mutation to array', async () => {
     seed([makeItem('t', { tags: ['a'] })]);
     const patched = await provider.patchItem('t', {
+      revision: (await provider.getItem('t'))!.revision,
       mutations: [{ op: 'append', path: 'tags', value: 'b' }],
     });
-    expect((patched as Record<string, unknown>)['tags']).toEqual(['a', 'b']);
+    expect(patched.item['tags']).toEqual(['a', 'b']);
   });
 
   it('applies append mutation to `body` as a text concatenation, not an array-wrap', async () => {
     await provider.createItem({ slug: 't2', title: 'Task 2', body: 'Existing body.', mutations: [] });
     const patched = await provider.patchItem('t2', {
+      revision: (await provider.getItem('t2'))!.revision,
       mutations: [{ op: 'append', path: 'body', value: 'A follow-up note.' }],
     });
-    expect((patched as Record<string, unknown>)['body']).toBe('Existing body.\n\nA follow-up note.');
+    expect(patched.item['body']).toBe('Existing body.\n\nA follow-up note.');
   });
 
   it('applies remove mutation from array', async () => {
     seed([makeItem('t', { tags: ['a', 'b'] })]);
     const patched = await provider.patchItem('t', {
+      revision: (await provider.getItem('t'))!.revision,
       mutations: [{ op: 'remove', path: 'tags', value: 'a' }],
     });
-    expect((patched as Record<string, unknown>)['tags']).toEqual(['b']);
+    expect(patched.item['tags']).toEqual(['b']);
   });
 
   it('bumps updatedAt', async () => {
     seed([makeItem('t')]);
     const patched = await provider.patchItem('t', {
+      revision: (await provider.getItem('t'))!.revision,
       mutations: [{ op: 'set', path: 'status', value: 'done' }],
     });
-    expect(patched.updatedAt).not.toBe(NOW);
+    expect(patched.item.updatedAt).not.toBe(NOW);
   });
 
   it('throws on unknown slug', async () => {
     await expect(
-      provider.patchItem('no-such', { mutations: [{ op: 'set', path: 'x', value: 1 }] }),
+      provider.patchItem('no-such', { revision: 'missing', mutations: [{ op: 'set', path: 'x', value: 1 }] }),
     ).rejects.toThrow('Item not found');
   });
 });
@@ -334,7 +339,7 @@ describe('getHomeless', () => {
     expect(result.items[0]!.slug).toBe('task-lost');
   });
 
-  it('ignores items without a board entry for this board', async () => {
+  it('includes candidates without a board entry', async () => {
     const board = makeBoard('demo', { columns: ['col'] });
     const col = makeAxis('col', { filter: { property: 'status', equals: 'open' } });
     // Item not in boards[] for this board — should be ignored even with matching filter
@@ -342,7 +347,7 @@ describe('getHomeless', () => {
     seed([board, col, unrelated]);
 
     const result = await provider.getHomeless('demo');
-    expect(result.items).toHaveLength(0);
+    expect(result.items.map(item => item.slug)).toEqual(['unrelated']);
   });
 });
 
@@ -366,7 +371,7 @@ describe('subscribe', () => {
     seed([makeItem('t1')]);
     const events: string[] = [];
     provider.subscribe((e) => { if (e.type === 'change') events.push(e.entitySlug); });
-    await provider.patchItem('t1', { mutations: [{ op: 'set', path: 'x', value: 1 }] });
+    await provider.patchItem('t1', { revision: (await provider.getItem('t1'))!.revision, mutations: [{ op: 'set', path: 'x', value: 1 }] });
     expect(events).toEqual(['t1']);
   });
 

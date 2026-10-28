@@ -40,17 +40,12 @@ function firstDuplicate(slugs: string[]): string | undefined {
 
 const boardParams = z.object({ slug: z.string() });
 
-export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (
-  fastify,
-  opts,
-) => {
+export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (fastify, opts) => {
   const { store, contentRoot } = opts;
 
   // GET /boards
-  fastify.get(
-    '/boards',
-    { schema: { response: { 200: z.array(BoardSchema) } } },
-    async () => store.listBoards(),
+  fastify.get('/boards', { schema: { response: { 200: z.array(BoardSchema) } } }, async () =>
+    store.listBoards()
   );
 
   // POST /boards
@@ -92,13 +87,19 @@ export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (
       bus.publish({ type: 'change', path: `${slug}.md`, entityId: slug });
 
       return reply.status(201).send(board);
-    },
+    }
   );
 
   // PATCH /boards/:slug
   fastify.patch(
     '/boards/:slug',
-    { schema: { params: boardParams, body: PatchBoardRequestSchema.strict(), response: { 200: BoardSchema } } },
+    {
+      schema: {
+        params: boardParams,
+        body: PatchBoardRequestSchema.strict(),
+        response: { 200: BoardSchema },
+      },
+    },
     async (req) => {
       const { slug } = req.params;
       const existing = store.getBoard(slug);
@@ -126,7 +127,7 @@ export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (
       bus.publish({ type: 'change', path: path.relative(contentRoot, filePath), entityId: slug });
 
       return updated;
-    },
+    }
   );
 
   // DELETE /boards/:slug
@@ -143,7 +144,7 @@ export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (
       bus.publish({ type: 'change', path: path.relative(contentRoot, filePath), entityId: slug });
 
       return { ok: true as const };
-    },
+    }
   );
 
   // GET /boards/:slug/render
@@ -154,8 +155,19 @@ export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (
       const board = store.getBoard(req.params.slug);
       if (!board) throw new RepoError('not_found', `Board ${req.params.slug} not found`);
 
-      return renderBoard({ board, lookupAxis: s => store.getAxis(s), items: store.listItems() });
-    },
+      try {
+        return renderBoard({
+          board,
+          lookupAxis: (s) => store.getAxis(s),
+          items: store.listItems(),
+        });
+      } catch (error) {
+        throw new RepoError(
+          'validation_failed',
+          error instanceof Error ? error.message : 'Invalid board configuration'
+        );
+      }
+    }
   );
 
   // GET /boards/:slug/homeless
@@ -166,7 +178,18 @@ export const boardsRoutes: FastifyPluginAsyncZod<BoardsPluginOptions> = async (
       const board = store.getBoard(req.params.slug);
       if (!board) throw new RepoError('not_found', `Board ${req.params.slug} not found`);
 
-      return computeHomeless({ board, lookupAxis: s => store.getAxis(s), items: store.listItems() });
-    },
+      try {
+        return computeHomeless({
+          board,
+          lookupAxis: (s) => store.getAxis(s),
+          items: store.listItems(),
+        });
+      } catch (error) {
+        throw new RepoError(
+          'validation_failed',
+          error instanceof Error ? error.message : 'Invalid board configuration'
+        );
+      }
+    }
   );
 };

@@ -40,11 +40,12 @@ const axis = {
   createdAt: NOW, updatedAt: NOW,
 };
 
-const item = {
+const itemData = {
   entityType: 'item' as const,
   slug: 'task-1', title: 'Task 1',
   createdAt: NOW, updatedAt: NOW,
 };
+const item = { item: itemData, revision: 'revision' };
 
 // ---------------------------------------------------------------------------
 // Health
@@ -170,10 +171,10 @@ describe('SidecarHttpClient — patchBoard / patchAxis', () => {
 const render = {
   board,
   axes: { columns: [axis], swimlanes: [] },
-  cells: [{ columnSlug: 'todo', swimlaneSlug: 'default', readOnly: false, items: [item] }],
+  cells: [{ columnSlug: 'todo', swimlaneSlug: 'default', readOnly: false, items: [itemData] }],
 };
 
-const homeless = { board, items: [item] };
+const homeless = { board, items: [itemData] };
 
 describe('SidecarHttpClient — getBoardRender', () => {
   it('GET /boards/:slug/render and returns BoardRender', async () => {
@@ -232,6 +233,7 @@ describe('SidecarHttpClient — patchItem', () => {
   it('PATCH /items/:slug with mutations and returns Item', async () => {
     const [fetch, calls] = makeFetch(200, item);
     const result = await makeClient(fetch).patchItem('task-1', {
+      revision: 'revision',
       mutations: [{ op: 'set', path: 'status', value: 'done' }],
     });
     expect(result).toEqual(item);

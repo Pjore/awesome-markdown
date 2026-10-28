@@ -127,12 +127,12 @@ describe('SidecarHttpClient — no getToken (unauthenticated)', () => {
       createdAt: NOW,
       updatedAt: NOW,
     };
-    const [patchFetch, patchCalls] = makeFetch(200, item);
+    const [patchFetch, patchCalls] = makeFetch(200, { item, revision: 'revision' });
     const patchClient = new SidecarHttpClient({
       baseUrl: 'http://localhost:7701',
       fetchFn: patchFetch as typeof globalThis.fetch,
     });
-    await patchClient.patchItem('demo', { mutations: [{ op: 'set', path: 'title', value: 'x' }] });
+    await patchClient.patchItem('demo', { revision: 'revision', mutations: [{ op: 'set', path: 'title', value: 'x' }] });
     const patchHeaders = patchCalls[0]![1]?.headers as Record<string, string>;
     expect(patchHeaders['Content-Type']).toBe('application/json');
   });

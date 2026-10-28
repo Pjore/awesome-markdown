@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { parseSafeYaml } from '@awesome-markdown/contracts';
 import cors from '@fastify/cors';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { mkdir } from 'node:fs/promises';
@@ -36,7 +37,25 @@ export async function createServer(config: Config, externalStore?: IndexStore) {
     store.loadFrom(entities);
   }
 
-  const fastify = Fastify({ logger: false });
+  const fastify = Fastify({ logger: false, bodyLimit: 4 * 1024 * 1024 });
+
+  fastify.removeContentTypeParser('application/json');
+  fastify.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    (_request, source, done) => {
+      try {
+        JSON.parse(source as string); // Require JSON syntax, not the broader YAML grammar.
+        done(null, parseSafeYaml(source as string, 'transport'));
+      } catch (error) {
+        done(
+          Object.assign(new Error(error instanceof Error ? error.message : 'Invalid JSON'), {
+            statusCode: 400,
+          })
+        );
+      }
+    }
+  );
 
   fastify.setValidatorCompiler(validatorCompiler);
   fastify.setSerializerCompiler(serializerCompiler);

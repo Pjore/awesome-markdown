@@ -6,6 +6,7 @@
 export type RepoErrorCode =
   | 'not_found'
   | 'already_exists'
+  | 'conflict'
   | 'validation_failed'
   | 'io_error';
 

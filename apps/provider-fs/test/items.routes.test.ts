@@ -40,7 +40,7 @@ describe("items routes", () => {
       payload: { ...BASE_POST, body: "Hello world" },
     });
     expect(res.statusCode).toBe(201);
-    const item = res.json<Item>();
+    const item = res.json<{ item: Item }>().item;
     expect(item.entityType).toBe("item");
     expect(item.slug).toBe("my-item");
     expect(item.title).toBe("My Item");
@@ -68,11 +68,11 @@ describe("items routes", () => {
       payload: {
         slug: "new-on-board",
         title: "New On Board",
-        mutations: [{ op: "set", path: "boards.board-main.order", value: "a0" }],
+        mutations: [{ op: "set", path: ['boards', { selector: 'board', value: 'board-main' }, 'order'], value: "a0" }],
       },
     });
     expect(res.statusCode).toBe(201);
-    const item = res.json<Item>();
+    const item = res.json<{ item: Item }>().item;
     expect(Array.isArray(item.boards)).toBe(true);
     expect(item.boards).toEqual([{ board: "board-main", order: "a0" }]);
   });
@@ -90,7 +90,7 @@ describe("items routes", () => {
       payload: { slug: "clash", title: "Clash 1", mutations: [] },
     });
     expect(r1.statusCode).toBe(201);
-    expect(r1.json<Item>().slug).toBe("clash-2");
+    expect(r1.json<{ item: Item }>().item.slug).toBe("clash-2");
 
     const r2 = await server.inject({
       method: "POST",
@@ -99,7 +99,7 @@ describe("items routes", () => {
       payload: { slug: "clash", title: "Clash 2", mutations: [] },
     });
     expect(r2.statusCode).toBe(201);
-    expect(r2.json<Item>().slug).toBe("clash-3");
+    expect(r2.json<{ item: Item }>().item.slug).toBe("clash-3");
   });
 
   it("GET /items/:slug returns the item", async () => {
@@ -110,7 +110,7 @@ describe("items routes", () => {
 
     const res = await server.inject({ method: "GET", url: "/items/readable" });
     expect(res.statusCode).toBe(200);
-    expect(res.json<Item>().slug).toBe("readable");
+    expect(res.json<{ item: Item }>().item.slug).toBe("readable");
   });
 
   it("PATCH /items/:slug applies mutations and only modifies target file", async () => {
@@ -132,10 +132,10 @@ describe("items routes", () => {
       method: "PATCH",
       url: "/items/patch-me",
       headers: { "content-type": "application/json" },
-      payload: { mutations: [{ op: "set", path: "status", value: "done" }] },
+      payload: { revision: createRes.json().revision, mutations: [{ op: "set", path: "status", value: "done" }] },
     });
     expect(patchRes.statusCode).toBe(200);
-    expect((patchRes.json<Record<string, unknown>>())["status"]).toBe("done");
+    expect(patchRes.json<{ item: Item }>().item['status']).toBe("done");
 
     const filesAfter = await Array.fromAsync(glob(tmp.contentRoot + "/**/*.md"));
     expect(filesAfter).toHaveLength(files.length);
@@ -160,15 +160,15 @@ describe("items routes", () => {
       method: "PATCH",
       url: "/items/append-body",
       headers: { "content-type": "application/json" },
-      payload: { mutations: [{ op: "append", path: "body", value: "A follow-up note." }] },
+      payload: { revision: createRes.json().revision, mutations: [{ op: "append", path: "body", value: "A follow-up note." }] },
     });
     expect(patchRes.statusCode).toBe(200);
-    const item = patchRes.json<Item>();
+    const item = patchRes.json<{ item: Item }>().item;
     expect(item.body).toBe("Existing body.\n\nA follow-up note.");
 
     const getRes = await server.inject({ method: "GET", url: "/items/append-body" });
     expect(getRes.statusCode).toBe(200);
-    expect(getRes.json<Item>().body).toBe("Existing body.\n\nA follow-up note.");
+    expect(getRes.json<{ item: Item }>().item.body).toBe("Existing body.\n\nA follow-up note.");
   });
 
   it("PATCH /items/:slug — append onto an empty/missing body sets it directly (no leading separator)", async () => {
@@ -184,10 +184,10 @@ describe("items routes", () => {
       method: "PATCH",
       url: "/items/append-empty-body",
       headers: { "content-type": "application/json" },
-      payload: { mutations: [{ op: "append", path: "body", value: "First note." }] },
+      payload: { revision: createRes.json().revision, mutations: [{ op: "append", path: "body", value: "First note." }] },
     });
     expect(patchRes.statusCode).toBe(200);
-    expect(patchRes.json<Item>().body).toBe("First note.");
+    expect(patchRes.json<{ item: Item }>().item.body).toBe("First note.");
   });
 
   it("DELETE /items/:slug removes the item", async () => {
@@ -217,11 +217,11 @@ describe("items routes", () => {
       payload: {
         slug: "board-placed",
         title: "Board Placed",
-        mutations: [{ op: "set", path: "boards.board-main.order", value: "a0" }],
+        mutations: [{ op: "set", path: ['boards', { selector: 'board', value: 'board-main' }, 'order'], value: "a0" }],
       },
     });
     expect(res.statusCode).toBe(201);
-    const item = res.json<Item>();
+    const item = res.json<{ item: Item }>().item;
     expect(Array.isArray(item.boards)).toBe(true);
     expect(item.boards).toEqual([{ board: "board-main", order: "a0" }]);
   });
