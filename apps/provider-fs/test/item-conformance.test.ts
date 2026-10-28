@@ -59,7 +59,7 @@ describe('filesystem source concurrency and integrity', () => {
       expect(
         (await server.inject({ method: 'GET', url: '/items/external' })).json().item.title
       ).toBe('External edit');
-      const invalid = external.replace('"title": "External edit"', '"value": 9007199254740993');
+      const invalid = external.replace('title: "External edit"', 'value: 9007199254740993');
       await writeFile(file, invalid);
       expect((await patch()).statusCode).toBe(422);
       expect(await readFile(file, 'utf8')).toBe(invalid);

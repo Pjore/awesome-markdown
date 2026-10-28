@@ -1,6 +1,6 @@
 # Item properties and contextual filters
 
-Items open in **read mode**. Properties are displayed recursively with their types; system metadata has a separate read-only disclosure, and Markdown is a separate document area. The heading (including board cards) uses a nonempty string `title`, otherwise `slug`.
+Items open in **read mode**. The item's Markdown content appears directly below its heading, without an additional UI heading or visible field label. Properties follow, displayed recursively with their types; system metadata has a separate read-only disclosure. The heading (including board cards) uses a nonempty string `title`, otherwise `slug`.
 
 **Edit** starts one explicit session for properties and document text. **Save** persists them together and returns to the item's read view, even if its new properties remove it from the originating board. **Cancel** restores the entry snapshot, confirming dirty or incomplete input. Changing disclosures or opening the preview does not dirty the item. Browser unload and ordinary in-app links are guarded; history/programmatic navigation depends on the host router's capabilities.
 
@@ -65,7 +65,7 @@ This is a coordinated protocol change: update contracts, providers, and applicat
 
 Incoming events never replace an active edit snapshot. A failed/conflicting save keeps the complete draft and edit mode. Reloading current source requires discard confirmation; automatic merge is not provided.
 
-**YAML preview / Copy YAML / Download YAML** contain properties only. **Download Markdown** contains properties and document text. Both export the current valid draft, use safe filenames, report failures, and never mark the item saved. Downloads are not treated as unsaved navigation. Source comments, formatting, anchors, YAML import, and direct YAML editing are not editor features.
+**YAML preview / Copy YAML / Download YAML** contain properties only. The preview is a YAML code block with ordinary unquoted keys where safe; ambiguous keys and string values are quoted safely. **Download Markdown** contains properties and document text. Both export the current valid draft, use safe filenames, report failures, and never mark the item saved. Downloads are not treated as unsaved navigation. Source comments, formatting, anchors, YAML import, and direct YAML editing are not editor features.
 
 ## Verification
 
@@ -78,4 +78,6 @@ UI_URL=http://127.0.0.1:5183 PROVIDER_URL=http://127.0.0.1:7713 \
   node apps/kanban-ui/agent-browser/m3/runner.mjs --live
 ```
 
-The live extension seeds isolated localStorage, creates/removes its own temporary filesystem item, exercises both providers, and writes recovery downloads/mobile screenshots under `/tmp`. Do not point it at live household content. The normal `pnpm verify:ui` command validates descriptors; it is not a substitute for this live browser run.
+The explicit `?seed=m3` demo provisions two boards (`m3-demo`, `m3-release`) sharing contextual `boards.$board.*` axes and overlapping items with independent board-specific values. Rerunning the seed extends older demos without replacing their item content or existing board entries.
+
+The live extension seeds isolated localStorage, creates/removes its own temporary filesystem item, exercises both providers (including actual page scrolling to the footer on desktop/mobile), and writes recovery downloads/mobile screenshots under `/tmp`. Do not point it at live household content. The normal `pnpm verify:ui` command validates descriptors; it is not a substitute for this live browser run.

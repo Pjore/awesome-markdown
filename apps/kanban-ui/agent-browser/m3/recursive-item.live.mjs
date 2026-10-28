@@ -45,7 +45,9 @@ function fill(label, value) {
 async function apiRequest(path, method = 'GET', body) {
   const response = await fetch(`${api}${path}`, {
     method,
-    ...(body ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {}),
+    ...(body
+      ? { headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }
+      : {}),
   });
   if (!response.ok)
     throw new Error(`${method} ${path}: ${response.status} ${await response.text()}`);
@@ -98,6 +100,23 @@ try {
       `document.querySelector('[data-testid=item-properties]').textContent.includes('"003"')`,
       'Primitive fidelity failed'
     );
+    check(
+      `document.querySelector('.item-session').firstElementChild.classList.contains('item-document') && !document.querySelector('#document-heading')`,
+      'Document content is not first or still has an injected heading'
+    );
+    evaluate(
+      `document.querySelector('.item-metadata').open=true; document.querySelector('.item-recovery').open=true`
+    );
+    check(
+      `document.querySelector('[data-testid=yaml-preview] > code.language-yaml')?.textContent.includes('entityType: "item"')`,
+      'Readable YAML code block is missing'
+    );
+    run('scroll', 'down', '10000', '--selector', '[data-testid=app-content]');
+    check(
+      `document.querySelector('[data-testid=app-content]').scrollTop>0 && document.querySelector('.item-page footer').getBoundingClientRect().bottom<=document.querySelector('[data-testid=app-content]').getBoundingClientRect().bottom+1`,
+      'Page content is clipped or footer cannot be reached by scrolling'
+    );
+    check(`document.documentElement.scrollHeight<=window.innerHeight+1`, 'Viewport shell creates a second document scrollbar');
     click('Edit');
     fill('number number', '1e');
     fill('text text', 'Unrelated draft');
@@ -198,6 +217,11 @@ try {
     check(
       `document.querySelector('.item-page').getBoundingClientRect().width<=390`,
       'Mobile layout overflows'
+    );
+    run('scroll', 'down', '10000', '--selector', '[data-testid=app-content]');
+    check(
+      `document.querySelector('[data-testid=app-content]').scrollTop>0 && document.querySelector('.item-page footer').getBoundingClientRect().bottom<=window.innerHeight+1`,
+      'Mobile content cannot be scrolled to its footer'
     );
     run('screenshot', `/tmp/${session}-${kind}-mobile.png`);
     run('set', 'viewport', '1280', '900');

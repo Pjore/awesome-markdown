@@ -103,6 +103,24 @@ describe('recursive item contract', () => {
     expect(Object.keys(parseSafeYaml(itemYaml(item)))).toEqual(Object.keys(properties));
     expect(itemYaml(item)).not.toContain('markdown');
   });
+  it('uses readable YAML keys while safely quoting ambiguous and multiline names', () => {
+    const item = {
+      ...metadata,
+      title: '003',
+      mixed: [false, null, 'false'],
+      true: 'boolean-looking key',
+      '0': 'numeric-looking key',
+      'line\nkey': 'multiline',
+      'colon: key': 'literal',
+      body: 'Document',
+    };
+    const yaml = itemYaml(item);
+    expect(yaml).toContain('title: "003"');
+    expect(yaml).toContain('mixed:\n  - false\n  - null\n  - "false"');
+    expect(yaml).not.toContain('"title":');
+    const { body: _body, ...properties } = item;
+    expect(parseSafeYaml(yaml)).toEqual(properties);
+  });
   it.each(['9007199254740993', '9007199254740991.1', '1e100', '.inf', '.nan'])(
     'rejects unsafe numeric source %s before conversion',
     (literal) => {

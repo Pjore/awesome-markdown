@@ -12,14 +12,14 @@ describe('serializeEntity', () => {
   it('writes item body as markdown content, not frontmatter', () => {
     const item: Item = { entityType: 'item', slug: 'i', title: 'I', body: 'Hello', createdAt: T, updatedAt: T };
     const md = serializeEntity(item);
-    expect(md.startsWith('---\n"entityType": "item"\n')).toBe(true);
+    expect(md.startsWith('---\nentityType: "item"\n')).toBe(true);
     expect(md).not.toMatch(/^body:/m);
     expect(md.endsWith('---\nHello')).toBe(true);
   });
 
   it('writes boards and axes as frontmatter with empty content', () => {
     const board: Board = { entityType: 'board', slug: 'b', title: 'B', columns: ['c'], createdAt: T, updatedAt: T };
-    expect(serializeEntity(board)).toContain('"columns":\n  - "c"');
+    expect(serializeEntity(board)).toContain('columns:\n  - "c"');
     const axis: Axis = { entityType: 'axis', slug: 'a', title: 'A', filter: { property: 's', equals: 'x' } };
     expect(serializeEntity(axis).endsWith('---\n')).toBe(true);
   });

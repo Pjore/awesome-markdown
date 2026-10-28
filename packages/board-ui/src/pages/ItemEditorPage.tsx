@@ -243,11 +243,7 @@ export function ItemEditorPage(): React.ReactElement {
               setEditing(true);
               setMessage('Editing item. Changes are saved only with Save.');
               requestAnimationFrame(() =>
-                document
-                  .querySelector<HTMLElement>(
-                    '.property-root textarea, .property-root input, .property-root button'
-                  )
-                  ?.focus()
+                document.querySelector<HTMLElement>('[data-testid="item-editor-body"]')?.focus()
               );
             }}
           >
@@ -273,6 +269,21 @@ export function ItemEditorPage(): React.ReactElement {
         </div>
       )}
       <fieldset disabled={saving} className="item-session">
+        <section className="item-document" aria-label="Item content">
+          {editing ? (
+            <textarea
+              aria-label="Document text"
+              data-testid="item-editor-body"
+              rows={12}
+              value={body}
+              onChange={(event) => setBody(event.target.value)}
+            />
+          ) : (
+            <div data-testid="item-document">
+              <ReactMarkdown>{record.item.body ?? ''}</ReactMarkdown>
+            </div>
+          )}
+        </section>
         <section aria-labelledby="properties-heading">
           <h2 id="properties-heading">Properties</h2>
           {editing ? (
@@ -309,24 +320,6 @@ export function ItemEditorPage(): React.ReactElement {
             <PropertyRead key={key} label={key} value={record.item[key]} />
           ))}
         </details>
-        <section className="item-document" aria-labelledby="document-heading">
-          <h2 id="document-heading">Markdown document</h2>
-          {editing ? (
-            <label>
-              Document text
-              <textarea
-                data-testid="item-editor-body"
-                rows={12}
-                value={body}
-                onChange={(event) => setBody(event.target.value)}
-              />
-            </label>
-          ) : (
-            <div data-testid="item-document">
-              <ReactMarkdown>{record.item.body ?? ''}</ReactMarkdown>
-            </div>
-          )}
-        </section>
         {editing && (
           <div className="item-actions">
             <button type="button" data-testid="item-save" onClick={() => void save()}>

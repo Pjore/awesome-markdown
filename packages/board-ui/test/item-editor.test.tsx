@@ -57,6 +57,10 @@ async function input(
   });
 }
 function field(label: string): HTMLInputElement | HTMLTextAreaElement {
+  const accessible = [
+    ...host.querySelectorAll<HTMLInputElement | HTMLTextAreaElement>('input,textarea'),
+  ].find((element) => element.getAttribute('aria-label') === label);
+  if (accessible) return accessible;
   const match = [...host.querySelectorAll('label')].find((element) =>
     element.textContent?.trim().startsWith(label)
   );
@@ -112,6 +116,31 @@ describe('read-first recursive item editor', () => {
     expect(host.textContent).toContain('System metadata');
     await click(button('Back to board'));
     expect(navigate).toHaveBeenCalledWith('/boards/origin');
+  });
+  it('puts unchanged user Markdown first without adding a document heading or visible editor label', async () => {
+    const body = '# Markdown document\n\nUser content must stay intact.\n';
+    await mount({ ...initial, body });
+    const session = host.querySelector('.item-session')!;
+    expect(session.firstElementChild?.className).toBe('item-document');
+    expect(host.querySelectorAll('.item-document h1')).toHaveLength(1);
+    expect(host.querySelector('#document-heading')).toBeNull();
+    expect(host.querySelector('.item-document')?.textContent).toContain(
+      'User content must stay intact.'
+    );
+    await click(button('Edit'));
+    expect(field('Document text').value).toBe(body);
+    expect(host.querySelector('.item-document label')).toBeNull();
+    await input(field('text'), 'Changed property');
+    await click(button('Save'));
+    expect((await provider.getItem('fixture'))?.item.body).toBe(body);
+  });
+  it('shows conventional YAML keys in a YAML code block, excluding document text', async () => {
+    await mount();
+    const code = host.querySelector('[data-testid=yaml-preview] > code.language-yaml');
+    expect(code?.textContent).toContain('entityType: "item"');
+    expect(code?.textContent).toContain('mixed:\n  - 1');
+    expect(code?.textContent).not.toContain('"entityType":');
+    expect(code?.textContent).not.toContain('Original document');
   });
   it('edits properties and document in one explicit save; stays on the read view', async () => {
     await mount();

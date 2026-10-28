@@ -17,7 +17,10 @@ import type { RouterAdapter, RouterLinkProps } from '../src/index.js';
 (globalThis as Record<string, unknown>)['IS_REACT_ACT_ENVIRONMENT'] = true;
 
 /** Minimal in-memory host router: records navigations, prefixes hrefs like a nested host would. */
-function fakeAdapter(params: Record<string, string>, search = ''): RouterAdapter & {
+function fakeAdapter(
+  params: Record<string, string>,
+  search = ''
+): RouterAdapter & {
   navigate: ReturnType<typeof vi.fn>;
 } {
   const navigate = vi.fn();
@@ -59,13 +62,17 @@ async function mount(adapter: RouterAdapter, page: React.ReactElement): Promise<
     root.render(
       <RouterAdapterProvider adapter={adapter}>
         <ProviderContextProvider provider={provider}>{page}</ProviderContextProvider>
-      </RouterAdapterProvider>,
+      </RouterAdapterProvider>
     );
   });
-  // let provider promises + effects settle
-  await act(async () => {
-    await new Promise((r) => setTimeout(r, 0));
-  });
+  // Item revisions use asynchronous hashing; await the visible load result,
+  // not merely one event-loop tick (which is flaky under parallel suites).
+  for (let attempt = 0; attempt < 50; attempt++) {
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 10));
+    });
+    if (!container.querySelector('[data-testid="item-editor-loading"]')) break;
+  }
 }
 
 const q = (testId: string): HTMLElement | null =>
@@ -114,7 +121,9 @@ describe('board-ui RouterAdapter seam', () => {
       for (const name of readdirSync(dir)) {
         const full = join(dir, name);
         if (statSync(full).isDirectory()) walk(full);
-        else if (/from ['"]react-router|from ['"]@tanstack\/react-router/.test(readFileSync(full, 'utf8')))
+        else if (
+          /from ['"]react-router|from ['"]@tanstack\/react-router/.test(readFileSync(full, 'utf8'))
+        )
           offenders.push(full);
       }
     };

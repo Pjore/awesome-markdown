@@ -65,6 +65,7 @@
   box-sizing: border-box;
 }
 body {
+  margin: 0;
   background: var(--bg);
   color: var(--ink);
   font-family: var(--font-sans);
@@ -145,6 +146,7 @@ textarea {
 }
 .h-screen {
   height: 100vh;
+  height: 100dvh;
 }
 .w-full {
   width: 100%;
@@ -791,8 +793,7 @@ textarea {
   width: 100%;
 }
 .item-metadata,
-.item-recovery,
-.item-document {
+.item-recovery {
   margin-top: 24px;
   padding-top: 12px;
   border-top: 1px solid var(--border);
@@ -801,7 +802,22 @@ textarea {
   font-size: 12px;
 }
 .item-document {
+  margin-top: 16px;
   line-height: 1.7;
+}
+.item-recovery pre {
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--ink) 4%, var(--bg));
+  overflow-x: auto;
+}
+.item-recovery pre code {
+  display: block;
+  white-space: pre;
+  overflow-wrap: normal;
+  font-size: 13px;
+  line-height: 1.6;
 }
 .item-document img {
   max-width: 100%;

@@ -78,7 +78,7 @@ export function itemYaml(item: Record<string, unknown>): string {
   const { body: _body, ...properties } = item;
   return stringify(properties, {
     defaultStringType: 'QUOTE_DOUBLE',
-    defaultKeyType: 'QUOTE_DOUBLE',
+    defaultKeyType: 'PLAIN',
     aliasDuplicateObjects: false,
     lineWidth: 0,
   });

@@ -49,7 +49,9 @@ export function ItemRecovery({
           {invalid} Complete or remove invalid input before previewing or exporting.
         </p>
       ) : (
-        <pre data-testid="yaml-preview">{yaml}</pre>
+        <pre data-testid="yaml-preview" aria-label="YAML properties">
+          <code className="language-yaml">{yaml}</code>
+        </pre>
       )}
       <div className="item-actions">
         <button
