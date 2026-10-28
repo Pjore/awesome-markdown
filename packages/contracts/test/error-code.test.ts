@@ -7,6 +7,7 @@ describe('ErrorCodeSchema', () => {
     expect(ErrorCodeSchema.options).toEqual([
       'not_found',
       'already_exists',
+      'conflict',
       'validation_failed',
       'forbidden',
       'unauthorized',

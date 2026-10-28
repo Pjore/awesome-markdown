@@ -29,8 +29,21 @@ export type {
 } from './schemas/mutation.js';
 
 // Entity schemas
-export { ItemSchema } from './schemas/item.js';
-export type { Item } from './schemas/item.js';
+export { ItemSchema, ItemRecordSchema } from './schemas/item.js';
+export type { Item, ItemRecord } from './schemas/item.js';
+export type { MutationPath } from './schemas/mutation.js';
+export {
+  utf8Bytes,
+  ITEM_LIMITS,
+  SYSTEM_KEYS,
+  unsafeKey,
+  validateValues,
+  validateItemBounds,
+  itemYaml,
+  itemMarkdown,
+  parseSafeYaml,
+  itemLabel,
+} from './values.js';
 
 export { BoardSchema, PropertyDisplaySchema } from './schemas/board.js';
 export type { Board, PropertyDisplay } from './schemas/board.js';
@@ -106,4 +119,3 @@ export type {
 } from './provider.js';
 
 export { IMPLICIT_AXIS_SLUG, implicitAxis, resolveDimension, mergePatch } from './board-layout.js';
-

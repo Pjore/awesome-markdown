@@ -1,34 +1,30 @@
 import { z } from 'zod';
-import { DottedPathSchema } from './filter-rule.js';
+import { MutationPathSchema } from '../paths.js';
+export { MutationPathSchema } from '../paths.js';
+export type { MutationPath } from '../paths.js';
 
 // ---------------------------------------------------------------------------
 // Property value types
 // ---------------------------------------------------------------------------
 
 /**
- * Scalar or null value that can appear as a property value in item
- * frontmatter or as a mutation target value.
+ * Recursive value that can appear in item properties or a set mutation.
  */
-export const PropertyValueSchema = z.union([
-  z.string(),
-  z.number(),
-  z.boolean(),
-  z.null(),
-]);
-
-export type PropertyValue = z.infer<typeof PropertyValueSchema>;
+export { PropertyValueSchema } from '../values.js';
+export type { PropertyValue } from '../values.js';
+import { PropertyValueSchema } from '../values.js';
 
 // ---------------------------------------------------------------------------
 // Mutation variants — discriminated by 'op'
 // ---------------------------------------------------------------------------
 
 /**
- * Set a scalar property to a value (or clear it by setting null).
+ * Set a property/container/list entry to a recursive value, including null.
  * Invertible from: `equals` and single-item `in` leaf operators.
  */
 export const SetMutationSchema = z.object({
   op: z.literal('set'),
-  path: DottedPathSchema,
+  path: MutationPathSchema,
   value: PropertyValueSchema,
 });
 export type SetMutation = z.infer<typeof SetMutationSchema>;
@@ -39,7 +35,7 @@ export type SetMutation = z.infer<typeof SetMutationSchema>;
  */
 export const AppendMutationSchema = z.object({
   op: z.literal('append'),
-  path: DottedPathSchema,
+  path: MutationPathSchema,
   value: z.union([z.string(), z.number()]),
 });
 export type AppendMutation = z.infer<typeof AppendMutationSchema>;
@@ -50,7 +46,7 @@ export type AppendMutation = z.infer<typeof AppendMutationSchema>;
  */
 export const RemoveMutationSchema = z.object({
   op: z.literal('remove'),
-  path: DottedPathSchema,
+  path: MutationPathSchema,
   value: z.union([z.string(), z.number()]),
 });
 export type RemoveMutation = z.infer<typeof RemoveMutationSchema>;
@@ -61,7 +57,7 @@ export type RemoveMutation = z.infer<typeof RemoveMutationSchema>;
  */
 export const DeleteMutationSchema = z.object({
   op: z.literal('delete'),
-  path: DottedPathSchema,
+  path: MutationPathSchema,
 });
 export type DeleteMutation = z.infer<typeof DeleteMutationSchema>;
 

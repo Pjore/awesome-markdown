@@ -7,7 +7,9 @@
     "url": "https://github.com/Pjore/awesome-markdown",
     "directory": "packages/core"
   },
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
   "sideEffects": false,
   "exports": {
@@ -24,7 +26,9 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc --build",
     "typecheck": "tsc --build",
@@ -32,8 +36,7 @@
   },
   "dependencies": {
     "@awesome-markdown/contracts": "workspace:*",
-    "@awesome-markdown/filter-engine": "workspace:*",
-    "gray-matter": "^4.0.3"
+    "@awesome-markdown/filter-engine": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
