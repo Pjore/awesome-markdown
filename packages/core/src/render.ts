@@ -9,7 +9,13 @@ import type {
   Homeless,
   Item,
 } from '@awesome-markdown/contracts';
-import { analyzeInvertibility, evaluate, resolvePath } from '@awesome-markdown/filter-engine';
+import {
+  analyzeInvertibility,
+  evaluate,
+  resolvePath,
+  bindFilter,
+  substitutePath,
+} from '@awesome-markdown/filter-engine';
 import type { Ctx } from '@awesome-markdown/filter-engine';
 
 // ---------------------------------------------------------------------------
@@ -40,7 +46,7 @@ export function syntheticAxis(slug: string): Axis {
 
 /** Compare two scalar order values; non-comparable pairs are equal (0). */
 export function compareScalars(a: unknown, b: unknown): number {
-  if (typeof a === 'string' && typeof b === 'string') return a.localeCompare(b);
+  if (typeof a === 'string' && typeof b === 'string') return a < b ? -1 : a > b ? 1 : 0;
   if (typeof a === 'number' && typeof b === 'number') return a - b;
   return 0;
 }
@@ -49,7 +55,11 @@ export function compareScalars(a: unknown, b: unknown): number {
  * Sort a cell's items by the axis order (when both values resolve), falling
  * back to `updatedAt` descending. Returns a new array.
  */
-export function sortItems(items: readonly Item[], axisOrder: AxisOrder | undefined, ctx: Ctx): Item[] {
+export function sortItems(
+  items: readonly Item[],
+  axisOrder: AxisOrder | undefined,
+  ctx: Ctx
+): Item[] {
   return [...items].sort((a, b) => {
     if (axisOrder) {
       const va = resolvePath(axisOrder.by, a, ctx);
@@ -71,7 +81,7 @@ export function sortItems(items: readonly Item[], axisOrder: AxisOrder | undefin
 export function isCellReadOnly(
   boardFilter: FilterRule | undefined,
   col: Axis,
-  lane: Axis,
+  lane: Axis
 ): boolean {
   if (!Array.isArray(col.writeOnDrop) && col.writeOnDrop?.readonly) return true;
   if (!Array.isArray(lane.writeOnDrop) && lane.writeOnDrop?.readonly) return true;
@@ -85,7 +95,7 @@ export function isCellReadOnly(
 }
 
 function withSynthetic(lookupAxis: AxisLookup): (slug: string) => Axis {
-  return slug => lookupAxis(slug) ?? syntheticAxis(slug);
+  return (slug) => lookupAxis(slug) ?? syntheticAxis(slug);
 }
 
 // ---------------------------------------------------------------------------
@@ -103,20 +113,36 @@ export function renderBoard({ board, lookupAxis, items }: RenderBoardInput): Boa
   const colAxes = resolveDimension(board.columns, lookup);
   const laneAxes = resolveDimension(board.swimlanes, lookup);
 
-  const candidates = items.filter(item => !board.filter || evaluate(board.filter, item, ctx));
+  bindFilter(board.filter, ctx);
+  for (const axis of [...colAxes, ...laneAxes]) {
+    const axisCtx = { ...ctx, axis: axis.slug };
+    bindFilter(axis.filter, axisCtx);
+    if (axis.order) substitutePath(axis.order.by, axisCtx);
+    if (Array.isArray(axis.writeOnDrop))
+      axis.writeOnDrop.forEach((m) => substitutePath(m.path, axisCtx));
+  }
+  const candidates = items.filter((item) => !board.filter || evaluate(board.filter, item, ctx));
 
   const cells: Cell[] = [];
   for (const col of colAxes) {
     for (const lane of laneAxes) {
-      const cellItems = candidates.filter(item =>
-        (!col.filter || evaluate(col.filter, item, ctx)) &&
-        (!lane.filter || evaluate(lane.filter, item, ctx)),
+      const cellItems = candidates.filter(
+        (item) =>
+          (!col.filter || evaluate(col.filter, item, { ...ctx, axis: col.slug })) &&
+          (!lane.filter || evaluate(lane.filter, item, { ...ctx, axis: lane.slug }))
       );
       cells.push({
         columnSlug: col.slug,
         swimlaneSlug: lane.slug,
-        readOnly: isCellReadOnly(board.filter, col, lane),
-        items: sortItems(cellItems, col.order, ctx),
+        readOnly: isCellReadOnly(
+          bindFilter(board.filter, ctx),
+          { ...col, filter: bindFilter(col.filter, { ...ctx, axis: col.slug }) },
+          { ...lane, filter: bindFilter(lane.filter, { ...ctx, axis: lane.slug }) }
+        ),
+        items: sortItems(cellItems, col.order ?? lane.order, {
+          ...ctx,
+          axis: col.order ? col.slug : lane.slug,
+        }),
       });
     }
   }
@@ -125,20 +151,20 @@ export function renderBoard({ board, lookupAxis, items }: RenderBoardInput): Boa
 }
 
 /**
- * Items that list this board in `boards[]` and pass the board filter but
- * match no column. Wire shape of `GET /boards/:slug/homeless`.
+ * Board-filter candidates matching no column, without implicit membership.
+ * Wire shape of `GET /boards/:slug/homeless`.
  */
 export function computeHomeless({ board, lookupAxis, items }: RenderBoardInput): Homeless {
   const ctx: Ctx = { board: board.slug };
   const colAxes = resolveDimension(board.columns, withSynthetic(lookupAxis));
+  bindFilter(board.filter, ctx);
+  colAxes.forEach((axis) => bindFilter(axis.filter, { ...ctx, axis: axis.slug }));
 
-  const candidates = items.filter(item =>
-    item.boards?.some(e => e['board'] === board.slug) &&
-    (!board.filter || evaluate(board.filter, item, ctx)),
-  );
+  const candidates = items.filter((item) => !board.filter || evaluate(board.filter, item, ctx));
 
-  const homeless = candidates.filter(item =>
-    !colAxes.some(col => !col.filter || evaluate(col.filter, item, ctx)),
+  const homeless = candidates.filter(
+    (item) =>
+      !colAxes.some((col) => !col.filter || evaluate(col.filter, item, { ...ctx, axis: col.slug }))
   );
 
   return { board, items: homeless };

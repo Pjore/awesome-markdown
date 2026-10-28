@@ -1,8 +1,14 @@
-// Lives in `@awesome-markdown/core/markdown` (not the root entry): gray-matter
-// requires Node built-ins, so this subpath is for Node consumers only.
+// Canonical entity Markdown uses the same isomorphic YAML rules as item exports.
 
-import matter from 'gray-matter';
-import { AxisSchema, BoardSchema, ItemSchema } from '@awesome-markdown/contracts';
+import {
+  AxisSchema,
+  BoardSchema,
+  ItemSchema,
+  itemMarkdown,
+  parseSafeYaml,
+  ITEM_LIMITS,
+  utf8Bytes,
+} from '@awesome-markdown/contracts';
 import type { Axis, Board, Item } from '@awesome-markdown/contracts';
 
 // ---------------------------------------------------------------------------
@@ -23,7 +29,11 @@ export type ParsedEntity =
  * - `invalid` — Zod validation against the entity schema failed
  * - `unknown_entity_type` — `entityType` is not `item | board | axis`
  */
-export type ParseEntityFailure = 'frontmatter' | 'no_entity_type' | 'invalid' | 'unknown_entity_type';
+export type ParseEntityFailure =
+  | 'frontmatter'
+  | 'no_entity_type'
+  | 'invalid'
+  | 'unknown_entity_type';
 
 export type ParseEntityResult =
   | { ok: true; entity: ParsedEntity }
@@ -48,11 +58,8 @@ export type ParseEntityResult =
  * empty content section.
  */
 export function serializeEntity(entity: Entity): string {
-  if (entity.entityType === 'item') {
-    const { body, ...frontmatter } = entity;
-    return matter.stringify(body ?? '', frontmatter);
-  }
-  return matter.stringify('', entity);
+  if (entity.entityType === 'item') ItemSchema.parse(entity);
+  return itemMarkdown(entity);
 }
 
 // ---------------------------------------------------------------------------
@@ -65,13 +72,16 @@ function invalid(entityType: ParsedEntity['entityType'], message: string): Parse
 
 /**
  * Parse a markdown document into a validated entity, reporting why it was
- * rejected otherwise. Item `body` is the trimmed markdown content; board and
+ * rejected otherwise. Item `body` is the exact Markdown content; board and
  * axis content sections are ignored.
  */
 export function parseEntityResult(markdown: string): ParseEntityResult {
-  let parsed: ReturnType<typeof matter>;
+  let parsed: { data: Record<string, unknown>; content: string };
   try {
-    parsed = matter(markdown);
+    if (utf8Bytes(markdown) > ITEM_LIMITS.bytes) throw new Error('Document exceeds 512 KiB');
+    const match = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(markdown);
+    if (!match) return { ok: false, reason: 'no_entity_type', message: 'Missing frontmatter' };
+    parsed = { data: parseSafeYaml(match[1]!), content: markdown.slice(match[0].length) };
   } catch (err) {
     return { ok: false, reason: 'frontmatter', message: 'Failed to parse frontmatter', cause: err };
   }
@@ -82,7 +92,12 @@ export function parseEntityResult(markdown: string): ParseEntityResult {
   }
 
   if (entityType === 'item') {
-    const body = (parsed.content ?? '').trim();
+    if (Object.hasOwn(parsed.data, 'body'))
+      return invalid(
+        'item',
+        'Frontmatter body collides with document content; move it into the Markdown document'
+      );
+    const body = parsed.content;
     const result = ItemSchema.safeParse({ ...parsed.data, body });
     if (!result.success) return invalid('item', result.error.message);
     return { ok: true, entity: { entityType: 'item', slug: result.data.slug, data: result.data } };
@@ -100,7 +115,11 @@ export function parseEntityResult(markdown: string): ParseEntityResult {
     return { ok: true, entity: { entityType: 'axis', slug: result.data.slug, data: result.data } };
   }
 
-  return { ok: false, reason: 'unknown_entity_type', message: `Unknown entityType ${String(entityType)}` };
+  return {
+    ok: false,
+    reason: 'unknown_entity_type',
+    message: `Unknown entityType ${String(entityType)}`,
+  };
 }
 
 /**
@@ -117,7 +136,10 @@ export function parseEntity(markdown: string, filePathForLogs?: string): ParsedE
   if (result.reason === 'frontmatter') {
     console.warn(`[parseEntity] Failed to parse frontmatter in ${where}:`, result.cause);
   } else if (result.reason === 'invalid') {
-    console.warn(`[parseEntity] Invalid ${result.entityType ?? 'entity'} at ${where}:`, result.message);
+    console.warn(
+      `[parseEntity] Invalid ${result.entityType ?? 'entity'} at ${where}:`,
+      result.message
+    );
   }
   return null;
 }

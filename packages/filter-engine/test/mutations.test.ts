@@ -200,21 +200,21 @@ describe('deriveMutations — $board substitution', () => {
   it('resolves $board in mutation paths', () => {
     assertMutations(
       { property: 'boards.$board.order', equals: 'a0G' },
-      [{ op: 'set', path: 'boards.dev-tasks.order', value: 'a0G' }],
+      [{ op: 'set', path: ['boards', { selector: 'board', value: 'dev-tasks' }, 'order'], value: 'a0G' }],
     );
   });
 
   it('resolves $board from ctx for has operator', () => {
     assertMutations(
       { property: 'boards.$board.flag', has: 'pinned' },
-      [{ op: 'append', path: 'boards.dev-tasks.flag', value: 'pinned' }],
+      [{ op: 'append', path: ['boards', { selector: 'board', value: 'dev-tasks' }, 'flag'], value: 'pinned' }],
     );
   });
 
   it('uses ctx.board value for substitution', () => {
     assertMutations(
       { property: 'boards.$board.status', equals: 'ready' },
-      [{ op: 'set', path: 'boards.release.status', value: 'ready' }],
+      [{ op: 'set', path: ['boards', { selector: 'board', value: 'release' }, 'status'], value: 'ready' }],
       { board: 'release' },
     );
   });

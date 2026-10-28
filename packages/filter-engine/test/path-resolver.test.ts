@@ -154,7 +154,7 @@ describe('resolvePath — boards[] with $board', () => {
 
 describe('substitutePath', () => {
   it('substitutes $board with ctx.board', () => {
-    expect(substitutePath('boards.$board.order', ctx)).toBe('boards.dev-tasks.order');
+    expect(substitutePath('boards.$board.order', ctx)).toEqual(['boards', { selector: 'board', value: 'dev-tasks' }, 'order']);
   });
 
   it('leaves non-$board segments unchanged', () => {

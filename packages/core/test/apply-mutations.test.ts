@@ -48,7 +48,7 @@ describe('applyMutations', () => {
     expect(out['labels']).toEqual(['x']);
   });
 
-  it.each([undefined, null, ''])(
+  it.each([undefined, ''])(
     'appends text to an empty body (%s) without a leading separator',
     (body) => {
       const out = applyMutations(
@@ -86,14 +86,14 @@ describe('applyMutations', () => {
 
   it('upserts boards[] entries for boards.<slug>.* paths', () => {
     const out = applyMutations(item({ boards: [{ board: 'a', order: '1' }] }), [
-      { op: 'set', path: 'boards.a.order', value: '2' },
-      { op: 'set', path: 'boards.b.order', value: '0' },
+      { op: 'set', path: ['boards', { selector: 'board', value: 'a' }, 'order'], value: '2' },
+      { op: 'set', path: ['boards', { selector: 'board', value: 'b' }, 'order'], value: '0' },
     ], NOW);
     expect(out.boards).toEqual([{ board: 'a', order: '2' }, { board: 'b', order: '0' }]);
   });
 
   it('creates boards[] when the item has none', () => {
-    const out = applyMutations(item(), [{ op: 'set', path: 'boards.x.order', value: 'a0' }], NOW);
+    const out = applyMutations(item(), [{ op: 'set', path: ['boards', { selector: 'board', value: 'x' }, 'order'], value: 'a0' }], NOW);
     expect(out.boards).toEqual([{ board: 'x', order: 'a0' }]);
   });
 
