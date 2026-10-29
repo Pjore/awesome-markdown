@@ -37,7 +37,7 @@ describe('coordinated production release', () => {
     try {
       const response = await server.inject({ method: 'GET', url: '/health' });
       expect(response.statusCode).toBe(200);
-      expect(response.json()).toMatchObject({ ok: true, version: '2.0.1', itemProtocol: 2 });
+      expect(response.json()).toMatchObject({ ok: true, version: '2.0.2', itemProtocol: 2 });
     } finally {
       await server.close();
       await tmp.cleanup();

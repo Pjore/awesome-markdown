@@ -6,6 +6,8 @@ import {
   tmpContentRoot,
   writeItemFixture,
   writeBoardFixture,
+  writeAxisFixture,
+  makeAxis,
   makeItem,
   makeBoard,
 } from './fixtures/temp-content.js';
@@ -30,6 +32,39 @@ describe('source integrity errors', () => {
       expect(render.json().error).toContain('invalid.md');
       expect((await server.inject({ method: 'GET', url: '/items/valid' })).statusCode).toBe(200);
       expect(await readFile(file, 'utf8')).toBe(source);
+    } finally {
+      await server.close();
+      await tmp.cleanup();
+    }
+  });
+  it('identifies an incompatible item while leaving its data and unrelated item reads intact', async () => {
+    const tmp = await tmpContentRoot();
+    await writeBoardFixture(
+      tmp.contentRoot,
+      makeBoard({ slug: 'board', title: 'Board', columns: ['column'] })
+    );
+    await writeAxisFixture(
+      tmp.contentRoot,
+      makeAxis({
+        slug: 'column',
+        title: 'Column',
+        order: { by: 'boards.$board.order', direction: 'asc' },
+      })
+    );
+    await writeItemFixture(tmp.contentRoot, {
+      ...makeItem({ slug: 'incompatible', title: 'Incompatible' }),
+      boards: false,
+    });
+    await writeItemFixture(tmp.contentRoot, makeItem({ slug: 'valid', title: 'Valid' }));
+    const server = await createServer({ port: 0, host: '127.0.0.1', contentRoot: tmp.contentRoot });
+    try {
+      const response = await server.inject({ method: 'GET', url: '/boards/board/render' });
+      expect(response.statusCode).toBe(422);
+      expect(response.json().error).toContain('Item incompatible: Selector board requires a list');
+      expect(
+        (await server.inject({ method: 'GET', url: '/items/incompatible' })).json().item.boards
+      ).toBe(false);
+      expect((await server.inject({ method: 'GET', url: '/items/valid' })).statusCode).toBe(200);
     } finally {
       await server.close();
       await tmp.cleanup();
