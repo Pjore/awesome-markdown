@@ -68,18 +68,25 @@ export function resolvePath(path: MutationPath, item: Item, ctx: Ctx): unknown {
   const bound = substitutePath(path, ctx);
   const segments = typeof bound === 'string' ? parsePath(bound) : bound;
   let value: unknown = item;
-  for (const segment of segments) {
-    if (value === undefined || value === null) return undefined;
-    if (typeof segment === 'object') {
-      if (!Array.isArray(value)) throw new Error(`Selector ${segment.selector} requires a list`);
-      value = selectEntry(value, segment);
-    } else if (typeof value === 'object' && Object.hasOwn(value, segment)) {
-      if (Array.isArray(value) && typeof segment !== 'number')
-        throw new Error('List access requires an index or selector');
-      value = (value as Record<string | number, unknown>)[segment];
-    } else return undefined;
+  try {
+    for (const segment of segments) {
+      if (value === undefined || value === null) return undefined;
+      if (typeof segment === 'object') {
+        if (!Array.isArray(value)) throw new Error(`Selector ${segment.selector} requires a list`);
+        value = selectEntry(value, segment);
+      } else if (typeof value === 'object' && Object.hasOwn(value, segment)) {
+        if (Array.isArray(value) && typeof segment !== 'number')
+          throw new Error('List access requires an index or selector');
+        value = (value as Record<string | number, unknown>)[segment];
+      } else return undefined;
+    }
+    return value;
+  } catch (error) {
+    throw new Error(
+      `Item ${item.slug}: ${error instanceof Error ? error.message : 'Path lookup failed'}`,
+      { cause: error }
+    );
   }
-  return value;
 }
 
 export function bindFilter(filter: FilterRule | undefined, ctx: Ctx): FilterRule | undefined {

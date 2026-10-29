@@ -30,11 +30,7 @@ describe('parsePath', () => {
   });
 
   it('parses a multi-segment path', () => {
-    expect(parsePath('boards.dev-tasks.order')).toEqual([
-      'boards',
-      'dev-tasks',
-      'order',
-    ]);
+    expect(parsePath('boards.dev-tasks.order')).toEqual(['boards', 'dev-tasks', 'order']);
   });
 
   it('handles $board segment', () => {
@@ -140,6 +136,17 @@ describe('resolvePath — boards[] with $board', () => {
     expect(resolvePath('boards.$board.order', item, { board: 'release' })).toBe('b1');
   });
 
+  it('identifies the affected item without exposing its property values', () => {
+    const item = makeItem({ boards: 'private-value' });
+    expect(() => resolvePath('boards.$board.order', item, ctx)).toThrow(
+      'Item test-item: Selector board requires a list'
+    );
+    try {
+      resolvePath('boards.$board.order', item, ctx);
+    } catch (error) {
+      expect((error as Error).message).not.toContain('private-value');
+    }
+  });
   it('resolves a passthrough property on a boards entry', () => {
     const item = makeItem({
       boards: [{ board: 'dev-tasks', order: 'a0G', note: 'blocked' }],
@@ -154,7 +161,11 @@ describe('resolvePath — boards[] with $board', () => {
 
 describe('substitutePath', () => {
   it('substitutes $board with ctx.board', () => {
-    expect(substitutePath('boards.$board.order', ctx)).toEqual(['boards', { selector: 'board', value: 'dev-tasks' }, 'order']);
+    expect(substitutePath('boards.$board.order', ctx)).toEqual([
+      'boards',
+      { selector: 'board', value: 'dev-tasks' },
+      'order',
+    ]);
   });
 
   it('leaves non-$board segments unchanged', () => {
