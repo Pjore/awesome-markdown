@@ -19,6 +19,7 @@ RUN pnpm install --frozen-lockfile
 # Build shared workspace packages in dependency order.
 RUN pnpm --filter @awesome-markdown/contracts build
 RUN pnpm --filter @awesome-markdown/filter-engine build
+RUN pnpm --filter @awesome-markdown/core build
 RUN pnpm --filter @awesome-markdown/provider-localstorage build
 RUN pnpm --filter @awesome-markdown/provider-http build
 RUN pnpm --filter @awesome-markdown/board-ui build
