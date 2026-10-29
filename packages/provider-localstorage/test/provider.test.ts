@@ -43,17 +43,17 @@ beforeEach(() => {
 
 describe('createItem', () => {
   it('creates item with correct fields', async () => {
-    const item = await provider.createItem({ slug: 'task-1', title: 'Task 1', mutations: [] });
-    expect(item.item.entityType).toBe('item');
-    expect(item.item.slug).toBe('task-1');
-    expect(item.item.title).toBe('Task 1');
-    expect(item.item.createdAt).toBeDefined();
-    expect(item.item.updatedAt).toBeDefined();
+    const record = await provider.createItem({ slug: 'task-1', title: 'Task 1', mutations: [] });
+    expect(record.item.entityType).toBe('item');
+    expect(record.item.slug).toBe('task-1');
+    expect(record.item.title).toBe('Task 1');
+    expect(record.item.createdAt).toBeDefined();
+    expect(record.item.updatedAt).toBeDefined();
   });
 
   it('reads back created item', async () => {
-    const item = await provider.createItem({ slug: 'task-1', title: 'Task 1', mutations: [] });
-    expect(await provider.getItem('task-1')).toEqual(item);
+    const record = await provider.createItem({ slug: 'task-1', title: 'Task 1', mutations: [] });
+    expect(await provider.getItem('task-1')).toEqual(record);
   });
 
   it('handles slug collision with numeric suffix', async () => {
@@ -65,35 +65,35 @@ describe('createItem', () => {
   });
 
   it('applies initial mutations', async () => {
-    const item = await provider.createItem({
+    const record = await provider.createItem({
       slug: 'task-1', title: 'Task 1',
       mutations: [{ op: 'set', path: 'status', value: 'open' }],
     });
-    expect(item.item['status']).toBe('open');
+    expect(record.item['status']).toBe('open');
   });
 
   it('set mutation on boards.<slug>.<field> creates a proper boards[] array entry', async () => {
-    const item = await provider.createItem({
+    const record = await provider.createItem({
       slug: 'task-1', title: 'Task 1',
       mutations: [{ op: 'set', path: ['boards', { selector: 'board', value: 'demo' }, 'order'], value: 'a0' }],
     });
-    expect(item.item.boards).toEqual([{ board: 'demo', order: 'a0' }]);
+    expect(record.item.boards).toEqual([{ board: 'demo', order: 'a0' }]);
   });
 
   it('stores body field', async () => {
-    const item = await provider.createItem({
+    const record = await provider.createItem({
       slug: 'task-1', title: 'Task', mutations: [], body: 'hello',
     });
-    expect(item.item.body).toBe('hello');
+    expect(record.item.body).toBe('hello');
   });
 
   it('`boards.<slug>.*` mutation on a fresh item creates boards as an array', async () => {
-    const item = await provider.createItem({
+    const record = await provider.createItem({
       slug: 'task-1', title: 'Task 1',
       mutations: [{ op: 'set', path: ['boards', { selector: 'board', value: 'my-board' }, 'order'], value: 'a0' }],
     });
-    expect(Array.isArray(item.item.boards)).toBe(true);
-    expect(item.item.boards).toEqual([{ board: 'my-board', order: 'a0' }]);
+    expect(Array.isArray(record.item.boards)).toBe(true);
+    expect(record.item.boards).toEqual([{ board: 'my-board', order: 'a0' }]);
   });
 });
 
