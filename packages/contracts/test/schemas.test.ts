@@ -581,6 +581,7 @@ describe('PatchItemRequestSchema', () => {
   it('accepts a patch request with one mutation', () => {
     expect(
       PatchItemRequestSchema.safeParse({
+        revision: 'source-revision',
         mutations: [{ op: 'set', path: 'status', value: 'done' }],
       }).success,
     ).toBe(true);

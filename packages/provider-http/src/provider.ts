@@ -7,7 +7,7 @@ import type {
   Axis,
   BoardRender,
   Homeless,
-  Item,
+  ItemRecord,
   CreateItemRequest,
   PatchItemRequest,
   CreateAxisRequest,
@@ -72,7 +72,11 @@ export interface HttpProviderConfig {
 
 export function createHttpProvider(config: HttpProviderConfig): HttpPersistenceProvider {
   const base = config.baseUrl.replace(/\/$/, '');
-  const client = new SidecarHttpClient({ baseUrl: base, fetchFn: config.fetchFn, getToken: config.getToken });
+  const client = new SidecarHttpClient({
+    baseUrl: base,
+    fetchFn: config.fetchFn,
+    getToken: config.getToken,
+  });
   const sse = new SseClient({
     url: endpoints.subscribe(base),
     EventSourceCtor: config.EventSourceCtor,
@@ -185,15 +189,15 @@ export function createHttpProvider(config: HttpProviderConfig): HttpPersistenceP
 
     // -- Items ---------------------------------------------------------------
 
-    async getItem(slug: string): Promise<Item | null> {
+    async getItem(slug: string): Promise<ItemRecord | null> {
       return client.getItem(slug);
     },
 
-    async createItem(req: CreateItemRequest): Promise<Item> {
+    async createItem(req: CreateItemRequest): Promise<ItemRecord> {
       return client.createItem(req);
     },
 
-    async patchItem(slug: string, req: PatchItemRequest): Promise<Item> {
+    async patchItem(slug: string, req: PatchItemRequest): Promise<ItemRecord> {
       return client.patchItem(slug, req);
     },
 

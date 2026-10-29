@@ -194,7 +194,7 @@ describe('boards routes — render and homeless', () => {
       boards: [{ board: 'home-board' }],
       status: 'done',
     } as Parameters<typeof makeItem>[0] & Record<string, unknown>);
-    // No entry: no boards[] for home-board → not homeless
+    // No membership prerequisite: a filter-only candidate can be homeless.
     await writeItemFixture(tmp.contentRoot, makeItem({ slug: 'unrelated', title: 'Unrelated' }));
 
     server = await createServer({ port: 0, host: '127.0.0.1', contentRoot: tmp.contentRoot });
@@ -206,7 +206,7 @@ describe('boards routes — render and homeless', () => {
     const slugs = body.items.map(i => i.slug);
     expect(slugs).toContain('homeless-item');
     expect(slugs).not.toContain('homed-item');
-    expect(slugs).not.toContain('unrelated');
+    expect(slugs).toContain('unrelated');
   });
 
   it('GET /boards/:slug/render returns 404 for unknown board', async () => {

@@ -1,5 +1,13 @@
 import { z } from 'zod';
-import { ItemSchema, BoardSchema, AxisSchema, mergePatch, resolveDimension } from '@awesome-markdown/contracts';
+import {
+  ItemSchema,
+  BoardSchema,
+  AxisSchema,
+  mergePatch,
+  CreateItemRequestSchema,
+  PatchItemRequestSchema,
+  parseSafeYaml,
+} from '@awesome-markdown/contracts';
 import type {
   Item,
   Board,
@@ -16,12 +24,10 @@ import type {
   ProviderCapabilities,
   ProviderEventHandler,
   Unsubscribe,
-  FilterRule,
-  AxisOrder,
+  ItemRecord,
 } from '@awesome-markdown/contracts';
-import { evaluate, analyzeInvertibility, resolvePath } from '@awesome-markdown/filter-engine';
-import type { Ctx } from '@awesome-markdown/filter-engine';
-import { applyMutations } from './mutations.js';
+import { applyMutations, renderBoard, computeHomeless } from '@awesome-markdown/core';
+import { revisionOf, storageLock } from './item-storage.js';
 
 // ---------------------------------------------------------------------------
 // Storage — flat keyed by "entityType:slug"
@@ -29,7 +35,7 @@ import { applyMutations } from './mutations.js';
 
 const STORAGE_KEY = 'awesome-markdown:v2';
 
-const EntitySchema = z.discriminatedUnion('entityType', [ItemSchema, BoardSchema, AxisSchema]);
+const EntitySchema = z.union([ItemSchema, BoardSchema, AxisSchema]);
 type Entity = z.infer<typeof EntitySchema>;
 
 function storeKey(type: string, slug: string): string {
@@ -40,15 +46,22 @@ function readStore(): Map<string, Entity> {
   const raw = localStorage.getItem(STORAGE_KEY);
   if (!raw) return new Map();
   try {
-    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    JSON.parse(raw); // Require JSON syntax, then validate numeric source tokens before conversion.
+    const parsed = parseSafeYaml(raw, true);
     const map = new Map<string, Entity>();
     for (const [k, v] of Object.entries(parsed)) {
       const r = EntitySchema.safeParse(v);
-      if (r.success) map.set(k, r.data);
+      if (!r.success)
+        throw new Error(
+          `Invalid stored entity ${k}: ${r.error.message}. Repair or export the source before continuing.`
+        );
+      map.set(k, r.data);
     }
     return map;
-  } catch {
-    return new Map();
+  } catch (error) {
+    throw new Error(
+      `Unable to load localStorage: ${error instanceof Error ? error.message : String(error)}`
+    );
   }
 }
 
@@ -64,40 +77,6 @@ function writeStore(store: Map<string, Entity>): void {
 
 function syntheticAxis(slug: string): Axis {
   return { entityType: 'axis', slug, title: slug, synthetic: true };
-}
-
-function compareScalars(a: unknown, b: unknown): number {
-  if (typeof a === 'string' && typeof b === 'string') return a.localeCompare(b);
-  if (typeof a === 'number' && typeof b === 'number') return a - b;
-  return 0;
-}
-
-function sortItems(items: Item[], order: AxisOrder | undefined, ctx: Ctx): Item[] {
-  return [...items].sort((a, b) => {
-    if (order) {
-      const va = resolvePath(order.by, a, ctx);
-      const vb = resolvePath(order.by, b, ctx);
-      if (va !== undefined && vb !== undefined) {
-        const cmp = compareScalars(va, vb);
-        if (cmp !== 0) return order.direction === 'asc' ? cmp : -cmp;
-      }
-    }
-    return b.updatedAt.localeCompare(a.updatedAt);
-  });
-}
-
-function isCellReadOnly(boardFilter: FilterRule | undefined, col: Axis, lane: Axis): boolean {
-  if (!Array.isArray(col.writeOnDrop) && col.writeOnDrop?.readonly) return true;
-  if (!Array.isArray(lane.writeOnDrop) && lane.writeOnDrop?.readonly) return true;
-  // Dimensions with explicit writeOnDrop arrays don't require filter invertibility.
-  // Only include filters for dimensions that still rely on inversion.
-  const filters: FilterRule[] = [];
-  if (boardFilter) filters.push(boardFilter);
-  if (!Array.isArray(col.writeOnDrop) && col.filter) filters.push(col.filter);
-  if (!Array.isArray(lane.writeOnDrop) && lane.filter) filters.push(lane.filter);
-  if (filters.length === 0) return false;
-  const combined: FilterRule = filters.length === 1 ? filters[0]! : { all: filters };
-  return !analyzeInvertibility(combined).invertible;
 }
 
 function resolveAxis(store: Map<string, Entity>, slug: string): Axis {
@@ -124,12 +103,25 @@ export class LocalStorageProvider implements PersistenceProvider {
 
   private emit(entitySlug: string, entityType: 'item' | 'board' | 'axis'): void {
     const ev = { type: 'change' as const, entitySlug, entityType };
-    for (const h of this.subs) h(ev);
+    for (const h of this.subs) {
+      try {
+        h(ev);
+      } catch {
+        console.warn('Provider subscriber failed after a committed write');
+      }
+    }
   }
 
   subscribe(handler: ProviderEventHandler): Unsubscribe {
     this.subs.add(handler);
-    return () => this.subs.delete(handler);
+    const storage = (event: StorageEvent): void => {
+      if (event.key === STORAGE_KEY || event.key === null) handler({ type: 'synced' });
+    };
+    if (typeof window !== 'undefined') window.addEventListener('storage', storage);
+    return () => {
+      this.subs.delete(handler);
+      if (typeof window !== 'undefined') window.removeEventListener('storage', storage);
+    };
   }
 
   // -- Boards ----------------------------------------------------------------
@@ -237,99 +229,91 @@ export class LocalStorageProvider implements PersistenceProvider {
     const store = readStore();
     const be = store.get(storeKey('board', slug));
     if (!be || be.entityType !== 'board') throw new Error(`Board not found: ${slug}`);
-    const board = be;
-    const ctx: Ctx = { board: board.slug };
-    const colAxes = resolveDimension(board.columns, (s) => resolveAxis(store, s));
-    const laneAxes = resolveDimension(board.swimlanes, (s) => resolveAxis(store, s));
-    const allItems = [...store.values()].filter((e): e is Item => e.entityType === 'item');
-    const candidates = allItems.filter(
-      (item) => !board.filter || evaluate(board.filter, item, ctx),
-    );
-    const cells = [];
-    for (const col of colAxes) {
-      for (const lane of laneAxes) {
-        const cellItems = candidates.filter(
-          (item) =>
-            (!col.filter || evaluate(col.filter, item, ctx)) &&
-            (!lane.filter || evaluate(lane.filter, item, ctx)),
-        );
-        cells.push({
-          columnSlug: col.slug,
-          swimlaneSlug: lane.slug,
-          readOnly: isCellReadOnly(board.filter, col, lane),
-          items: sortItems(cellItems, col.order, ctx),
-        });
-      }
-    }
-    return { board, axes: { columns: colAxes, swimlanes: laneAxes }, cells };
+    return renderBoard({
+      board: be,
+      lookupAxis: (s) => resolveAxis(store, s),
+      items: [...store.values()].filter((e): e is Item => e.entityType === 'item'),
+    });
   }
 
   async getHomeless(boardSlug: string): Promise<Homeless> {
     const store = readStore();
     const be = store.get(storeKey('board', boardSlug));
     if (!be || be.entityType !== 'board') throw new Error(`Board not found: ${boardSlug}`);
-    const board = be;
-    const ctx: Ctx = { board: board.slug };
-    const colAxes = resolveDimension(board.columns, (s) => resolveAxis(store, s));
-    const allItems = [...store.values()].filter((e): e is Item => e.entityType === 'item');
-    const candidates = allItems.filter(
-      (item) =>
-        item.boards?.some((e) => e['board'] === board.slug) &&
-        (!board.filter || evaluate(board.filter, item, ctx)),
-    );
-    const homeless = candidates.filter(
-      (item) => !colAxes.some((col) => !col.filter || evaluate(col.filter, item, ctx)),
-    );
-    return { board, items: homeless };
+    return computeHomeless({
+      board: be,
+      lookupAxis: (s) => resolveAxis(store, s),
+      items: [...store.values()].filter((e): e is Item => e.entityType === 'item'),
+    });
   }
 
   // -- Items -----------------------------------------------------------------
 
-  async getItem(slug: string): Promise<Item | null> {
+  async getItem(slug: string): Promise<ItemRecord | null> {
     const e = readStore().get(storeKey('item', slug));
-    return e?.entityType === 'item' ? e : null;
+    return e?.entityType === 'item' ? { item: e, revision: await revisionOf(e) } : null;
   }
 
-  async createItem(req: CreateItemRequest): Promise<Item> {
-    const store = readStore();
-    const now = new Date().toISOString();
-    let finalSlug = req.slug;
-    let suffix = 2;
-    while (store.has(storeKey('item', finalSlug))) {
-      finalSlug = `${req.slug}-${suffix++}`;
-    }
-    const base: Item = {
-      entityType: 'item',
-      slug: finalSlug,
-      title: req.title,
-      body: req.body,
-      createdAt: now,
-      updatedAt: now,
-    };
-    const item = req.mutations.length > 0 ? applyMutations(base, req.mutations, now) : base;
-    const final = { ...item, createdAt: now, updatedAt: now } as Item;
-    store.set(storeKey('item', finalSlug), final);
-    writeStore(store);
-    this.emit(finalSlug, 'item');
-    return final;
+  async createItem(req: CreateItemRequest): Promise<ItemRecord> {
+    req = CreateItemRequestSchema.parse(req);
+    return storageLock(async () => {
+      const store = readStore();
+      const now = new Date().toISOString();
+      let finalSlug = req.slug;
+      let suffix = 2;
+      while (store.has(storeKey('item', finalSlug))) {
+        finalSlug = `${req.slug}-${suffix++}`;
+      }
+      const base: Item = {
+        entityType: 'item',
+        slug: finalSlug,
+        title: req.title,
+        body: req.body ?? '',
+        createdAt: now,
+        updatedAt: now,
+      };
+      const item = req.mutations.length > 0 ? applyMutations(base, req.mutations, now) : base;
+      const final = ItemSchema.parse({ ...item, createdAt: now, updatedAt: now });
+      const revision = await revisionOf(final);
+      const latest = readStore();
+      if (latest.has(storeKey('item', finalSlug)))
+        throw new Error('Item was created concurrently; retry creation.');
+      latest.set(storeKey('item', finalSlug), final);
+      writeStore(latest);
+      this.emit(finalSlug, 'item');
+      return { item: final, revision };
+    });
   }
 
-  async patchItem(slug: string, req: PatchItemRequest): Promise<Item> {
-    const store = readStore();
-    const e = store.get(storeKey('item', slug));
-    if (!e || e.entityType !== 'item') throw new Error(`Item not found: ${slug}`);
-    const now = new Date().toISOString();
-    const updated = applyMutations(e, req.mutations, now);
-    store.set(storeKey('item', slug), updated);
-    writeStore(store);
-    this.emit(slug, 'item');
-    return updated;
+  async patchItem(slug: string, req: PatchItemRequest): Promise<ItemRecord> {
+    req = PatchItemRequestSchema.parse(req);
+    return storageLock(async () => {
+      const store = readStore();
+      const e = store.get(storeKey('item', slug));
+      if (!e || e.entityType !== 'item') throw new Error(`Item not found: ${slug}`);
+      if ((await revisionOf(e)) !== req.revision)
+        throw new Error(
+          'Conflict: this item changed. Export your draft or reload after discarding changes.'
+        );
+      const now = new Date().toISOString();
+      const updated = applyMutations(e, req.mutations, now);
+      const revision = await revisionOf(updated);
+      const latest = readStore();
+      if (JSON.stringify(latest.get(storeKey('item', slug))) !== JSON.stringify(e))
+        throw new Error('Conflict: stored item changed during save.');
+      latest.set(storeKey('item', slug), updated);
+      writeStore(latest);
+      this.emit(slug, 'item');
+      return { item: updated, revision };
+    });
   }
 
   async deleteItem(slug: string): Promise<void> {
-    const store = readStore();
-    store.delete(storeKey('item', slug));
-    writeStore(store);
-    this.emit(slug, 'item');
+    return storageLock(async () => {
+      const store = readStore();
+      store.delete(storeKey('item', slug));
+      writeStore(store);
+      this.emit(slug, 'item');
+    });
   }
 }

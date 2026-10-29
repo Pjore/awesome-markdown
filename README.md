@@ -57,7 +57,7 @@ Point at an existing notes directory:
 PROVIDER_FS_CONTENT_ROOT=/path/to/notes docker compose up -d
 ```
 
-Pre-built images publish to GHCR on every push to `main` — no local build needed.
+Release tags publish pre-built images to GHCR. Dokploy builds provider-fs and kanban-ui from the same checkout so their item protocol is deployed together; sync-engine remains image-based.
 
 ### Browser-only (no server)
 
@@ -89,10 +89,15 @@ All data lives as `.md` files in `content/` with a YAML `entityType` field.
 
 ### Items
 
-An `item` is a kanban card. Fields live in frontmatter: `title`, `status`, `tags`, custom properties, and a `boards[]` array. Each board entry carries an `order` key for independent sort position per board.
+An `item` is a Markdown document with recursive frontmatter properties. Only `entityType`, `slug`, `createdAt`, and `updatedAt` are fixed, read-only metadata; other properties can contain text, numbers, booleans, null, mappings, and mixed lists. Items open in read mode with explicit **Edit / Save / Cancel**, plus YAML and full-Markdown recovery exports. A string `title` supplies the heading, otherwise `slug` is used.
+
+`boards[]` is optional data, not implicit membership. Configure a filter/order path such as `boards.$board.status` or `boards.$board.axes.$axis.order` when you want board-/axis-specific values. See [Item properties](docs/ITEM-PROPERTIES.md) for limits, editing, contextual selectors, and the revision-based persistence protocol.
 
 ```yaml
 entityType: item
+slug: fix-auth-bug
+createdAt: "2026-01-01T00:00:00Z"
+updatedAt: "2026-01-01T00:00:00Z"
 title: Fix auth bug
 status: doing
 boards:
@@ -146,7 +151,7 @@ Filters using `equals` are **invertible** — dropping a card onto the cell writ
 
 ## Documentation & Contributing
 
-- [Architecture](docs/ARCHITECTURE.md) · [Verification](docs/VERIFICATION.md)
+- [Architecture](docs/ARCHITECTURE.md) · [Verification](docs/VERIFICATION.md) · [Item properties](docs/ITEM-PROPERTIES.md)
 - [Contributing](CONTRIBUTING.md) · [Code of Conduct](CODE_OF_CONDUCT.md) · [Security](SECURITY.md)
 
 ## License

@@ -1,15 +1,19 @@
 {
   "name": "@awesome-markdown/board-ui",
-  "version": "1.6.0",
+  "version": "2.0.0",
   "license": "MIT",
   "repository": {
     "type": "git",
     "url": "https://github.com/Pjore/awesome-markdown",
     "directory": "packages/board-ui"
   },
-  "publishConfig": { "access": "public" },
+  "publishConfig": {
+    "access": "public"
+  },
   "type": "module",
-  "sideEffects": ["*.css"],
+  "sideEffects": [
+    "*.css"
+  ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
@@ -20,7 +24,11 @@
   },
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
-  "files": ["dist", "styles.css", "fonts"],
+  "files": [
+    "dist",
+    "styles.css",
+    "fonts"
+  ],
   "scripts": {
     "build": "tsc --build",
     "dev": "tsc --build --watch --preserveWatchOutput",
@@ -38,7 +46,8 @@
     "@dnd-kit/core": "^6.3.1",
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
-    "diff": "^7.0.0"
+    "diff": "^7.0.0",
+    "react-markdown": "^10.1.0"
   },
   "devDependencies": {
     "@awesome-markdown/provider-localstorage": "workspace:*",

@@ -54,6 +54,8 @@ const LEAF_KEYS = [
 ] as const;
 
 function leafToCond(leaf: FilterLeaf): CondDraft {
+  if (typeof leaf.property !== 'string')
+    throw new Error('Structural paths require the advanced filter editor');
   const rec = leaf as unknown as Record<string, unknown>;
   const key = LEAF_KEYS.find((k) => k in rec) ?? 'equals';
   const raw = rec[key];
@@ -70,7 +72,7 @@ function leafToCond(leaf: FilterLeaf): CondDraft {
 }
 
 function isLeaf(rule: FilterRule): rule is FilterLeaf {
-  return 'property' in rule;
+  return 'property' in rule && typeof rule.property === 'string';
 }
 
 /** Flat draft for the builder, or `null` when the rule nests groups / `not`. */

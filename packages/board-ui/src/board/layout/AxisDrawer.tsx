@@ -126,6 +126,7 @@ export function AxisDrawer({
           <section className="drawer-section">
             <h4>When a card is dropped here</h4>
             <DropEditor
+              axisSlug={axis.slug}
               draft={drop}
               filter={rule}
               boardSlug={boardSlug}

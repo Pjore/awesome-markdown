@@ -1,4 +1,6 @@
 import React, { useCallback, useState } from 'react';
+import { itemLabel } from '@awesome-markdown/contracts';
+import { patchVisibleItem } from '../lib/patch-visible-item.js';
 import {
   DndContext,
   DragOverlay,
@@ -64,7 +66,7 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
   );
 
   const handleDragStart = useCallback((event: DragStartEvent): void => {
@@ -78,119 +80,121 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
   const handleDragEnd = useCallback(
     (event: DragEndEvent): void => {
       setActiveItemSlug(null);
+      try {
+        const activeData = event.active.data.current as { type?: string } | undefined;
+        if (activeData?.type === 'axis') {
+          const { dim, slug } = activeData as AxisDragData;
+          const over = event.over?.data.current as AxisDragData | undefined;
+          if (over?.type === 'axis' && over.dim === dim) void layout.moveAxis(dim, slug, over.slug);
+          return;
+        }
 
-      // --- Axis header reorder branch ---
-      const activeData = event.active.data.current as { type?: string } | undefined;
-      if (activeData?.type === 'axis') {
-        const { dim, slug } = activeData as AxisDragData;
-        const over = event.over?.data.current as AxisDragData | undefined;
-        if (over?.type === 'axis' && over.dim === dim) void layout.moveAxis(dim, slug, over.slug);
-        return;
-      }
+        if (activeData?.type === 'homeless-item') {
+          if (!homeless) return;
+          const plan = planHomelessDrop(event, cells, render, homeless);
+          if (!plan) return;
+          setOptimisticCells(plan.newCells);
 
-      // --- Homeless item drop branch ---
-      if (activeData?.type === 'homeless-item') {
-        if (!homeless) return;
-        const plan = planHomelessDrop(event, cells, render, homeless);
-        if (!plan) return;
-        setOptimisticCells(plan.newCells);
+          void (async () => {
+            try {
+              const visible = homeless.items.find((item) => item.slug === plan.itemSlug);
+              if (!visible) throw new Error('Item not found');
+              await patchVisibleItem(provider, visible, plan.mutations);
+              onRefetch();
+              setOptimisticCells(null);
+            } catch (err) {
+              setOptimisticCells(null);
+              setError(
+                `Failed to move item: ${err instanceof Error ? err.message : 'Unknown error'}`
+              );
+            }
+          })();
+          return;
+        }
+
+        const action = onDragEnd(event, cells);
+        if (action.type === 'noop') return;
+
+        const {
+          itemSlug,
+          srcColumnSlug,
+          srcSwimlaneSlug,
+          dstColumnSlug,
+          dstSwimlaneSlug,
+          insertBeforeSlug,
+        } = action;
+
+        const srcCell = cells.find(
+          (c) => c.columnSlug === srcColumnSlug && c.swimlaneSlug === srcSwimlaneSlug
+        );
+        const dstCell = cells.find(
+          (c) => c.columnSlug === dstColumnSlug && c.swimlaneSlug === dstSwimlaneSlug
+        );
+        if (!srcCell || !dstCell) return;
+
+        if (dstCell.readOnly) return;
+
+        const colAxis = render.axes.columns.find((a) => a.slug === dstColumnSlug);
+        const slAxis = render.axes.swimlanes.find((a) => a.slug === dstSwimlaneSlug);
+        if (!colAxis || !slAxis) return;
+
+        const dropResult = computeDropMutations({
+          itemSlug,
+          srcCell,
+          dstCell,
+          colAxis,
+          slAxis,
+          board: render.board,
+          insertBeforeSlug,
+        });
+        if (!dropResult) return; // readonly guard
+
+        const movingItem = srcCell.items.find((i) => i.slug === itemSlug);
+        if (!movingItem) return;
+
+        const newCells = applyOptimisticMove(
+          cells,
+          movingItem,
+          srcColumnSlug,
+          srcSwimlaneSlug,
+          dstColumnSlug,
+          dstSwimlaneSlug,
+          insertBeforeSlug
+        );
+        setOptimisticCells(newCells);
 
         void (async () => {
           try {
-            await provider.patchItem(plan.itemSlug, { mutations: plan.mutations });
+            await patchVisibleItem(provider, movingItem, dropResult.mutations);
+            onRefetch();
             setOptimisticCells(null);
           } catch (err) {
             setOptimisticCells(null);
             setError(
-              `Failed to move item: ${err instanceof Error ? err.message : 'Unknown error'}`,
+              `Failed to move item: ${err instanceof Error ? err.message : 'Unknown error'}`
             );
           }
         })();
-        return;
+      } catch (error) {
+        setOptimisticCells(null);
+        setError(error instanceof Error ? error.message : 'Invalid drop configuration');
+        onRefetch();
       }
-
-      // --- Regular cell-to-cell drop branch ---
-      const action = onDragEnd(event, cells);
-      if (action.type === 'noop') return;
-
-      const {
-        itemSlug,
-        srcColumnSlug,
-        srcSwimlaneSlug,
-        dstColumnSlug,
-        dstSwimlaneSlug,
-        insertBeforeSlug,
-      } = action;
-
-      const srcCell = cells.find(
-        (c) => c.columnSlug === srcColumnSlug && c.swimlaneSlug === srcSwimlaneSlug,
-      );
-      const dstCell = cells.find(
-        (c) => c.columnSlug === dstColumnSlug && c.swimlaneSlug === dstSwimlaneSlug,
-      );
-      if (!srcCell || !dstCell) return;
-
-      // Reject read-only destination before any UI change
-      if (dstCell.readOnly) return;
-
-      const colAxis = render.axes.columns.find((a) => a.slug === dstColumnSlug);
-      const slAxis = render.axes.swimlanes.find((a) => a.slug === dstSwimlaneSlug);
-      if (!colAxis || !slAxis) return;
-
-      const dropResult = computeDropMutations({
-        itemSlug,
-        srcCell,
-        dstCell,
-        colAxis,
-        slAxis,
-        board: render.board,
-        insertBeforeSlug,
-      });
-      if (!dropResult) return; // readonly guard
-
-      // Optimistic update — apply before the network call
-      const movingItem = srcCell.items.find((i) => i.slug === itemSlug);
-      if (!movingItem) return;
-
-      const newCells = applyOptimisticMove(
-        cells,
-        movingItem,
-        srcColumnSlug,
-        srcSwimlaneSlug,
-        dstColumnSlug,
-        dstSwimlaneSlug,
-        insertBeforeSlug,
-      );
-      setOptimisticCells(newCells);
-
-      void (async () => {
-        try {
-          await provider.patchItem(itemSlug, { mutations: dropResult.mutations });
-          // Clear optimistic state; SSE will deliver the definitive render
-          setOptimisticCells(null);
-        } catch (err) {
-          setOptimisticCells(null);
-          setError(
-            `Failed to move item: ${err instanceof Error ? err.message : 'Unknown error'}`,
-          );
-        }
-      })();
     },
-    [cells, render, provider, homeless, layout],
+    [cells, render, provider, homeless, layout, onRefetch]
   );
 
   const activeItem =
     activeItemSlug !== null
       ? (cells.flatMap((c) => c.items).find((i) => i.slug === activeItemSlug) ??
-          homeless?.items.find((i) => i.slug === activeItemSlug) ??
-          null)
+        homeless?.items.find((i) => i.slug === activeItemSlug) ??
+        null)
       : null;
 
   const visibleHomelessItems = homeless
     ? homeless.items.filter(
         (i) =>
-          !optimisticCells ||
-          !optimisticCells.some((c) => c.items.some((it) => it.slug === i.slug)),
+          !optimisticCells || !optimisticCells.some((c) => c.items.some((it) => it.slug === i.slug))
       )
     : [];
 
@@ -202,16 +206,21 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
     editing?.kind === 'axis' ? layout[editing.dim].find((a) => a.slug === editing.slug) : undefined;
 
   return (
-    <div
-      className="flex flex-col h-full"
-      data-testid="board"
-      data-board-slug={render.board.slug}
-    >
+    <div className="flex flex-col h-full" data-testid="board" data-board-slug={render.board.slug}>
       {/* Board title */}
-      <div className="px-4 py-3" style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}>
+      <div
+        className="px-4 py-3"
+        style={{ borderBottom: '1px solid var(--border)', background: 'var(--bg)' }}
+      >
         <div className="flex items-center gap-2">
           <h1
-            style={{ fontFamily: 'var(--font-mono)', fontSize: '1.125rem', fontWeight: 500, color: 'var(--ink)', margin: 0 }}
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: '1.125rem',
+              fontWeight: 500,
+              color: 'var(--ink)',
+              margin: 0,
+            }}
             data-testid="board-title"
           >
             {render.board.title}
@@ -229,7 +238,9 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
           </button>
         </div>
         {render.board.description !== undefined && (
-          <p style={{ fontSize: '0.875rem', color: 'var(--ink-muted)', marginTop: '2px' }}>{render.board.description}</p>
+          <p style={{ fontSize: '0.875rem', color: 'var(--ink-muted)', marginTop: '2px' }}>
+            {render.board.description}
+          </p>
         )}
       </div>
 
@@ -276,7 +287,10 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
       >
         <div className="flex-1 overflow-auto">
           {/* Column header row */}
-          <div className="flex sticky top-0 z-10" style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+          <div
+            className="flex sticky top-0 z-10"
+            style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}
+          >
             {/* Spacer aligned with swimlane label width */}
             <div className="w-28 flex-shrink-0" />
             <SortableContext
@@ -358,7 +372,7 @@ export function Board({ render, homeless, onRefetch }: BoardProps): React.ReactE
                 boxShadow: 'none',
               }}
             >
-              {activeItem.title}
+              {itemLabel(activeItem)}
             </div>
           )}
         </DragOverlay>

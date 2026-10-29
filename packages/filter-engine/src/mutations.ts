@@ -1,9 +1,4 @@
-import type {
-  FilterRule,
-  FilterLeaf,
-  Mutation,
-  WriteOnDrop,
-} from '@awesome-markdown/contracts';
+import type { FilterRule, FilterLeaf, Mutation, WriteOnDrop } from '@awesome-markdown/contracts';
 import { analyzeInvertibility } from './invertibility.js';
 import { substitutePath, type Ctx } from './path-resolver.js';
 
@@ -57,7 +52,7 @@ function deriveFromRule(filter: FilterRule, ctx: Ctx): Mutation[] {
 
   // all: union of child mutations
   if ('all' in filter) {
-    return filter.all.flatMap(child => deriveFromRule(child, ctx));
+    return filter.all.flatMap((child) => deriveFromRule(child, ctx));
   }
 
   // not: only not:{exists:true} is invertible → delete
@@ -97,17 +92,13 @@ function deriveFromRule(filter: FilterRule, ctx: Ctx): Mutation[] {
  * @param ctx       Evaluation context; `ctx.board` drives `$board` substitution.
  * @param override  Optional `writeOnDrop` value from the axis definition.
  *
- * NOTE: The "lazy boards-entry creation" rule (UC-3 §4.1 step 5) is a
- * consumer responsibility. When returned mutations contain paths matching
- * `boards.<slug>.*`, the calling code must check whether the item already
- * has a `boards[]` entry for that slug and create one if absent. The
- * MutationSchema has no "create-entry" operation; the provider handles
- * the upsert when applying `set boards.<slug>.<field> = value`.
+ * Bound selector segments retain board/axis identity. Core applies explicit
+ * writes atomically, creating missing selected groups only when required.
  */
 export function deriveMutations(
   filter: FilterRule | undefined,
   ctx: Ctx,
-  override?: WriteOnDrop,
+  override?: WriteOnDrop
 ): Mutation[] | ReadOnly {
   // Apply override first
   if (override !== undefined) {
@@ -116,7 +107,7 @@ export function deriveMutations(
       return { readonly: true };
     }
     // Explicit mutation list replaces derivation
-    return override as Mutation[];
+    return override.map((mutation) => ({ ...mutation, path: substitutePath(mutation.path, ctx) }));
   }
 
   // Match-all (no filter): nothing to set

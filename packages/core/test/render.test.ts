@@ -140,14 +140,14 @@ describe('renderBoard', () => {
 describe('computeHomeless', () => {
   const b = board({ columns: ['todo'] });
 
-  it('returns items placed on the board that match no column', () => {
+  it('returns filter-only candidates matching no column without implicit membership', () => {
     const items = [
       item('placed-match', { status: 'todo', boards: [{ board: 'b' }] }),
       item('placed-orphan', { status: 'archived', boards: [{ board: 'b' }] }),
       item('other-board', { status: 'archived', boards: [{ board: 'x' }] }),
       item('no-boards', { status: 'archived' }),
     ];
-    expect(computeHomeless({ board: b, lookupAxis, items }).items.map(i => i.slug)).toEqual(['placed-orphan']);
+    expect(computeHomeless({ board: b, lookupAxis, items }).items.map(i => i.slug)).toEqual(['placed-orphan', 'other-board', 'no-boards']);
   });
 
   it('excludes items rejected by the board filter', () => {

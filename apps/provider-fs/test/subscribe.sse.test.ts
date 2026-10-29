@@ -66,7 +66,7 @@ describe('SSE /subscribe — local-write events', () => {
 
   it('emits a change event when an item is patched via PATCH /items/:slug', async () => {
     // Create item first
-    await server.inject({
+    const created = await server.inject({
       method: 'POST',
       url: '/items',
       headers: { 'content-type': 'application/json' },
@@ -96,7 +96,7 @@ describe('SSE /subscribe — local-write events', () => {
       method: 'PATCH',
       url: '/items/sse-patch',
       headers: { 'content-type': 'application/json' },
-      payload: { mutations: [{ op: 'set', path: 'status', value: 'done' }] },
+      payload: { revision: created.json().revision, mutations: [{ op: 'set', path: 'status', value: 'done' }] },
     });
 
     await new Promise((r) => setTimeout(r, 150));

@@ -35,7 +35,7 @@ describe('frontmatter shape', () => {
       },
     });
     expect(res.statusCode).toBe(201);
-    const item = res.json<Item>();
+    const item = res.json<{ item: Item }>().item;
 
     const filePath = path.join(tmp.contentRoot, 'fm-item.md');
     const raw = await readFile(filePath, 'utf-8');
@@ -54,7 +54,7 @@ describe('frontmatter shape', () => {
 
   it('PATCH /items/:slug preserves passthrough fields', async () => {
     // Create item with extra fields via mutations
-    await server.inject({
+    const created = await server.inject({
       method: 'POST',
       url: '/items',
       headers: { 'content-type': 'application/json' },
@@ -74,6 +74,7 @@ describe('frontmatter shape', () => {
       url: '/items/preserve-test',
       headers: { 'content-type': 'application/json' },
       payload: {
+        revision: created.json().revision,
         mutations: [{ op: 'set', path: 'title', value: 'Updated Title' }],
       },
     });
@@ -107,7 +108,7 @@ describe('frontmatter shape', () => {
     expect(res.statusCode).toBe(201);
 
     const getRes = await server.inject({ method: 'GET', url: '/items/tags-test' });
-    const item = getRes.json<Record<string, unknown>>();
+    const item = getRes.json<{ item: Item }>().item;
     expect(item['tags']).toEqual(['x', 'y', 'z']);
   });
 });

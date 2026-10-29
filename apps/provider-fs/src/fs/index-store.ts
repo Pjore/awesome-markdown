@@ -1,3 +1,5 @@
+import path from 'node:path';
+import { RepoError } from '../errors.js';
 import type { Item, Board, Axis } from '@awesome-markdown/contracts';
 import type { ScannedEntity } from './scanner.js';
 
@@ -26,6 +28,11 @@ export class IndexStore {
   private readonly _boards = new Map<string, Stored<Board>>();
   private readonly _axes = new Map<string, Stored<Axis>>();
   private readonly _byFilePath = new Map<string, EntityRef>();
+  private readonly _sourceErrors = new Map<string, string>();
+
+  markSourceError(filePath: string, message: string): void {
+    this._sourceErrors.set(filePath, message);
+  }
 
   // ---------------------------------------------------------------------------
   // Typed getters
@@ -44,7 +51,10 @@ export class IndexStore {
   }
 
   getItemFilePath(slug: string): string | undefined {
-    return this._items.get(slug)?.filePath;
+    return (
+      this._items.get(slug)?.filePath ??
+      [...this._sourceErrors.keys()].find((file) => path.basename(file) === `${slug}.md`)
+    );
   }
 
   getBoardFilePath(slug: string): string | undefined {
@@ -56,15 +66,21 @@ export class IndexStore {
   }
 
   listItems(): Item[] {
-    return Array.from(this._items.values()).map(e => e.data);
+    const failure = this._sourceErrors.entries().next().value;
+    if (failure)
+      throw new RepoError(
+        'validation_failed',
+        `Cannot render items: ${path.basename(failure[0])}: ${failure[1]}. Repair the source; no data was overwritten.`
+      );
+    return Array.from(this._items.values()).map((e) => e.data);
   }
 
   listBoards(): Board[] {
-    return Array.from(this._boards.values()).map(e => e.data);
+    return Array.from(this._boards.values()).map((e) => e.data);
   }
 
   listAxes(): Axis[] {
-    return Array.from(this._axes.values()).map(e => e.data);
+    return Array.from(this._axes.values()).map((e) => e.data);
   }
 
   // ---------------------------------------------------------------------------
@@ -72,6 +88,7 @@ export class IndexStore {
   // ---------------------------------------------------------------------------
 
   upsertItem(slug: string, data: Item, filePath: string): void {
+    this._sourceErrors.delete(filePath);
     const prev = this._byFilePath.get(filePath);
     if (prev?.entityType === 'item' && prev.slug !== slug) {
       this._items.delete(prev.slug);
@@ -81,6 +98,7 @@ export class IndexStore {
   }
 
   upsertBoard(slug: string, data: Board, filePath: string): void {
+    this._sourceErrors.delete(filePath);
     const prev = this._byFilePath.get(filePath);
     if (prev?.entityType === 'board' && prev.slug !== slug) {
       this._boards.delete(prev.slug);
@@ -90,6 +108,7 @@ export class IndexStore {
   }
 
   upsertAxis(slug: string, data: Axis, filePath: string): void {
+    this._sourceErrors.delete(filePath);
     const prev = this._byFilePath.get(filePath);
     if (prev?.entityType === 'axis' && prev.slug !== slug) {
       this._axes.delete(prev.slug);
@@ -103,6 +122,7 @@ export class IndexStore {
   // ---------------------------------------------------------------------------
 
   removeByFilePath(filePath: string): void {
+    this._sourceErrors.delete(filePath);
     const entry = this._byFilePath.get(filePath);
     if (!entry) return;
     this._byFilePath.delete(filePath);
@@ -117,7 +137,9 @@ export class IndexStore {
 
   loadFrom(entities: ScannedEntity[]): void {
     for (const entity of entities) {
-      if (entity.entityType === 'item') {
+      if (entity.entityType === 'invalid') {
+        this.markSourceError(entity.filePath, entity.message);
+      } else if (entity.entityType === 'item') {
         this.upsertItem(entity.slug, entity.data, entity.filePath);
       } else if (entity.entityType === 'board') {
         this.upsertBoard(entity.slug, entity.data, entity.filePath);

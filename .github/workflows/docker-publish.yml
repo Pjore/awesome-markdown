@@ -14,8 +14,8 @@ permissions:
   packages: write
 
 jobs:
-  # Images the Dokploy board deploy actually pulls (image: + pull_policy: always
-  # in docker-compose.dokploy.yml). trigger-board-deploy waits on these only.
+  # Publish service images for external consumers; Dokploy builds provider-fs
+  # and kanban-ui together from its checkout and pulls the sync-engine image.
   build-push:
     name: Build and push ${{ matrix.service }}
     runs-on: ubuntu-latest
@@ -60,10 +60,9 @@ jobs:
     needs: build-push
     runs-on: ubuntu-latest
     # Tag pushes don't hit Dokploy's main-branch autoDeploy webhook, and
-    # provider-fs/sync-engine use pre-built images that a plain redeploy
-    # wouldn't otherwise re-pull — trigger the board compose deploy directly
-    # so it force-pulls the images just published above (see pull_policy:
-    # always in docker-compose.dokploy.yml).
+    # sync-engine uses a pre-built image, while provider-fs and kanban-ui build
+    # together from the main checkout. Trigger compose.deploy to refresh both
+    # source-built services and pull the released sync-engine image.
     steps:
       - name: Call compose.deploy
         run: |

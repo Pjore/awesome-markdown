@@ -10,9 +10,9 @@
 # and per-environment values (CONTENT_REPO, BOARD_HOST) are supplied by Dokploy's
 # own environment settings, not this file.
 #
-# provider-fs/sync-engine use image: (not build:), so a plain `docker compose up`
-# leaves an already-cached :latest image alone even after a new one is published —
-# pull_policy: always forces every deploy to re-pull before (re)creating the container.
+# provider-fs and kanban-ui build from the same checkout: their item protocol must
+# ship together on main autoDeploy, not pair a new UI with an older :latest API.
+# sync-engine remains image-based; pull_policy: always refreshes its cached image.
 services:
   init-content:
     image: alpine/git:latest
@@ -38,8 +38,9 @@ services:
       - board-content:/repo
 
   provider-fs:
-    image: ghcr.io/pjore/awesome-markdown-provider-fs:latest
-    pull_policy: always
+    build:
+      context: .
+      dockerfile: apps/provider-fs/Dockerfile
     labels:
       - traefik.http.routers.compose-input-primary-program-r9pfq2-31-websecure.middlewares=forward-auth-errors@file,forward-auth@file
       - traefik.http.routers.compose-input-primary-program-r9pfq2-32-websecure.middlewares=forward-auth-errors@file,forward-auth@file,stripprefix-compose-input-primary-program-r9pfq2-32

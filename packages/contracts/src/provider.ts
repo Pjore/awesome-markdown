@@ -1,6 +1,6 @@
 import type { Board } from './schemas/board.js';
 import type { Axis } from './schemas/axis.js';
-import type { Item } from './schemas/item.js';
+import type { ItemRecord } from './schemas/item.js';
 import type {
   BoardRender,
   Homeless,
@@ -69,8 +69,8 @@ export interface PersistenceProvider {
   getHomeless(boardSlug: string): Promise<Homeless>;
 
   // -- Items -----------------------------------------------------------------
-  getItem(slug: string): Promise<Item | null>;
-  createItem(req: CreateItemRequest): Promise<Item>;
-  patchItem(slug: string, req: PatchItemRequest): Promise<Item>;
+  getItem(slug: string): Promise<ItemRecord | null>;
+  createItem(req: CreateItemRequest): Promise<ItemRecord>;
+  patchItem(slug: string, req: PatchItemRequest): Promise<ItemRecord>;
   deleteItem(slug: string): Promise<void>;
 }

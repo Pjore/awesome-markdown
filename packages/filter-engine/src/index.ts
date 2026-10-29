@@ -12,7 +12,14 @@
 export type { Ctx } from './path-resolver.js';
 
 // Path helpers (used by consumers that need to inspect or build paths)
-export { parsePath, joinPath, resolvePath, substitutePath } from './path-resolver.js';
+export {
+  parsePath,
+  joinPath,
+  resolvePath,
+  substitutePath,
+  selectEntry,
+  bindFilter,
+} from './path-resolver.js';
 
 // Filter evaluation
 export { evaluate } from './evaluate.js';
@@ -24,6 +31,7 @@ export { analyzeInvertibility } from './invertibility.js';
 // Mutation derivation
 export type { ReadOnly } from './mutations.js';
 export { deriveMutations } from './mutations.js';
+export { cellFilter, cellMutations } from './cell-mutations.js';
 
 // Fractional-index order keys
 export { compareOrderKeys, keyBetween } from './order-keys.js';

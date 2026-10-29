@@ -1,121 +1,99 @@
+import { ItemSchema, MutationSchema, SYSTEM_KEYS, unsafeKey } from '@awesome-markdown/contracts';
 import type { Item, Mutation } from '@awesome-markdown/contracts';
-import { parsePath } from '@awesome-markdown/filter-engine';
+import { parsePath, selectEntry } from '@awesome-markdown/filter-engine';
 
-type Rec = Record<string, unknown>;
+type Rec = Record<string | number, unknown>;
+type Segment = string | number | { selector: 'board' | 'axis'; value: string };
 
-// ---------------------------------------------------------------------------
-// Path navigation helper
-// ---------------------------------------------------------------------------
-
-/**
- * Navigate to the parent container and final key for the given path segments.
- *
- * Array navigation uses board-entry lookup: when the current value is an
- * array, we find (or create, when upsert=true) the entry whose `board`
- * property matches the current segment. This mirrors how the filter engine
- * resolves `boards.<slug>.*` paths.
- *
- * Returns null when navigation is impossible and upsert is false.
- */
-function navigateToParent(
+function navigate(
   root: Rec,
-  segments: string[],
-  upsert: boolean,
-): { parent: Rec; finalKey: string } | null {
-  if (segments.length === 0) return null;
-
+  segments: Segment[],
+  upsert: boolean
+): { parent: Rec; key: string | number } | null {
   let current: unknown = root;
-
   for (let i = 0; i < segments.length - 1; i++) {
-    const seg = segments[i]!;
-
-    if (Array.isArray(current)) {
-      let entry = (current as Rec[]).find(el => el['board'] === seg);
+    const segment = segments[i]!;
+    if (typeof segment === 'object') {
+      if (!Array.isArray(current)) throw new Error('Selector requires a list');
+      let entry = selectEntry(current, segment);
       if (!entry) {
         if (!upsert) return null;
-        entry = { board: seg };
-        (current as Rec[]).push(entry);
+        entry = { [segment.selector]: segment.value };
+        current.push(entry);
       }
       current = entry;
-    } else if (typeof current === 'object' && current !== null) {
-      const obj = current as Rec;
-      if (obj[seg] === undefined || obj[seg] === null) {
-        if (!upsert) return null;
-        // `boards` is always an array of `{ board, ... }` entries (see Item schema) —
-        // the next segment is matched against each entry's `board` property.
-        obj[seg] = seg === 'boards' ? [] : {};
-      }
-      current = obj[seg];
     } else {
-      return null;
+      if (current === null || typeof current !== 'object')
+        throw new Error('Incompatible path: expected a container');
+      if (Array.isArray(current) && (typeof segment !== 'number' || segment >= current.length))
+        throw new Error('Invalid list index');
+      const object = current as Rec;
+      if (!Object.hasOwn(object, segment)) {
+        if (!upsert) return null;
+        const next = segments[i + 1];
+        if (typeof next === 'number') throw new Error('Cannot invent list entries');
+        object[segment] = typeof next === 'object' ? [] : {};
+      }
+      current = object[segment];
     }
   }
-
-  const finalKey = segments[segments.length - 1]!;
-  if (typeof current === 'object' && current !== null && !Array.isArray(current)) {
-    return { parent: current as Rec, finalKey };
-  }
-  return null;
+  const key = segments.at(-1)!;
+  if (typeof key === 'object' || current === null || typeof current !== 'object')
+    throw new Error('Invalid mutation target');
+  if (Array.isArray(current) && (typeof key !== 'number' || key > current.length))
+    throw new Error('Invalid list index');
+  return { parent: current as Rec, key };
 }
 
-// ---------------------------------------------------------------------------
-// Public API
-// ---------------------------------------------------------------------------
-
-/**
- * Apply a list of mutations to an item, returning the updated item.
- * Sets `updatedAt` to `now` (defaults to current time).
- *
- * When a mutation targets a `boards.<slug>.*` path and no matching boards
- * entry exists, one is created (boards entry upsert).
- */
+/** A batch is applied to an isolated clone and validated completely before persistence. */
 export function applyMutations(
   item: Item,
   mutations: Mutation[],
-  now = new Date().toISOString(),
+  now = new Date().toISOString()
 ): Item {
   const clone = structuredClone(item) as Rec;
-
-  for (const mut of mutations) {
-    const segments = parsePath(mut.path);
-
-    if (mut.op === 'set') {
-      const nav = navigateToParent(clone, segments, true);
-      if (nav) nav.parent[nav.finalKey] = mut.value;
-    } else if (mut.op === 'delete') {
-      const nav = navigateToParent(clone, segments, false);
-      if (nav) delete nav.parent[nav.finalKey];
-    } else if (mut.op === 'append') {
-      const nav = navigateToParent(clone, segments, true);
-      if (nav) {
-        const current = nav.parent[nav.finalKey];
-        const isBodyPath = segments.length === 1 && segments[0] === 'body';
-        if (
-          isBodyPath &&
-          (current === undefined || current === null || typeof current === 'string')
-        ) {
-          const existing = typeof current === 'string' ? current : '';
-          const text = String(mut.value);
-          nav.parent[nav.finalKey] = existing.length > 0 ? `${existing}\n\n${text}` : text;
-        } else if (Array.isArray(current)) {
-          if (!(current as unknown[]).includes(mut.value)) {
-            (current as unknown[]).push(mut.value);
-          }
-        } else {
-          nav.parent[nav.finalKey] = [mut.value];
-        }
-      }
-    } else if (mut.op === 'remove') {
-      const nav = navigateToParent(clone, segments, false);
-      if (nav) {
-        const arr = nav.parent[nav.finalKey];
-        if (Array.isArray(arr)) {
-          nav.parent[nav.finalKey] = (arr as unknown[]).filter(v => v !== mut.value);
-        }
+  for (const raw of mutations) {
+    const mutation = MutationSchema.parse(raw);
+    const segments = typeof mutation.path === 'string' ? parsePath(mutation.path) : mutation.path;
+    if (
+      segments.some(
+        (s) =>
+          typeof s === 'string' &&
+          (unsafeKey(s) || (typeof mutation.path === 'string' && (s === '$board' || s === '$axis')))
+      )
+    )
+      throw new Error('Unsafe or unbound mutation path');
+    if (SYSTEM_KEYS.includes(segments[0] as (typeof SYSTEM_KEYS)[number]))
+      throw new Error('System metadata is read-only');
+    const nav = navigate(clone, segments, mutation.op === 'set' || mutation.op === 'append');
+    if (!nav) continue;
+    const { parent, key } = nav;
+    const current = parent[key];
+    if (mutation.op === 'set') parent[key] = structuredClone(mutation.value);
+    if (mutation.op === 'delete') {
+      if (Array.isArray(parent)) parent.splice(key as number, 1);
+      else delete parent[key];
+    }
+    if (mutation.op === 'append') {
+      if (segments.length === 1 && key === 'body') {
+        if (current !== undefined && typeof current !== 'string')
+          throw new Error('Body must be text');
+        parent[key] = current ? `${current}\n\n${mutation.value}` : String(mutation.value);
+      } else {
+        if (current !== undefined && !Array.isArray(current))
+          throw new Error('Append requires a list');
+        const list = (current ?? []) as unknown[];
+        if (!list.includes(mutation.value)) list.push(mutation.value);
+        parent[key] = list;
       }
     }
+    if (mutation.op === 'remove') {
+      if (current !== undefined && !Array.isArray(current))
+        throw new Error('Remove requires a list');
+      if (Array.isArray(current)) parent[key] = current.filter((value) => value !== mutation.value);
+    }
   }
-
-  clone['updatedAt'] = now;
-  return clone as unknown as Item;
+  clone.updatedAt = now;
+  if (!Object.hasOwn(clone, 'body')) clone.body = '';
+  return ItemSchema.parse(clone);
 }

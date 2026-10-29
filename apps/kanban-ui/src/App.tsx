@@ -29,10 +29,7 @@ export function App(): React.ReactElement {
   const [breadcrumbSegments, setBreadcrumbSegments] = useState<BreadcrumbSegment[]>([]);
 
   const content = isSwitching ? (
-    <div
-      className="flex items-center justify-center h-full"
-      data-testid="switching-provider"
-    >
+    <div className="flex items-center justify-center h-full" data-testid="switching-provider">
       <span style={{ color: 'var(--ink-muted)', fontSize: '1.125rem' }}>Switching provider…</span>
     </div>
   ) : (
@@ -84,12 +81,15 @@ export function App(): React.ReactElement {
         <ConflictProvider syncEngineUrl={getSyncEngineUrl()}>
           <TopBar />
           <ConflictBanner />
-          <div className="flex-1 overflow-hidden">
+          <main
+            className="flex-1 overflow-auto"
+            style={{ minHeight: 0, minWidth: 0 }}
+            data-testid="app-content"
+          >
             {content}
-          </div>
+          </main>
         </ConflictProvider>
       </BreadcrumbContext.Provider>
     </ReactRouterAdapterProvider>
   );
 }
-

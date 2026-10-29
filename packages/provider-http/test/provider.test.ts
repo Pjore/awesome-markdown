@@ -43,18 +43,19 @@ const axis = {
   createdAt: NOW, updatedAt: NOW,
 };
 
-const item = {
+const itemData = {
   entityType: 'item' as const, slug: 'task-1', title: 'Task 1',
   createdAt: NOW, updatedAt: NOW,
 };
 
+const item = { item: itemData, revision: 'revision' };
 const render = {
   board,
   axes: { columns: [axis], swimlanes: [] },
-  cells: [{ columnSlug: 'todo', swimlaneSlug: 'default', readOnly: false, items: [item] }],
+  cells: [{ columnSlug: 'todo', swimlaneSlug: 'default', readOnly: false, items: [itemData] }],
 };
 
-const homeless = { board, items: [item] };
+const homeless = { board, items: [itemData] };
 
 function makeFetch(body: unknown, status = 200): ReturnType<typeof vi.fn> {
   return vi.fn(async () =>
@@ -251,6 +252,7 @@ describe('provider.patchItem', () => {
   it('calls PATCH /items/:slug with mutations', async () => {
     const fetch = makeFetch(item);
     await makeProvider(fetch).patchItem('task-1', {
+      revision: 'revision',
       mutations: [{ op: 'set', path: 'status', value: 'done' }],
     });
     expect(fetch).toHaveBeenCalledWith(

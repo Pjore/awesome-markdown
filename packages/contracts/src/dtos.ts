@@ -23,6 +23,7 @@ export type DeleteResponse = z.infer<typeof DeleteResponseSchema>;
 export const ErrorCodeSchema = z.enum([
   'not_found',
   'already_exists',
+  'conflict',
   'validation_failed',
   'forbidden',
   'unauthorized',
@@ -111,8 +112,8 @@ export type BoardRender = z.infer<typeof BoardRenderSchema>;
 // ---------------------------------------------------------------------------
 
 /**
- * Items that carry a `boards[]` entry for this board but whose properties
- * no longer match any column filter. Surfaced for cleanup or re-triage.
+ * Board-filter candidates matching no column. No independent membership
+ * requirement is imposed on the item properties.
  */
 export const HomelessSchema = z.object({
   board: BoardSchema,
@@ -148,6 +149,7 @@ export type CreateItemRequest = z.infer<typeof CreateItemRequestSchema>;
  * At least one mutation must be present.
  */
 export const PatchItemRequestSchema = z.object({
+  revision: z.string().min(1),
   mutations: z.array(MutationSchema).min(1),
 });
 export type PatchItemRequest = z.infer<typeof PatchItemRequestSchema>;
@@ -215,7 +217,7 @@ export const PatchBoardRequestSchema = z
     cardLayout: z.array(PropertyDisplaySchema).optional(),
     detailLayout: z.array(PropertyDisplaySchema).optional(),
   })
-  .refine(body => Object.keys(body).length > 0, {
+  .refine((body) => Object.keys(body).length > 0, {
     message: 'At least one field must be present',
   });
 export type PatchBoardRequest = z.infer<typeof PatchBoardRequestSchema>;
@@ -238,7 +240,7 @@ export const PatchAxisRequestSchema = z
     order: AxisOrderSchema.nullable().optional(),
     writeOnDrop: WriteOnDropSchema.nullable().optional(),
   })
-  .refine(body => Object.keys(body).length > 0, {
+  .refine((body) => Object.keys(body).length > 0, {
     message: 'At least one field must be present',
   });
 export type PatchAxisRequest = z.infer<typeof PatchAxisRequestSchema>;

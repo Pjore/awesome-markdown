@@ -3,7 +3,7 @@ import {
   AxisSchema,
   BoardRenderSchema,
   HomelessSchema,
-  ItemSchema,
+  ItemRecordSchema,
   DeleteResponseSchema,
   ErrorResponseSchema,
   CreateItemRequestSchema,
@@ -18,7 +18,7 @@ import type {
   Axis,
   BoardRender,
   Homeless,
-  Item,
+  ItemRecord,
   CreateItemRequest,
   PatchItemRequest,
   CreateAxisRequest,
@@ -45,7 +45,7 @@ export class ProviderHttpError extends Error {
     public readonly status: number,
     public readonly body: unknown,
     message: string,
-    public readonly code?: string,
+    public readonly code?: string
   ) {
     super(message);
     this.name = 'ProviderHttpError';
@@ -71,7 +71,7 @@ export interface HttpClientConfig {
 async function parseErrorBody(res: Response): Promise<ProviderHttpError> {
   let body: unknown;
   try {
-    body = await res.json() as unknown;
+    body = (await res.json()) as unknown;
   } catch {
     body = null;
   }
@@ -101,11 +101,7 @@ export class SidecarHttpClient {
     this.getToken = config.getToken;
   }
 
-  private async req<T>(
-    url: string,
-    init: RequestInit,
-    parse: (raw: unknown) => T,
-  ): Promise<T> {
+  private async req<T>(url: string, init: RequestInit, parse: (raw: unknown) => T): Promise<T> {
     const headers: Record<string, string> = {
       ...JSON_HEADERS,
       ...(init.body !== undefined ? JSON_CONTENT_TYPE : {}),
@@ -120,7 +116,7 @@ export class SidecarHttpClient {
       headers,
     });
     if (!res.ok) throw await parseErrorBody(res);
-    return parse(await res.json() as unknown);
+    return parse((await res.json()) as unknown);
   }
 
   // -- Health ----------------------------------------------------------------
@@ -133,10 +129,8 @@ export class SidecarHttpClient {
   // -- Boards ----------------------------------------------------------------
 
   async listBoards(signal?: AbortSignal): Promise<Board[]> {
-    return this.req(
-      endpoints.boards(this.base),
-      { method: 'GET', signal },
-      (d) => z.array(BoardSchema).parse(d),
+    return this.req(endpoints.boards(this.base), { method: 'GET', signal }, (d) =>
+      z.array(BoardSchema).parse(d)
     );
   }
 
@@ -145,7 +139,7 @@ export class SidecarHttpClient {
       return await this.req(
         `${endpoints.boards(this.base)}/${slug}`,
         { method: 'GET', signal },
-        (d) => BoardSchema.parse(d),
+        (d) => BoardSchema.parse(d)
       );
     } catch (err) {
       if (err instanceof ProviderHttpError && err.status === 404) return null;
@@ -157,7 +151,7 @@ export class SidecarHttpClient {
     return this.req(
       endpoints.boards(this.base),
       { method: 'POST', body: JSON.stringify(CreateBoardRequestSchema.parse(req)), signal },
-      (d) => BoardSchema.parse(d),
+      (d) => BoardSchema.parse(d)
     );
   }
 
@@ -165,7 +159,7 @@ export class SidecarHttpClient {
     return this.req(
       endpoints.board(this.base, slug),
       { method: 'PATCH', body: JSON.stringify(PatchBoardRequestSchema.parse(req)), signal },
-      (d) => BoardSchema.parse(d),
+      (d) => BoardSchema.parse(d)
     );
   }
 
@@ -175,15 +169,13 @@ export class SidecarHttpClient {
     return this.req(
       endpoints.axis(this.base, slug),
       { method: 'PATCH', body: JSON.stringify(PatchAxisRequestSchema.parse(req)), signal },
-      (d) => AxisSchema.parse(d),
+      (d) => AxisSchema.parse(d)
     );
   }
 
   async listAxes(signal?: AbortSignal): Promise<Axis[]> {
-    return this.req(
-      endpoints.axes(this.base),
-      { method: 'GET', signal },
-      (d) => z.array(AxisSchema).parse(d),
+    return this.req(endpoints.axes(this.base), { method: 'GET', signal }, (d) =>
+      z.array(AxisSchema).parse(d)
     );
   }
 
@@ -192,7 +184,7 @@ export class SidecarHttpClient {
       return await this.req(
         `${endpoints.axes(this.base)}/${slug}`,
         { method: 'GET', signal },
-        (d) => AxisSchema.parse(d),
+        (d) => AxisSchema.parse(d)
       );
     } catch (err) {
       if (err instanceof ProviderHttpError && err.status === 404) return null;
@@ -204,36 +196,30 @@ export class SidecarHttpClient {
     return this.req(
       endpoints.axes(this.base),
       { method: 'POST', body: JSON.stringify(CreateAxisRequestSchema.parse(req)), signal },
-      (d) => AxisSchema.parse(d),
+      (d) => AxisSchema.parse(d)
     );
   }
 
   // -- Render / Homeless -----------------------------------------------------
 
   async getBoardRender(slug: string, signal?: AbortSignal): Promise<BoardRender> {
-    return this.req(
-      endpoints.boardRender(this.base, slug),
-      { method: 'GET', signal },
-      (d) => BoardRenderSchema.parse(d),
+    return this.req(endpoints.boardRender(this.base, slug), { method: 'GET', signal }, (d) =>
+      BoardRenderSchema.parse(d)
     );
   }
 
   async getHomeless(boardSlug: string, signal?: AbortSignal): Promise<Homeless> {
-    return this.req(
-      endpoints.boardHomeless(this.base, boardSlug),
-      { method: 'GET', signal },
-      (d) => HomelessSchema.parse(d),
+    return this.req(endpoints.boardHomeless(this.base, boardSlug), { method: 'GET', signal }, (d) =>
+      HomelessSchema.parse(d)
     );
   }
 
   // -- Items -----------------------------------------------------------------
 
-  async getItem(slug: string, signal?: AbortSignal): Promise<Item | null> {
+  async getItem(slug: string, signal?: AbortSignal): Promise<ItemRecord | null> {
     try {
-      return await this.req(
-        endpoints.item(this.base, slug),
-        { method: 'GET', signal },
-        (d) => ItemSchema.parse(d),
+      return await this.req(endpoints.item(this.base, slug), { method: 'GET', signal }, (d) =>
+        ItemRecordSchema.parse(d)
       );
     } catch (err) {
       if (err instanceof ProviderHttpError && err.status === 404) return null;
@@ -241,28 +227,25 @@ export class SidecarHttpClient {
     }
   }
 
-  async createItem(req: CreateItemRequest, signal?: AbortSignal): Promise<Item> {
+  async createItem(req: CreateItemRequest, signal?: AbortSignal): Promise<ItemRecord> {
     return this.req(
       endpoints.items(this.base),
       { method: 'POST', body: JSON.stringify(CreateItemRequestSchema.parse(req)), signal },
-      (d) => ItemSchema.parse(d),
+      (d) => ItemRecordSchema.parse(d)
     );
   }
 
-  async patchItem(slug: string, req: PatchItemRequest, signal?: AbortSignal): Promise<Item> {
+  async patchItem(slug: string, req: PatchItemRequest, signal?: AbortSignal): Promise<ItemRecord> {
     return this.req(
       endpoints.item(this.base, slug),
       { method: 'PATCH', body: JSON.stringify(PatchItemRequestSchema.parse(req)), signal },
-      (d) => ItemSchema.parse(d),
+      (d) => ItemRecordSchema.parse(d)
     );
   }
 
   async deleteItem(slug: string, signal?: AbortSignal): Promise<void> {
-    await this.req(
-      endpoints.item(this.base, slug),
-      { method: 'DELETE', signal },
-      (d) => DeleteResponseSchema.parse(d),
+    await this.req(endpoints.item(this.base, slug), { method: 'DELETE', signal }, (d) =>
+      DeleteResponseSchema.parse(d)
     );
   }
 }
-

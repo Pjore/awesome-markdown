@@ -11,14 +11,14 @@ This directory contains the UC-6 acceptance scenarios for Milestone 5:
 | `sse-online-indicator.scenario.json` | `sse-online-indicator` | Assert connection indicator reaches `online` within 5 s after switching to HTTP |
 | `sidecar-restart-reconnect.scenario.json` | `sidecar-restart-reconnect` | Restart sidecar out-of-band; assert indicator goes `reconnecting` then `online` |
 | `switch-back-isolation.scenario.json` | `switch-back-isolation` | Switch to HTTP, then back to localStorage; assert state isolation |
-| `sse-editor-live-refresh.scenario.json` | `sse-editor-live-refresh` | PATCH item externally; assert editor title refreshes via SSE without reload; dirty-guard suppresses overwrite |
+| `sse-editor-live-refresh.scenario.json` | `sse-editor-live-refresh` | Revision-bearing external PATCH; preserve the active edit snapshot and draft; conflict and recovery export coverage via the M3 live extension |
 
 ## Prerequisites
 
 ### Services
 
 1. **kanban-ui dev server** — `pnpm --filter kanban-ui dev` (port 5173)
-2. **provider-fs sidecar** — `pnpm --filter provider-fs dev` (port 3001, any content root)
+2. **provider-fs sidecar** — `pnpm --filter provider-fs dev` (default port 7701, temporary content root)
 
 ### Scenario: `sidecar-restart-reconnect`
 
@@ -32,22 +32,18 @@ The harness must:
 
 ### Scenario: `sse-editor-live-refresh`
 
-This scenario verifies two behaviours introduced by `useProviderSubscribe`:
+Read mode may refresh on incoming events. **Edit** captures an entry snapshot which is preserved even before the first field change. External changes produce a stale revision; Save must keep the complete draft and report the conflict, not overwrite the source.
 
-1. **Live-refresh**: when the file is written externally (via PATCH), the item editor
-   updates its title input within ~200 ms (100 ms debounce + network round-trip).
-2. **Dirty-guard**: when the user has unsaved edits (`dirty=true`), incoming SSE events
-   are silently ignored so in-progress work is never overwritten.
+GET/create/PATCH item responses are `{ item, revision }`. Every item PATCH must include the revision obtained from its source GET. Do not use the old revisionless PATCH examples or modify repository/household fixtures for testing.
 
-The harness must issue `PATCH /items/item-fix-auth-bug` requests on `"command": "patch-item"` steps:
+The real-browser implementation of this scenario is shared with the recursive editor's M3 live extension:
 
 ```bash
-curl -X PATCH http://localhost:7701/items/item-fix-auth-bug \
-  -H "Content-Type: application/json" \
-  -d '{"mutations":[{"op":"set","path":"title","value":"SSE live-refreshed title"}]}'
+UI_URL=http://127.0.0.1:5183 PROVIDER_URL=http://127.0.0.1:7713 \
+  node apps/kanban-ui/agent-browser/m3/runner.mjs --live
 ```
 
-The scenario restores the original title via a second PATCH at the end.
+Run provider-fs against a temporary content root. The live extension creates/removes its own item and exercises native cancellation confirmation and recovery downloads.
 
 ## Running Scenarios
 

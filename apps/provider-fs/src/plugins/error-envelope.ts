@@ -34,9 +34,7 @@ export function installErrorHandler(fastify: FastifyInstance): void {
         : 500;
 
     if (statusCode >= 400 && statusCode < 500) {
-      return reply
-        .status(statusCode)
-        .send({ error: message, code: 'client_error' });
+      return reply.status(statusCode).send({ error: message, code: 'client_error' });
     }
 
     // Mask internal errors — do not leak stack traces
@@ -48,6 +46,7 @@ function repoErrorToStatus(code: RepoError['code']): number {
   switch (code) {
     case 'not_found':
       return 404;
+    case 'conflict':
     case 'already_exists':
       return 409;
     case 'validation_failed':

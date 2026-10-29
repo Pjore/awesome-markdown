@@ -1,109 +1,91 @@
-import type { Item } from '@awesome-markdown/contracts';
+import { unsafeKey } from '@awesome-markdown/contracts';
+import type { Item, MutationPath, FilterRule } from '@awesome-markdown/contracts';
 
-// ---------------------------------------------------------------------------
-// Evaluation context
-// ---------------------------------------------------------------------------
-
-/**
- * Context passed to path resolution and filter evaluation.
- * `board` drives the single `$board` substitution variable.
- * Additional optional fields may be present and are ignored.
- */
 export interface Ctx {
-  /** Slug of the board currently being rendered. Drives `$board` substitution. */
   board: string;
+  axis?: string;
   [key: string]: unknown;
 }
+export type Segment = Exclude<MutationPath, string>[number];
 
-// ---------------------------------------------------------------------------
-// Path parsing
-// ---------------------------------------------------------------------------
-
-/**
- * Parse a dotted-path string into an ordered array of segments.
- *
- * Dot (`.`) is the segment separator.
- * A backslash-escaped dot (`\.`) is a literal dot within a segment.
- *
- * Examples:
- *   "status"             → ["status"]
- *   "boards.$board.order" → ["boards", "$board", "order"]
- *   "a\\.b.c"            → ["a.b", "c"]
- */
 export function parsePath(path: string): string[] {
   const segments: string[] = [];
   let current = '';
   for (let i = 0; i < path.length; i++) {
-    const ch = path.charAt(i);
-    const next = path.charAt(i + 1);
-    if (ch === '\\' && next === '.') {
-      current += '.';
-      i++; // consume the escaped dot
-    } else if (ch === '.') {
+    const ch = path[i]!;
+    if (ch === '\\' && (path[i + 1] === '.' || path[i + 1] === '\\')) current += path[++i];
+    else if (ch === '.') {
       segments.push(current);
       current = '';
-    } else {
-      current += ch;
-    }
+    } else current += ch;
   }
   segments.push(current);
   return segments;
 }
-
-/**
- * Reconstruct a dotted-path string from an array of segments,
- * re-escaping any literal dots within segment names.
- */
 export function joinPath(segments: string[]): string {
-  return segments.map(s => s.replace(/\./g, '\\.')).join('.');
+  return segments.map((s) => s.replace(/\\/g, '\\\\').replace(/\./g, '\\.')).join('.');
 }
 
-// ---------------------------------------------------------------------------
-// Path resolution
-// ---------------------------------------------------------------------------
-
-/**
- * Resolve a dotted path against an item, substituting `$board` from ctx.
- *
- * Rules:
- * - Missing intermediate keys return `undefined` (never throws).
- * - When the current value is an array and the segment matches the `board`
- *   property of an entry, that entry object is selected (boards[] lookup).
- * - `$board` is substituted with `ctx.board` before the array lookup.
- * - Returns the raw value; `undefined` and `null` are distinct.
- */
-export function resolvePath(path: string, item: Item, ctx: Ctx): unknown {
-  const segments = parsePath(path);
-  let value: unknown = item;
-  for (const seg of segments) {
-    const key = seg === '$board' ? ctx.board : seg;
-    if (value === null || value === undefined) return undefined;
-    if (Array.isArray(value)) {
-      // boards[] lookup: find entry whose `board` property equals the key
-      const entry = (value as unknown[]).find(
-        (el): el is Record<string, unknown> =>
-          typeof el === 'object' &&
-          el !== null &&
-          'board' in (el as object) &&
-          (el as Record<string, unknown>)['board'] === key,
-      );
-      value = entry;
-    } else if (typeof value === 'object') {
-      value = (value as Record<string, unknown>)[key];
-    } else {
-      return undefined;
+/** Bound selectors retain the key to match; a board and an axis may share a slug. */
+export function substitutePath(path: MutationPath, ctx: Ctx): MutationPath {
+  const segments = (typeof path === 'string' ? parsePath(path) : path).map<Segment>((segment) => {
+    if (typeof path === 'string' && (segment === '$board' || segment === '$axis')) {
+      const selector = segment === '$board' ? 'board' : 'axis';
+      const value = ctx[selector];
+      if (typeof value !== 'string' || !value)
+        throw new Error(`Unbound ${segment} in configuration`);
+      return { selector, value };
     }
+    if (typeof segment === 'string' && unsafeKey(segment))
+      throw new Error(`Unsafe path: ${segment}`);
+    return segment;
+  });
+  return typeof path === 'string' && !segments.some((segment) => typeof segment === 'object')
+    ? path
+    : segments;
+}
+
+export function selectEntry(
+  list: unknown[],
+  segment: { selector: 'board' | 'axis'; value: string }
+): Record<string, unknown> | undefined {
+  const matches = list.filter(
+    (entry): entry is Record<string, unknown> =>
+      entry !== null &&
+      typeof entry === 'object' &&
+      !Array.isArray(entry) &&
+      Object.hasOwn(entry, segment.selector) &&
+      (entry as Record<string, unknown>)[segment.selector] === segment.value
+  );
+  if (matches.length > 1)
+    throw new Error(
+      `Ambiguous ${segment.selector} lookup: ${segment.value}. Remove duplicate entries.`
+    );
+  return matches[0];
+}
+
+export function resolvePath(path: MutationPath, item: Item, ctx: Ctx): unknown {
+  const bound = substitutePath(path, ctx);
+  const segments = typeof bound === 'string' ? parsePath(bound) : bound;
+  let value: unknown = item;
+  for (const segment of segments) {
+    if (value === undefined || value === null) return undefined;
+    if (typeof segment === 'object') {
+      if (!Array.isArray(value)) throw new Error(`Selector ${segment.selector} requires a list`);
+      value = selectEntry(value, segment);
+    } else if (typeof value === 'object' && Object.hasOwn(value, segment)) {
+      if (Array.isArray(value) && typeof segment !== 'number')
+        throw new Error('List access requires an index or selector');
+      value = (value as Record<string | number, unknown>)[segment];
+    } else return undefined;
   }
   return value;
 }
 
-/**
- * Resolve the `$board` substitution variable in a path's segments and
- * return the resulting dotted-path string.
- *
- * Used when producing mutation paths from filter rules: the mutation paths
- * sent to providers contain the actual board slug (not `$board`).
- */
-export function substitutePath(path: string, ctx: Ctx): string {
-  return joinPath(parsePath(path).map(seg => (seg === '$board' ? ctx.board : seg)));
+export function bindFilter(filter: FilterRule | undefined, ctx: Ctx): FilterRule | undefined {
+  if (!filter) return undefined;
+  if ('property' in filter) return { ...filter, property: substitutePath(filter.property, ctx) };
+  if ('not' in filter) return { not: bindFilter(filter.not, ctx)! };
+  if ('all' in filter) return { all: filter.all.map((f) => bindFilter(f, ctx)!) };
+  return { any: filter.any.map((f) => bindFilter(f, ctx)!) };
 }

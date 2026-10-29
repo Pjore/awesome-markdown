@@ -1,13 +1,15 @@
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
-import { parseEntity } from '@awesome-markdown/core/markdown';
+import { parseEntityResult } from '@awesome-markdown/core/markdown';
 import type { ParsedEntity } from '@awesome-markdown/core/markdown';
 
 // ---------------------------------------------------------------------------
 // Typed entity union
 // ---------------------------------------------------------------------------
 
-export type ScannedEntity = ParsedEntity & { filePath: string };
+export type ScannedEntity =
+  | (ParsedEntity & { filePath: string })
+  | { entityType: 'invalid'; filePath: string; message: string };
 
 // ---------------------------------------------------------------------------
 // Single-file parser
@@ -24,12 +26,18 @@ export async function parseFile(filePath: string): Promise<ScannedEntity | null>
   let raw: string;
   try {
     raw = await readFile(filePath, 'utf-8');
-  } catch {
-    return null;
+  } catch (error) {
+    return {
+      entityType: 'invalid',
+      filePath,
+      message: error instanceof Error ? error.message : 'Cannot read source',
+    };
   }
 
-  const entity = parseEntity(raw, filePath);
-  return entity === null ? null : { ...entity, filePath };
+  const result = parseEntityResult(raw);
+  if (result.ok) return { ...result.entity, filePath };
+  if (result.reason === 'no_entity_type' || result.reason === 'unknown_entity_type') return null;
+  return { entityType: 'invalid', filePath, message: result.message };
 }
 
 // ---------------------------------------------------------------------------

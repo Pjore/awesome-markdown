@@ -1,4 +1,6 @@
 import Fastify from 'fastify';
+import { readFileSync } from 'node:fs';
+import { parseSafeYaml } from '@awesome-markdown/contracts';
 import cors from '@fastify/cors';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
 import { mkdir } from 'node:fs/promises';
@@ -36,7 +38,25 @@ export async function createServer(config: Config, externalStore?: IndexStore) {
     store.loadFrom(entities);
   }
 
-  const fastify = Fastify({ logger: false });
+  const fastify = Fastify({ logger: false, bodyLimit: 4 * 1024 * 1024 });
+
+  fastify.removeContentTypeParser('application/json');
+  fastify.addContentTypeParser(
+    'application/json',
+    { parseAs: 'string' },
+    (_request, source, done) => {
+      try {
+        JSON.parse(source as string); // Require JSON syntax, not the broader YAML grammar.
+        done(null, parseSafeYaml(source as string, 'transport'));
+      } catch (error) {
+        done(
+          Object.assign(new Error(error instanceof Error ? error.message : 'Invalid JSON'), {
+            statusCode: 400,
+          })
+        );
+      }
+    }
+  );
 
   fastify.setValidatorCompiler(validatorCompiler);
   fastify.setSerializerCompiler(serializerCompiler);
@@ -48,7 +68,12 @@ export async function createServer(config: Config, externalStore?: IndexStore) {
 
   installErrorHandler(fastify);
 
-  await fastify.register(healthRoute, { contentRoot: config.contentRoot });
+  const packageVersion = (
+    JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      version: string;
+    }
+  ).version;
+  await fastify.register(healthRoute, { contentRoot: config.contentRoot, version: packageVersion });
   await fastify.register(subscribeRoute);
   await fastify.register(boardsRoutes, { store, contentRoot: config.contentRoot });
   await fastify.register(axesRoutes, { store, contentRoot: config.contentRoot });

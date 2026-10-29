@@ -12,7 +12,11 @@ class EventBus {
   /** Dispatch an event to all current subscribers. */
   publish(event: SyncEvent): void {
     for (const handler of this.handlers) {
-      handler(event);
+      try {
+        handler(event);
+      } catch {
+        console.warn('SSE subscriber failed after a committed write');
+      }
     }
   }
 
