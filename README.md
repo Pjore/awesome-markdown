@@ -57,7 +57,7 @@ Point at an existing notes directory:
 PROVIDER_FS_CONTENT_ROOT=/path/to/notes docker compose up -d
 ```
 
-Pre-built images publish to GHCR on every push to `main` — no local build needed.
+Release tags publish pre-built images to GHCR. Dokploy builds provider-fs and kanban-ui from the same checkout so their item protocol is deployed together; sync-engine remains image-based.
 
 ### Browser-only (no server)
 

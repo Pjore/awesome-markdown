@@ -67,6 +67,12 @@ Incoming events never replace an active edit snapshot. A failed/conflicting save
 
 **YAML preview / Copy YAML / Download YAML** contain properties only. The preview is a YAML code block with ordinary unquoted keys where safe; ambiguous keys and string values are quoted safely. **Download Markdown** contains properties and document text. Both export the current valid draft, use safe filenames, report failures, and never mark the item saved. Downloads are not treated as unsaved navigation. Source comments, formatting, anchors, YAML import, and direct YAML editing are not editor features.
 
+## Coordinated release
+
+Version 2.0.0 introduces this breaking item protocol. Dokploy builds provider-fs and kanban-ui from the same Git checkout on main deployments, rather than combining a new UI with a previously published API image. Its existing domain/router labels and content volume are unchanged. Release tags publish the coordinated shared packages and container images; the existing deployment workflow refreshes the stack.
+
+The provider's authenticated `/health` reports its installed package `version` and `itemProtocol: 2`; verify that plus a revision-bearing item GET before declaring deployment successful. Home's board Extension must use the revisioned protocol too. Upgrade its declared package through the supported Home reconciliation flow, never by editing an installed package or its runtime lock.
+
 ## Verification
 
 Run the repository gates and the UI build as described in `CONTRIBUTING.md`. Provider conformance cases are shared in `scripts/tests/item-provider-conformance.ts`; UI unit tests cover recursive editing, numeric state, cancellation, conflicts, and recovery failures.

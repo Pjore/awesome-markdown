@@ -1,4 +1,5 @@
 import Fastify from 'fastify';
+import { readFileSync } from 'node:fs';
 import { parseSafeYaml } from '@awesome-markdown/contracts';
 import cors from '@fastify/cors';
 import { serializerCompiler, validatorCompiler } from 'fastify-type-provider-zod';
@@ -67,7 +68,12 @@ export async function createServer(config: Config, externalStore?: IndexStore) {
 
   installErrorHandler(fastify);
 
-  await fastify.register(healthRoute, { contentRoot: config.contentRoot });
+  const packageVersion = (
+    JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8')) as {
+      version: string;
+    }
+  ).version;
+  await fastify.register(healthRoute, { contentRoot: config.contentRoot, version: packageVersion });
   await fastify.register(subscribeRoute);
   await fastify.register(boardsRoutes, { store, contentRoot: config.contentRoot });
   await fastify.register(axesRoutes, { store, contentRoot: config.contentRoot });
