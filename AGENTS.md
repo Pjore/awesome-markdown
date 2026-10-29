@@ -6,7 +6,7 @@ Lightweight, git-backed kanban system. Flat pool of markdown items projected thr
 
 ## Domain Model
 
-All domain objects live as `.md` files in `content/` with `entityType: item | board | axis`. Boards project the item pool through filter rules — boards do not own items. Drop mutations derive from board ∧ column ∧ swimlane; non-invertible filters (for example `or` and `any`) produce read-only cells. One drop equals one file write. Board-filter candidates matching no column appear in `/homeless`; `boards[]` never implies membership.
+All domain objects live as `.md` files in `content/` with `entityType: item | board | axis`. Boards project the item pool through filter rules — boards do not own items. Drop mutations derive from board ∧ column ∧ swimlane; non-invertible filters (for example `any` and comparisons) produce read-only cells. One drop equals one file write. Board-filter candidates matching no column appear in `/homeless`; `boards[]` never implies membership.
 
 ## Architecture
 

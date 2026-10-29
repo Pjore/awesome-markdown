@@ -122,9 +122,9 @@ Add or update tests when you change behavior, fix bugs, or introduce new interfa
 
 ### Seeding demo data for UI verification
 
-In localStorage mode, `?seed=m3` explicitly provisions two demos in `localStorage["awesome-markdown:v2"]` before rendering: **Recursive item demo** (`/boards/m3-demo`) and **Release planning demo** (`/boards/m3-release`). Both reuse axes with `boards.$board.status`, `boards.$board.team`, and `boards.$board.order`; shared cards have independent values on each board. Load `/?seed=m3` again to extend an older demo with the second board/contextual configuration. This preserves existing item bodies, custom properties, and board entries; it is not a content reset or an invalid-data fallback. Other milestone seeds may still be stubs.
+In localStorage mode, `?seed=m3` explicitly provisions two demos in `localStorage["awesome-markdown:v2"]` before rendering: **Recursive item demo** (`/boards/m3-demo`) and **Release planning demo** (`/boards/m3-release`). Both reuse axes with `boards.$board.status`, `boards.$board.team`, and `boards.$board.order`; shared cards have independent values on each board. Load `/?seed=m3` again to extend an older demo with the second board/contextual configuration. This preserves existing item bodies, custom properties, and board entries. Other milestone seeds may still be stubs.
 
-For live recursive-editor browser coverage in both providers, start provider-fs against a temporary content root and run `UI_URL=http://127.0.0.1:5183 PROVIDER_URL=http://127.0.0.1:7713 node apps/kanban-ui/agent-browser/m3/runner.mjs --live`. The normal verification command validates descriptors only.
+For live recursive-editor browser coverage in both providers, start provider-fs against a temporary content root and run `UI_URL=http://127.0.0.1:5183 PROVIDER_URL=http://127.0.0.1:7713 node apps/kanban-ui/agent-browser/m3/runner.mjs --live`. `pnpm verify:ui` validates descriptors; the live runner executes the browser scenarios.
 
 In provider-fs mode (sidecar running on port 7701), no seeding is needed — boards come directly from `content/`, so `/boards/<slug>` can be opened directly.
 

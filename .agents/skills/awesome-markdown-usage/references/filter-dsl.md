@@ -1,38 +1,59 @@
-# Filter DSL reference
+# Filter DSL
 
-Schema: `packages/contracts/src/schemas/filter-rule.ts`. A `FilterRule` is recursive: a leaf, or `{ all: FilterRule[] }` / `{ any: FilterRule[] }` (both non-empty) / `{ not: FilterRule }`.
+A filter is a leaf object or a recursive `all`, `any` or `not` object. `all`/`any` contain nonempty lists of rules.
 
-## Leaf operators
+```yaml
+filter:
+  property: boards.$board.board
+  equals: board-main
+```
 
-| Op | Shape | Value type | Meaning | Invertible? |
-|---|---|---|---|---|
-| `equals` | `{ property, equals }` | string \| number \| boolean | exact match | yes → `set path = value` |
-| `in` | `{ property, in: [...] }` | array of string\|number, min 1 | value is one of the list | only if `in` has exactly 1 element → `set` |
-| `has` | `{ property, has }` | string \| number | array property contains value | yes → `append path value` |
-| `lacks` | `{ property, lacks }` | string \| number | array property excludes value | yes → `remove path value` |
-| `exists` | `{ property, exists: bool }` | boolean | property is present/absent | only `exists: false` → `delete path`. `exists: true` is never invertible |
-| `gt` / `gte` / `lt` / `lte` | `{ property, gt }` etc. | string \| number | comparator | never invertible |
-| `matches` | `{ property, matches }` | string (regex) | regex test | never invertible |
+```yaml
+filter:
+  all:
+    - property: boards.$board.column
+      equals: todo
+    - property: repo
+      equals: awesome-markdown
+```
 
-## Composition
+In the UI condition builder, enter Property, Operator and Value as separate fields. The `equals` operator is labeled **is**.
 
-- `all: [rules]` — AND. Invertible iff every child is invertible (mutations are the union of each child's derived mutation).
-- `any: [rules]` — OR. **Never invertible**, regardless of children — this is the most common reason a cell/column/swimlane is read-only. Example: the `status-done` axis's filter is `{ any: [{ property: status, equals: done }, { property: status, equals: complete }] }`, making both `board-all`'s `status-done` column and `board-dev`'s `status-done` swimlane read-only.
-- `not: rule` — invertible **only** when wrapping `{ property, exists: true }` (produces `delete path`). Any other negation is non-invertible — there's no general way to invert "does not equal X" etc.
+## Operators
 
-Strict policy: invertibility poisons upward. One non-invertible leaf anywhere in the tree makes the whole combined filter (and thus the whole cell) read-only. There is no partial/best-effort inversion.
+| Operator | Value | Meaning | Derived write |
+|---|---|---|---|
+| `equals` | string, number, boolean | exact equality | set |
+| `in` | nonempty string/number list | any listed value | set for a single value |
+| `has` | string/number | list contains value | append |
+| `lacks` | string/number | list excludes value | remove |
+| `exists` | boolean | present/absent property | delete for false |
+| `gt`, `gte`, `lt`, `lte` | string/number | scalar comparison | explicit override for writable placement |
+| `matches` | regex string | text matches | explicit override for writable placement |
 
-## Dotted paths
+`all` combines every rule and its derived writes. `any` selects any matching rule. `not` negates a rule; `not: { property: ..., exists: true }` derives deletion. Use invertible board filters and axis overrides where writable placement is desired.
 
-Grammar: segments separated by `.`; a literal dot inside a segment is escaped as `\.`. Regex: `^(?:[^.\\]|\\.)+(?:\.(?:[^.\\]|\\.)+)*$`.
+## Contextual paths
 
-`$board` is a reserved segment name substituted with the current board's slug during evaluation/mutation (`packages/filter-engine/src/path-resolver.ts`):
+Dots separate configuration-path segments. Escape a literal dot with `\.` and a literal backslash with `\\`. Structural paths use literal string keys and numeric indices.
 
-- In a normal object path, `$board` is just replaced with the literal board slug string before lookup.
-- When the path resolution encounters an array value (e.g. `item.boards`) and the next segment is a key, it instead searches the array for an entry whose `board` field equals that key — this is how `boards.$board.order` resolves to the matching `boards[]` entry's `order` field instead of doing a plain object-key lookup.
+`$board` selects a list group whose `board` equals the current board slug. `$axis` selects by `axis` and binds to the current axis definition. List property names are ordinary names:
 
-Missing intermediate keys resolve to `undefined` (never throws); `undefined` and `null` are distinct values for `exists` checks.
+```yaml
+filter:
+  property: boards.$board.axes.$axis.axis
+  equals: axis-doing
+order:
+  by: boards.$board.axes.$axis.order
+  direction: asc
+```
 
-## Where filters apply
+Bind column and swimlane expressions separately. The board filter has board context. Selector identity remains explicit in bound writes, even when board and axis slugs are identical.
 
-A rendered cell's effective filter is the AND of: board's own `filter` (candidate-set scoping, evaluated first) ∧ the column axis's `filter` ∧ the swimlane axis's `filter`. All three (or fewer, if a board has no swimlanes/base filter) are combined before invertibility is analyzed — a perfectly invertible column filter can still end up read-only if the board or swimlane filter it's paired with isn't.
+Missing matches resolve to a missing value, distinct from null. List lookup considers mapping entries with the selected identity key. Duplicate matches or incompatible containers produce an actionable lookup error identifying the item. Inspect that item's structure and the configured path before making a deliberate correction.
+
+## Projection
+
+The board filter selects candidates. Column and swimlane filters select cells from those candidates. `/homeless` contains candidates matching no column. Writability follows the board rule plus each dimension's derived or explicit writes.
+
+Schemas: `packages/contracts/src/schemas/filter-rule.ts`. Resolution and binding: `packages/filter-engine/src/path-resolver.ts`.

@@ -1,19 +1,55 @@
-# provider-fs endpoint reference
+# Provider API
 
-`apps/provider-fs`, Fastify v5, reads/writes `content/*.md`. Env vars: `PROVIDER_FS_PORT`, `PROVIDER_FS_HOST`, `PROVIDER_FS_CONTENT_ROOT` (not a bare `PORT`).
+`apps/provider-fs` uses Fastify and persists Markdown under its configured content root. Settings: `PROVIDER_FS_HOST`, `PROVIDER_FS_PORT`, `PROVIDER_FS_CONTENT_ROOT`.
 
-| Method | Path | Description |
+| Method | Path | Result/action |
 |---|---|---|
-| GET | `/boards` | List all board slugs and titles |
-| GET | `/axes` | List all axis slugs and titles |
-| GET | `/boards/:slug/render` | Board cells, items per cell, and per-cell invertibility flags |
-| GET | `/boards/:slug/homeless` | Items that reference this board in `boards[]` but match no column. Shape: `{ board, items: [] }` — **not** a bare array |
-| GET | `/items/:slug` | Fetch a single item |
-| POST | `/items` | Create a new item |
-| PATCH | `/items/:slug` | Update an item — one file write per call |
-| DELETE | `/items/:slug` | Delete an item file |
+| GET | `/health` | installed version, `itemProtocol`, content-root metadata |
+| GET | `/boards` | board definitions |
+| POST | `/boards` | create a board |
+| PATCH | `/boards/:slug` | update selected definition fields/axis references |
+| DELETE | `/boards/:slug` | remove a board definition |
+| GET | `/axes` | axis definitions |
+| POST | `/axes` | create an axis |
+| PATCH | `/axes/:slug` | update an axis definition |
+| DELETE | `/axes/:slug` | remove an axis definition |
+| GET | `/boards/:slug/render` | board, axes and cells with items/read-only flags |
+| GET | `/boards/:slug/homeless` | `{ board, items }` for candidates matching no column |
+| GET | `/items/:slug` | `{ item, revision }` |
+| POST | `/items` | create; return `{ item, revision }` |
+| PATCH | `/items/:slug` | atomic revision-checked mutation batch; return saved record |
+| DELETE | `/items/:slug` | remove an item file |
+| GET | `/subscribe` | source change SSE stream |
 
-## Gaps to plan around
+Enumerate board items through render plus homeless results and deduplicate by slug. Fetch a specific item's authoritative record through its item endpoint.
 
-- There is **no** generic "list/search all items" endpoint. To enumerate items you must either fetch a specific `:slug`, or crawl `GET /boards`, then `GET /boards/:slug/render` (items nested inside cells) plus `GET /boards/:slug/homeless` for each board.
-- A `PATCH` is one file write — batch related field changes into a single call rather than issuing several PATCHes for one logical edit, to keep `sync-engine`'s auto-commit history clean (each write is picked up and committed independently).
+## Item writes
+
+Creation accepts `slug`, a workflow-convenience `title`, initial `mutations`, and optional API `body`. Existing items may use any supported recursive title value; headings use a nonempty string title or slug.
+
+PATCH accepts the source revision and one complete mutation batch:
+
+```json
+{
+  "revision": "<opaque source revision>",
+  "mutations": [
+    {"op":"set","path":["literal.key"],"value":[false,"003",null]}
+  ]
+}
+```
+
+Use the authoritative saved item/revision after success. On conflict, preserve the draft and make an explicit reload/discard decision. Filesystem writes compare current persisted bytes, then commit atomically before index/events are updated. localStorage uses the same item validation/mutation rules.
+
+## Home configuration
+
+The declared board Extension supplies authentication and journaling. home-board 3.1 provides axis inspection and repository-row configuration:
+
+```bash
+home board connection --task task-slug
+home board board
+home board axes
+home board rows --repo agent-workspace --repo agentswarm
+home board snapshot task-slug
+```
+
+Keep private payloads in protected snapshots/JSON stdin. Public package/API metadata and readiness checks establish the remote release in use.
