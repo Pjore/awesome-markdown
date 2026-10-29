@@ -9,6 +9,7 @@
   "include": ["src/**/*.ts"],
   "references": [
     { "path": "../../packages/contracts" },
-    { "path": "../../packages/filter-engine" }
+    { "path": "../../packages/filter-engine" },
+    { "path": "../../packages/core" }
   ]
 }
