@@ -1,128 +1,95 @@
 # Verification Guide
 
-## Overview
+## Repository gates
 
-awesome-markdown uses two verification strategies:
-
-| Strategy | Tool | Scope |
-|---|---|---|
-| UI verification | Browser automation runner (`agent-browser`) | User-visible flows in `kanban-ui` |
-| Non-UI verification | Vitest | Provider, filter-engine, and sync-engine behavior |
-
-## UI verification
-
-The browser automation suite drives a running `kanban-ui` instance and checks visible outcomes such as navigation, rendered cards, drag-and-drop behavior, and conflict UI.
-
-Scenario files live under `apps/kanban-ui/agent-browser/`:
-
-```text
-apps/kanban-ui/agent-browser/
-  m3/   board render, drag-and-drop, CRUD
-  m5/   runtime provider switch, SSE indicator
-  m6/   writable drop, read-only rejection, homeless panel
-  m8/   conflict banner and resolution flow
-  m9/   board list, navigation, deep-linking
-```
-
-Run milestone suites with:
+From the repository root:
 
 ```bash
-pnpm --filter kanban-ui verify:m3
-pnpm --filter kanban-ui verify:m5
-pnpm --filter kanban-ui verify:m6
-pnpm --filter kanban-ui verify:m8
-pnpm --filter kanban-ui verify:m9
+pnpm typecheck
+pnpm lint
+pnpm test
+pnpm verify:ui
+pnpm --filter kanban-ui build
 ```
 
-Run the aggregate UI suite with:
+Vitest covers contracts, shared filter/mutation/render rules, both providers, filesystem source integrity and synchronization. Shared provider cases live in `scripts/tests/item-provider-conformance.ts`; fixtures use temporary storage/content/git repositories.
+
+## Focused suites
+
+```bash
+pnpm --filter @awesome-markdown/contracts test
+pnpm --filter @awesome-markdown/filter-engine test
+pnpm --filter @awesome-markdown/core test
+pnpm --filter @awesome-markdown/provider-localstorage test
+pnpm --filter @awesome-markdown/provider-http test
+pnpm --filter @awesome-markdown/board-ui test
+pnpm --filter provider-fs test
+pnpm --filter sync-engine test
+```
+
+Inspect metadata-only and heterogeneous items, literal keys, contextual selectors in both dimensions, complete-batch validation, protected metadata, source bounds and stale/deleted/competing writes. UI unit tests cover read/edit sessions, numeric input, list-entry state, Save/Cancel and recovery failures.
+
+## Browser verification
+
+Scenario descriptors live under `apps/kanban-ui/agent-browser/m3`, `m5`, `m8` and `m9`. Descriptor validation:
 
 ```bash
 pnpm verify:ui
 ```
 
-Start the local stack before running UI verification:
+Actual M3 browser execution uses `agent-browser`, a running UI and provider-fs against temporary content. Example service setup in separate terminals:
 
 ```bash
+pnpm typecheck
+PROVIDER_FS_CONTENT_ROOT=/absolute/path/to/temporary-content \
+PROVIDER_FS_PORT=7713 pnpm --filter provider-fs dev
+```
+
+```bash
+KANBAN_UI_PORT=5183 \
+PROVIDER_FS_PROXY_TARGET=http://127.0.0.1:7713 \
 pnpm --filter kanban-ui dev
-pnpm --filter provider-fs dev
-SYNC_ENGINE_REPO_ROOT=$(pwd) pnpm --filter sync-engine dev
 ```
 
-You can append `?seed=m3` to the UI URL to load a deterministic board state during manual checks:
-
-```text
-http://localhost:5173/?seed=m3
-```
-
-## Non-UI verification
-
-Run the main automated suites with:
+Run the live extension from the repository root:
 
 ```bash
-pnpm --filter @awesome-markdown/provider-localstorage test
-pnpm --filter provider-fs test
-pnpm --filter sync-engine test
-pnpm test
+UI_URL=http://127.0.0.1:5183 PROVIDER_URL=http://127.0.0.1:7713 \
+node apps/kanban-ui/agent-browser/m3/runner.mjs --live
 ```
 
-Sync-engine tests use local temporary git repositories and do not require real GitHub access.
+It exercises localStorage and HTTP/filesystem, preserves active snapshots during incoming changes, checks conflicts and numeric errors, downloads current YAML/full-Markdown drafts, and scrolls desktop/mobile layouts to the bottom actions. Its own temporary item is cleaned up; screenshots/downloads are written under `/tmp`.
 
-## Coverage matrix
+For manual checks, select localStorage and load `http://localhost:5183/?seed=m3`, then open either demo board. The two boards reuse contextual axes and show independent board-specific values on shared items. Use real pointer movement for drag/drop and confirm configured writes and one atomic update per drop.
 
-| Milestone | Behavior verified | Tool | Command |
-|---|---|---|---|
-| M2 | localStorage CRUD and subscriptions | Vitest | `pnpm --filter @awesome-markdown/provider-localstorage test` |
-| M3 | board rendering, drag-and-drop, CRUD via UI | Browser automation | `pnpm --filter kanban-ui verify:m3` |
-| M4 | filesystem provider API and SSE contract | Vitest | `pnpm --filter provider-fs test` |
-| M5 | runtime provider switching and SSE indicator | Browser automation | `pnpm --filter kanban-ui verify:m5` |
-| M5/M6 | filter evaluation and invertibility | Vitest | `pnpm --filter @awesome-markdown/filter-engine test` |
-| M6/M7 | sync-engine watcher, pull/push, offline retry | Vitest | `pnpm --filter sync-engine test` |
-| M8 | conflict resolution UI | Browser automation | `pnpm --filter kanban-ui verify:m8` |
-| M9 | multi-board routing and deep-linking | Browser automation | `pnpm --filter kanban-ui verify:m9` |
+## Home and deployment verification
 
-## Webhook validation
-
-The GitHub webhook flow has both automated tests and a live end-to-end procedure.
-
-### Unit tests
+Inspect the declared Home binding and its installed package metadata, then run:
 
 ```bash
-pnpm --filter sync-engine test
+home board connection --task task-slug
+home board board
+home board axes
+home board list
+home board get task-slug
+steward status
 ```
 
-### Live validation
+Confirm the intended remote URL/board, installed provider version, `itemProtocol: 2` and HTTP 200 for actual board/item reads. Configuration changes through `home board rows --repo REPO` should preserve existing rows and return the added/reused/created axes. Read back the selected board and its repo filters.
 
-Prerequisites:
+Use a legitimate intended task mutation for write verification, retaining its exact snapshot revision when planned. Keep backups private and compare document text and unrelated fields after approved structural changes.
 
-1. `apps/sync-engine/.env` configured with GitHub App credentials, webhook secret, and `SYNC_ENGINE_REMOTE_ENABLED=true`
-2. The GitHub App installed on the target repository with **Contents: Read and write** and `push` event delivery enabled
-3. Services running via `./scripts/services start`
+Release checks cover the reviewed Git SHA, applicable CI, published registry versions, container builds, deployment completion and current remote responses. Dokploy builds provider-fs and kanban-ui from the same checkout. Apply approved Home package changes through declarations and Steward reconciliation, then recheck the installed binding.
 
-Example webhook URL pattern for a forwarded Coder workspace port:
+## Synchronization and webhooks
 
-```text
-https://7402--<agent>--<workspace>--<owner>.coder.example.com/webhooks/github
-```
+Sync-engine tests use isolated local git repositories. For live GitHub synchronization, configure the intended repository/target branch, GitHub App credentials and `SYNC_ENGINE_REMOTE_ENABLED=true`, then start the services through `scripts/services`.
 
-Validation steps:
+Webhook verification:
 
 ```bash
 curl -X POST http://localhost:7402/webhooks/github \
   -H "Content-Type: application/json" -d '{}'
-# expected: {"ok":false,"reason":"signature"}
 ```
 
-A successful live setup should return:
-
-| Event | Expected status |
-|---|---|
-| `push` on target branch | `202` with `{ok:true,action:"queued"}` |
-| `push` on another branch | `202` with `{ok:true,action:"ignored",reason:"branch"}` |
-| `ping` | `202` with `{ok:true,action:"ping"}` |
-| bad signature | `401` with `{ok:false,reason:"signature"}` |
-
-## Definition of verified working
-
-- UI changes have a passing browser automation run against a clean checkout.
-- Non-UI changes have a passing Vitest run against a clean checkout.
-- Reproduction steps are documented and repeatable.
+Expected signature result is HTTP 401 with `{"ok":false,"reason":"signature"}`. Valid target-branch pushes queue a pull with HTTP 202; other-branch pushes are acknowledged as ignored; ping events return the ping acknowledgment. Verify the resulting current content and synchronization state.

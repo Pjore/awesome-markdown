@@ -91,7 +91,7 @@ All data lives as `.md` files in `content/` with a YAML `entityType` field.
 
 An `item` is a Markdown document with recursive frontmatter properties. Only `entityType`, `slug`, `createdAt`, and `updatedAt` are fixed, read-only metadata; other properties can contain text, numbers, booleans, null, mappings, and mixed lists. Items open in read mode with explicit **Edit / Save / Cancel**, plus YAML and full-Markdown recovery exports. A string `title` supplies the heading, otherwise `slug` is used.
 
-`boards[]` is optional data, not implicit membership. Configure a filter/order path such as `boards.$board.status` or `boards.$board.axes.$axis.order` when you want board-/axis-specific values. See [Item properties](docs/ITEM-PROPERTIES.md) for limits, editing, contextual selectors, and the revision-based persistence protocol.
+Board filters select membership. Configure paths such as `boards.$board.column` or `boards.$board.axes.$axis.order` for board-/axis-scoped values. See [Item properties](docs/ITEM-PROPERTIES.md) for limits, editing, contextual selectors, and the revision-based persistence protocol.
 
 ```yaml
 entityType: item
@@ -99,23 +99,28 @@ slug: fix-auth-bug
 createdAt: "2026-01-01T00:00:00Z"
 updatedAt: "2026-01-01T00:00:00Z"
 title: Fix auth bug
-status: doing
+repo: awesome-markdown
 boards:
-  - board: board-dev
-    order: c0V
+  - board: board-main
+    column: todo
+    order: "aP"
 ```
 
 ### Boards
 
-A `board` is a query, not a folder. An optional `filter` scopes the candidate set; `columns` and `swimlanes` reference axis slugs. Items matching no column appear in `/homeless` rather than being lost.
+A `board` projects the item pool through a candidate `filter`; `columns` and `swimlanes` reference reusable axis slugs. Candidates matching no column appear in `/homeless`. Define a filter as an object, or group several rules with `all`/`any`.
 
 ```yaml
 entityType: board
+slug: board-main
+title: Main
+createdAt: "2026-01-01T00:00:00Z"
+updatedAt: "2026-01-01T00:00:00Z"
 filter:
-  property: project
-  equals: dev
-columns: [priority-high, tag-urgent]
-swimlanes: [status-todo, status-doing, status-done]
+  property: boards.$board.board
+  equals: board-main
+columns: [todo, doing, done]
+swimlanes: [awesome-markdown, agent-workspace]
 ```
 
 ### Axes & Filters
@@ -124,15 +129,19 @@ An `axis` defines one column or swimlane via a `filter` and `order`. The same ax
 
 ```yaml
 entityType: axis
+slug: todo
+title: To do
 filter:
-  property: status
+  property: boards.$board.column
   equals: todo
 order:
   by: boards.$board.order
   direction: asc
 ```
 
-Filters using `equals` are **invertible** — dropping a card onto the cell writes the minimal field change to the file. Filters using `or` / `any` produce read-only cells.
+Filters using `equals` are **invertible** — a drop derives the required field changes. The cell combines the board rule with each axis's derived or explicit `writeOnDrop` rules. `$board` binds to the current board slug; `$axis` binds separately to each axis.
+
+Repository rows use `filter: { property: repo, equals: <repo> }`. In a configured Home, `home board rows --repo agent-workspace --repo agentswarm --repo awesome-markdown-cloud` adds/reuses those swimlanes while preserving existing rows. See [Item properties](docs/ITEM-PROPERTIES.md) for complete definitions and editing/recovery workflows.
 
 ---
 

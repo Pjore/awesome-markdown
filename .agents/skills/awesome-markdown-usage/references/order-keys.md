@@ -1,19 +1,42 @@
-# Fractional-index order keys
+# Ordering and fractional keys
+
+An axis declares its sort target and direction:
+
+```yaml
+order:
+  by: boards.$board.order
+  direction: asc
+```
+
+The column's order takes precedence, then the swimlane's order. Missing/equal values fall back to `updatedAt` descending. String comparison is lexicographic; numbers use numeric comparison.
+
+## Choosing a target
+
+The configured property defines the storage location. Examples:
+
+- `order` for a global item value.
+- `boards.$board.order` for one board's selected group.
+- `boards.$board.axes.$axis.order` for a nested axis group.
+
+These are ordinary item properties. The axis definition selects their interpretation for sorting.
+
+## Manual reorder
+
+Manual fractional-key ordering uses a configured ascending string target with compatible current/neighbor values. Reordering writes that single selected target. Cross-cell placement uses the destination's bound rules and applies its compatible ordering write in the same atomic update.
 
 Implementation: `packages/filter-engine/src/order-keys.ts`.
 
-- Alphabet: 62 chars, ASCII order — `0-9` < `A-Z` < `a-z`. Plain string comparison (`<`, `>`) is a correct comparator (`compareOrderKeys` just wraps this).
-- `keyBetween(lo?, hi?)` generates a key strictly between two existing keys (or at an open end when one/both are omitted). Never renumber neighbors to make room — always synthesize a new key between the two cards you're inserting between.
-- Invariant: no generated key ends in `'0'` (the lowest char) — this guarantees there's always room to insert something even lower without hitting a degenerate case.
-- Keys are plain strings in YAML frontmatter — no quoting/escaping concerns, but write them as quoted strings (e.g. `order: 'c0V'`) if they could be interpreted as another YAML scalar (they usually can't, since the alphabet mixes cases and digits).
+- Alphabet: `0-9`, `A-Z`, `a-z`, in ASCII order.
+- `keyBetween(lo?, hi?)` generates a string strictly between its neighbors; an omitted bound represents an open end.
+- Generated keys end in a character above `0`, supporting further insertions.
+- Existing neighboring keys remain unchanged when inserting.
 
-## Where order keys live
+Quote keys when authoring YAML so they remain text:
 
-- `item.order` — global order key (board-agnostic), used when a board/axis doesn't scope by board.
-- `item.boards[].order` — per-board order key on the matching `boards[]` entry, resolved via the `boards.$board.order` dotted path (see `path-resolver.ts`'s array-lookup-by-`board`-field behavior).
+```yaml
+boards:
+  - board: board-main
+    order: "aP"
+```
 
-Axes commonly declare `order: { by: boards.$board.order, direction: asc }` so cards sort by their per-board position within that axis bucket. When no `order` rule is set on an axis, sort falls back to `updatedAt desc`.
-
-## Hand-authoring a key
-
-If you need to manually insert an item between two existing cards with keys `lo` and `hi` in the same cell, pick something string-between them (e.g. between `'A'` and `'C'` use `'B'`). Don't guess — when in doubt call `keyBetween(lo, hi)` rather than eyeballing it, since the "avoid trailing `0`" invariant has non-obvious recursive cases for keys that share a prefix.
+Use `keyBetween` for authored insertions. Preserve the selected list group's identity and use the exact source revision for the resulting mutation batch.

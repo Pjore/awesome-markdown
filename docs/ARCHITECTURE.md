@@ -50,38 +50,43 @@ All domain objects live in `content/` as markdown files with an `entityType` fro
 
 | entityType | Description |
 |---|---|
-| `item` | Card data, including the `boards[]` list and editable workflow fields |
+| `item` | Markdown document, fixed root identity/timestamps and recursive editable properties |
 | `board` | A board definition with an optional base filter and axis references |
 | `axis` | Reusable ordered cells for columns or swimlanes |
 
-Boards do not own items. They project the full item pool through filter rules. Each rendered cell is the combination of the board filter, column filter, and optional swimlane filter.
+Boards project the item pool through filter objects. A leaf names a property and operator; `all`, `any` and `not` compose rules. Each cell combines the board candidate filter with separately bound column/swimlane expressions. `$board` selects a group by board identity, and `$axis` by the current axis identity.
 
-**Drop behavior:** when an item is dropped into a writable cell, the filter engine derives the smallest mutation set that satisfies that combined filter. Cells with non-invertible rules such as `or` or `any` stay read-only.
+**Drop behavior:** writable placement derives from the board rule and each dimension's derived or explicit writes. One drop applies one revision-checked atomic item batch. Same-cell reordering writes the selected configured ascending string target. Column ordering takes precedence over swimlane ordering, with `updatedAt` descending as fallback/tiebreak.
 
-**Homeless behavior:** if an item references a board in `boards[]` but matches no column cell, it appears in that board's `/homeless` view.
+**Homeless behavior:** board-filter candidates matching no column appear in `/homeless`.
+
+**Editing:** read-first item pages place Markdown beneath the heading, display typed recursive properties and separate system metadata, and use one explicit Save/Cancel session. Recovery exports include YAML properties or the full Markdown draft. [Authoring and item guide](ITEM-PROPERTIES.md).
 
 ## provider-fs endpoint reference
 
 | Method | Path | Description |
 |---|---|---|
-| GET | `/boards` | List all board slugs and titles |
-| GET | `/axes` | List all axis slugs and titles |
+| GET | `/health` | Installed provider version and item protocol |
+| GET | `/boards` | Board definitions |
+| POST / PATCH / DELETE | `/boards`, `/boards/:slug` | Create/update/remove board definitions |
+| GET | `/axes` | Axis definitions |
+| POST / PATCH / DELETE | `/axes`, `/axes/:slug` | Create/update/remove axis definitions |
 | GET | `/boards/:slug/render` | Return board cells, items, and invertibility flags |
 | GET | `/boards/:slug/homeless` | Return items that match the board but no column |
-| GET | `/items/:slug` | Fetch a single item |
-| POST | `/items` | Create a new item |
-| PATCH | `/items/:slug` | Update an item with one file write |
+| GET | `/items/:slug` | Authoritative `{ item, revision }` |
+| POST | `/items` | Create and return `{ item, revision }` |
+| PATCH | `/items/:slug` | Validate/commit `{ revision, mutations }`; return the saved record |
 | DELETE | `/items/:slug` | Delete an item file |
 
 ## Data flow
 
 ### Local write path
 
-1. A drag or edit in `kanban-ui` calls the active provider.
-2. `provider-localstorage` updates in-memory browser state immediately, or `provider-http` sends a request to `provider-fs`.
-3. `provider-fs` writes the markdown file in `content/`.
-4. `sync-engine` sees the file change, creates a git commit, and emits an SSE `change` event.
-5. The UI re-fetches the affected entity and refreshes the board.
+1. The item editor captures a draft; board actions derive a mutation batch for the visible source.
+2. The active provider checks the source revision, applies mutations to a clone and validates the complete item.
+3. localStorage commits its store, or provider-fs atomically writes Markdown under the configured content root.
+4. Index/events update after commit; the filesystem sync engine can create a git commit and emit synchronization events.
+5. Read views refresh from authoritative data. An active edit snapshot remains available for Save, Cancel and conflict recovery.
 
 ### Remote change path
 
@@ -101,18 +106,21 @@ Boards do not own items. They project the full item pool through filter rules. E
 
 The UI depends on a single `PersistenceProvider` interface from `@awesome-markdown/contracts`.
 
-```
-capabilities    { type: 'local' } | { type: 'http'; baseUrl: string }
+```text
+capabilities: { type: 'local' } | { type: 'http'; baseUrl: string }
 
-CRUD groups     Board | Column | Swimlane | Item
-  list*()       Promise<T[]>
-  get*(id)      Promise<T | null>
-  create*(data) Promise<T>
-  update*(id,d) Promise<T>
-  delete*(id)   Promise<void>
+Boards: listBoards / getBoard / createBoard / patchBoard
+Axes:   listAxes / getAxis / createAxis / patchAxis
+Views:  getBoardRender / getHomeless
+Items:  getItem / createItem / patchItem -> { item, revision }
+        deleteItem
 
 subscribe(handler: ProviderEventHandler): Unsubscribe
 ```
+
+Root item identity/timestamps are protected. Other properties use shared recursive validation and UTF-8/depth/value bounds. Revisions stay outside item frontmatter. Both providers use shared mutation/render rules; HTTP/filesystem persistence checks actual disk content under a per-item lock.
+
+A configured Home uses its declared board Extension for OAuth, queries, journaled writes, snapshots and configuration operations. `home board rows --repo REPO` adds/reuses repository swimlanes through that selected service. The extension watcher emits task references for Home-owned Paths.
 
 Both `provider-localstorage` and `provider-http` implement this contract, so the UI can switch providers at runtime.
 
@@ -120,7 +128,7 @@ Both `provider-localstorage` and `provider-http` implement this contract, so the
 
 | type | Key fields | Meaning |
 |---|---|---|
-| `change` | `path`, `paths[]`, `commitSha`, `source` | One or more files changed |
+| `change` | `path`, optional `entityId`, `paths[]`, `commitSha`, `source` | One or more files/entities changed |
 | `conflict` | `paths[]`, `diffHunks[]` | A merge conflict needs user action |
 | `synced` | — | Remote sync succeeded or a conflict was resolved |
 | `offline` | `reason` | Remote operations are currently failing |

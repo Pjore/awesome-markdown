@@ -1,57 +1,58 @@
 ---
 name: awesome-markdown-usage
-description: Author and edit the markdown content that drives the kanban system — item, board, and axis files in content/, filter rules, columns/swimlanes, and drag-and-drop write behavior. Use whenever asked to add/edit a board, column, swimlane, axis, or item, to write a filter rule, to make a cell writable/read-only, or to explain why a card landed in /homeless.
+description: Author item, board and axis content; configure contextual filters, columns, repository rows and drag/drop behavior; explain board selection, recursive properties and homeless results.
 ---
 
 # Kanban Content Authoring
 
-Everything in `content/` is a markdown file with an `entityType` frontmatter field: `item`, `board`, or `axis`. Schemas: `packages/contracts/src/schemas/{item,board,axis,filter-rule,mutation}.ts`.
+Domain files in `content/` use `entityType: item | board | axis`. Shared schemas live in `packages/contracts/src/schemas/`. Boards select the item pool through filters and organize matches through referenced axes.
 
-## Core principle: boards don't own items
+## Items and editing
 
-An item's `boards[]` array only *registers interest* in a board (and optionally carries a per-board `order` key). Actual placement into a column/swimlane cell is derived at render time by evaluating each cell's filter rule against the item pool. Editing `boards[]` does not move a card between columns — editing the property the filter checks does.
+Items have read-only root `entityType`, `slug`, `createdAt` and `updatedAt`. Other frontmatter properties are recursive text, finite numbers, booleans, null, mappings or mixed lists. A nonempty string `title` supplies the heading; otherwise `slug` is displayed. The API's root `body` contains Markdown document text.
 
-- If an item is in `boards[]` for a board but matches no column filter, it shows up in that board's `/homeless` view (`GET /boards/:slug/homeless`).
-- The same axis slug can be reused as a column on one board and a swimlane on another (see `priority-high` axis: column on `board-dev`, swimlane on `board-all`).
+The item page starts in read mode with document text beneath the heading, recursive properties and a metadata disclosure. Edit captures one property/document session; Save persists it atomically and returns to read mode. Cancel restores the entry snapshot. YAML recovery contains properties; Markdown recovery includes document text.
 
-## Entity essentials
+Bounds: 16 container levels, 5,000 values and 524,288 serialized UTF-8 bytes. Metadata and document text count toward bounds. Preserve literal keys, order, empty values, null and timestamp strings. [Authoring checklist](references/authoring-checklist.md).
 
-**Item** — required: `entityType: item`, `slug`, `title`, `createdAt`, `updatedAt`. Everything else (`status`, `priority`, `tags`, `project`, ...) is freeform passthrough — there is no fixed enum; valid values are implicitly whatever axis filters check for. `boards[]` entries are `{ board: <slug>, order?: <string>, ...passthrough }`.
+## Board and axis definitions
 
-**Board** — required: `entityType: board`, `slug`, `title`. Optional `filter` narrows the candidate set before columns/swimlanes are applied. `columns`/`swimlanes` are ordered arrays of axis slugs (referenced, not embedded). `cardLayout`/`detailLayout` pick which properties to display and how (`text | badge | tag | avatar`).
+Boards require `entityType`, `slug`, `title`, `createdAt`, `updatedAt`. `filter` selects candidates; `columns` and `swimlanes` are ordered axis-slug arrays. A filter is an object:
 
-**Axis** — required: `entityType: axis`, `slug`, `title`. `filter` decides membership in this bucket (absent = catch-all). `order` sorts items within the bucket (`by` a dotted path, `direction: asc|desc`; defaults to `updatedAt desc` when absent). Referencing an axis slug that has no file synthesizes a fallback (`title = slug`, `synthetic: true`) — no error.
+```yaml
+filter:
+  property: boards.$board.board
+  equals: board-main
+```
 
-## Filter rules
+For several conditions use `all: [...]` or `any: [...]`. `$board` binds to the current board slug, which must match the intended comparison value. An omitted board filter selects the pool. Homeless results are board-filter candidates matching no column.
 
-A filter is a leaf `{ property, <op>: value }` or a boolean node `{ all: [...] }` / `{ any: [...] }` / `{ not: rule }`. Leaf ops: `equals`, `in`, `has` (array contains), `lacks` (array excludes), `exists`, `gt`/`gte`/`lt`/`lte`, `matches` (regex). `property` is a dotted path; `$board` is a special segment substituted with the current board slug (e.g. `boards.$board.order`) and also used for `boards[]` entry lookup (finds the entry whose `board` field equals the key). Full operator/invertibility table: [references/filter-dsl.md](./references/filter-dsl.md).
+Axes require `entityType: axis`, `slug` and `title`. Their filters define grouping; `order` defines sorting; `writeOnDrop` defines explicit drop writes. One axis can be reused by several boards or dimensions.
 
-## Writability is derived, not declared
+Example item context:
 
-A cell (board ∧ column ∧ swimlane filter, combined) is writable only if that combined filter is **invertible** — i.e. the engine can derive a unique mutation that would make an item satisfy it. `equals`, single-value `in`, `has`, `lacks`, `exists: false`, and `all` of invertible children are invertible. `any`, multi-value `in`, `exists: true`, comparators (`gt/gte/lt/lte`), and `matches` are NOT — any one of these anywhere in the combined filter makes the whole cell read-only (strict policy, no partial inverses). An axis's `writeOnDrop` can override this: give an explicit `Mutation[]` to run on drop instead of the derived one, or `{ readonly: true }` to force read-only regardless of filter. Details and worked derivation: [references/mutations-and-dnd.md](./references/mutations-and-dnd.md).
+```yaml
+boards:
+  - board: board-main
+    column: todo
+    order: aP
+```
 
-## Ordering
+A column can filter `boards.$board.column`. A repository swimlane can filter root `repo`. `$axis` selects a group by its `axis` key and binds independently for each dimension. [Filter DSL](references/filter-dsl.md).
 
-Per-cell order uses fractional-index string keys (base-62, lexicographically comparable) stored per-board on the item (`boards.$board.order`) or globally (`item.order`). Never renumber existing keys when inserting — generate a new key strictly between the two neighbors. See [references/order-keys.md](./references/order-keys.md) if you need to hand-author or debug an order key.
+## Writes and sorting
 
-## Basic workflow
+Writable placement derives from the combined board/column/swimlane rules, with each axis's explicit override applied in its own context. One drop produces one atomic item update. Structural editor paths preserve literal keys and numeric indices; bound selectors retain `board`/`axis` identity. [Mutations and drag/drop](references/mutations-and-dnd.md).
 
-1. **New axis**: create `content/<slug>.md` with `entityType: axis`, a `filter` for membership, and `order`. Reuse an existing axis slug across boards instead of duplicating.
-2. **New board**: create `content/<slug>.md` with `entityType: board`, optional candidate `filter`, then `columns`/`swimlanes` listing axis slugs (order in the array = display order).
-3. **New item**: create `content/<slug>.md` with `entityType: item`, the properties your target axes filter on, and a `boards[]` entry naming the board(s) it should appear on (with an `order` key if you care about position).
-4. To move an item, edit the property its target cell's filter checks (e.g. `status: doing`) rather than moving list positions manually — that's what a drag-and-drop write does under the hood.
+Column ordering takes precedence over swimlane ordering, with `updatedAt` descending as fallback/tiebreak. Manual reordering uses a configured ascending string target and compatible fractional keys. [Order keys](references/order-keys.md).
 
-## Gotchas
+## Workflows and providers
 
-[references/gotchas.md](./references/gotchas.md) — notably: `boards[]` must stay an array (never let a mutation path create it as a keyed object), and `append`/`remove` mutation values must be string|number (never an object), so upserting a `boards[]` entry always goes through `set boards.<slug>.<field>`.
+1. Define/reuse an axis for each desired grouping.
+2. Reference its slug from the board's columns or swimlanes.
+3. Set item properties matching the combined target rules.
+4. Capture `{ item, revision }` before planned changes; send the exact revision with the mutation batch and verify the authoritative saved record.
 
-Running `provider-fs`/`sync-engine`/`kanban-ui` locally instead of authoring content? See the
-silent-failure config traps first — none of these produce an error, they just make the board
-look empty or wrong: [references/local-dev-config-traps.md](./references/local-dev-config-traps.md)
-(provider defaults, Vite env loading, content-root/port mismatches) and
-[references/coder-proxy-and-stale-processes.md](./references/coder-proxy-and-stale-processes.md)
-(Coder subdomain proxying, orphaned dev processes squatting ports).
+[Provider API](references/provider-fs-api.md) · [Local development](references/local-development.md) · [Coder development](references/coder-development.md).
 
-## provider-fs surface
-
-Endpoint reference (list/render/homeless/CRUD): [references/provider-fs-api.md](./references/provider-fs-api.md).
+For a managed Home, use its declared board Extension. Inspect `home board board`/`axes`; `home board rows --repo REPO` adds repository swimlanes through the same configured service.
